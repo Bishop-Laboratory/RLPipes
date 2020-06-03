@@ -2,7 +2,15 @@
 
 An flexible pipeline for R-loop mapping experiments
 
-## Quick start
+## Install
+
+As we are in the early development phase, please download from this repo.
+
+``` 
+if(!require(devtools)) install.packages("devtools")
+devtools::install_github("millerh1/RSeq")
+```
+## Quick Start
 
 As a command-line tool:
 ```
@@ -16,7 +24,7 @@ sampleSheet <- data.frame(
   "Experiment" = c("GSM2452072", "GSM2452073"),
   "Control" = c("GSM2668157", "GSM2668158")
 )
-RSeq(mode = "DRIPSeq", outDir = ".", groups = sampleSheet)
+RSeq(mode = "DRIPSeq", outDir = ".", samples = sampleSheet)
 ```
 
 These equivalent commands will pull fastq files from the study `GSE93368` and:
@@ -26,6 +34,12 @@ These equivalent commands will pull fastq files from the study `GSE93368` and:
 4. Call peaks
 5. Assess R-loop mapping quality
 6. Generate standard visualizations
+
+## Detailed Usage
+
+
+
+
 
 
 
