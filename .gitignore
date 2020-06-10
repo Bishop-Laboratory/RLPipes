@@ -2,3 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
+RSeq_out
+.snakemake
+RSeq.Rproj
+Snakefile
+.idea
