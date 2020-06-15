@@ -5,5 +5,5 @@
 RSeq_out
 .snakemake
 RSeq.Rproj
-Snakefile
 .idea
+run_vars.json
