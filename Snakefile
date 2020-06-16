@@ -9,7 +9,12 @@ output_json = json.load(open('run_vars.json'))
 # SAMPLES = output_json['SRX6427720_DRB_qDRIP-seq_1'] # For paired_end and strand-specific
 # SAMPLES = output_json['SRX1070678_NT2_DRIP-seq_1']
 # SAMPLES = output_json['SRX2187024_DRIP_shCtrl_S96_rep2']
-SAMPLES = output_json['SRX6427720_DRB_qDRIP-seq_1'] # For single_end and strand-specific
+SAMPLES = output_json['SRX2675003_HKE293-D210N-V5ChIP-Rep1'] # For single-end and stranded
+# SAMPLES = output_json['SRX1070676_NT2_DRIPc-seq_rep_1'] # DRIPc
+# SAMPLES = output_json['SRX1674681_3T3_DRIPc-seq'] # DRIPc mouse
+# SAMPLES = output_json['EUFA_BRCA2_1_S37_unique_sorted'] # TODO: Local bam of the wrong assembly
+
+
 
 
 # Basic vars
@@ -292,7 +297,9 @@ elif strand_specific:
             # Adapted from https://deeptools.readthedocs.io/en/develop/content/tools/bamCoverage.html
             (mkdir {wildcards.outdir}/bams_tmp) &> /dev/null || true
             samtools view -@ {threads} -b -F 16 {input} > {output.plus}
+            samtools index -@ {threads} {output.plus}
             samtools view -@ {threads} -b -f 16 {input} > {output.minus}
+            samtools index -@ {threads} {output.minus}
         """
 
 
@@ -396,7 +403,6 @@ rule deeptools_coverage_unstranded:
 
 # Handles stranded peak calls and coverage
 if strand_specific:
-
     experiment_plus = "{outdir}/bams_stranded/{sample}.{genome}.experiment.p.bam"
     experiment_minus = "{outdir}/bams_stranded/{sample}.{genome}.experiment.m.bam"
     index = ["{outdir}/bams_stranded/{sample}.{genome}.experiment.p.bam.bai",
@@ -429,6 +435,22 @@ if strand_specific:
                          + " --output {output.plus} && " \
                          + "epic2 -t {input.experiment_minus} {params.epic} -fs ${{frag_med%.*}}" \
                          + " --output {output.minus}"
+
+    rule deeptools_coverage_stranded:
+            input:
+                bam="{outdir}/bams/{sample}.{genome}.experiment.bam",
+                index="{outdir}/bams/{sample}.{genome}.experiment.bam.bai"
+            output:
+                plus="{outdir}/coverage_stranded/{sample}.{genome}.p.bw",
+                minus="{outdir}/coverage_stranded/{sample}.{genome}.m.bw"
+            threads: cores
+            params:
+                extra="--ignoreForNormalization chrX chrY chrM --ignoreDuplicates --minMappingQuality" \
+                      + " 30 --binSize 20 --effectiveGenomeSize " + str(effective_genome_size)
+            shell: """
+                bamCoverage -b {input.bam} -p {threads} {params.extra} --filterRNAstrand forward -o {output.plus}
+                bamCoverage -b {input.bam} -p {threads} {params.extra} --filterRNAstrand reverse -o {output.minus}
+            """
 
     if paired_end:
         rule deeptools_get_pe_fragment_sizes:
@@ -476,34 +498,14 @@ if strand_specific:
                 callpeak="--broad-cutoff .01 -q .01 --broad -g " + str(effective_genome_size)
             shell: "frag_med=$(head -n 2 {input.info} | tail -n 1 | awk '{{print $6}}') && " + macs2_ss_command
 
-        rule deeptools_coverage_stranded:
-            input:
-                bam="{outdir}/bams/{sample}.{genome}.experiment.bam",
-                index="{outdir}/bams/{sample}.{genome}.experiment.bam.bai"
-            output:
-                plus="{outdir}/coverage_stranded/{sample}.{genome}.p.bw",
-                minus="{outdir}/coverage_stranded/{sample}.{genome}.m.bw"
-            threads: cores
-            params:
-                extra="--ignoreForNormalization chrX chrY chrM --ignoreDuplicates --minMappingQuality" \
-                      + " 30 --binSize 20 --effectiveGenomeSize " + str(effective_genome_size)
-            shell: """
-                bamCoverage -b {input.bam} -p {threads} {params.extra} --filterRNAstrand forward -o {output.plus}
-                bamCoverage -b {input.bam} -p {threads} {params.extra} --filterRNAstrand reverse -o {output.minus}
-            """
     else:
-        # TODO: Need to write single-end stranded caller
-        rule macs2_predictd:
-            input: "{outdir}/bams/{sample}.{genome}.bam"
-            output: "{outdir}/info/{sample}.{genome}.macs2_d.txt"
-            params: "-g " + str(effective_genome_size) + " --outdir " + outdir + "/info"
-            shell: "macs2 predictd -i {input} > {output}"
-
         rule epic_callpeaks_se_stranded:
             input:
                 info="{outdir}/info/{sample}.{genome}.experiment_predictd.txt",
-                plus="{outdir}/bams_stranded/{sample}.{genome}.p.bam",
-                minus="{outdir}/bams_stranded/{sample}.{genome}.m.bam"
+                experiment_plus=experiment_plus,
+                experiment_minus=experiment_minus,
+                control_plus=control_plus,
+                control_minus=control_minus
             output:
                 plus="{outdir}/peaks_epic_stranded/{sample}_{genome}_plus.bed",
                 minus="{outdir}/peaks_epic_stranded/{sample}_{genome}_minus.bed"
@@ -520,13 +522,15 @@ if strand_specific:
             # Based on https://github.com/PEHGP/drippipline
             input:
                 info="{outdir}/info/{sample}.{genome}.experiment_predictd.txt",
-                plus="{outdir}/bams_stranded/{sample}.{genome}.p.bam",
-                minus="{outdir}/bams_stranded/{sample}.{genome}.m.bam"
+                experiment_plus=experiment_plus,
+                experiment_minus=experiment_minus,
+                control_plus=control_plus,
+                control_minus=control_minus
             output:
-                plus="{outdir}/peaks/{sample}_{genome}_plus_peaks.xls",
-                minus="{outdir}/peaks/{sample}_{genome}_minus_peaks.xls"
+                plus="{outdir}/peaks_macs_stranded/{sample}_{genome}_plus_peaks.xls",
+                minus="{outdir}/peaks_macs_stranded/{sample}_{genome}_minus_peaks.xls"
             params:
-                callpeak="--broad-cutoff .01 -q .01 --broad -f BAMPE -g " + str(effective_genome_size)
+                callpeak="--broad-cutoff .01 -q .01 --broad -g " + str(effective_genome_size)
             shell: "frag_med=$(cat {input.info} | grep -o 'predicted fragment length is [0-9]* bps' | cut -d ' ' -f 5)" \
                    + " && " + macs2_ss_command
 
