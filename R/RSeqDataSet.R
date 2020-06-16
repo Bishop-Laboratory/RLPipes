@@ -201,16 +201,16 @@ makeRSeqDataSet <- function(mode = NULL,
   source("R/utils.R")
   ## For bug testing ##
   samples <- data.frame(
-    "experiment" = c("SRX2481503", "SRX2918366", "GSM3937232", "GSM3936514", "GSM3936515", "GSM1720615",
+    "experiment" = c("SRX2481503", "GSM2326832", "SRX2918366", "GSM3937232", "GSM3936514", "GSM3936515", "GSM1720615",
                      "GSM3936516", "SRX5129665", "GSM2104456", "GSM1720613", "GSM2550993",
                      "~/Bishop.lab/Preprocessing/DRIP_Seq/GSE145964_Developmental_Context_ChIP_DRIP/Data/Raw_Reads/SRR11185284_1.fastq+~/Bishop.lab/Preprocessing/DRIP_Seq/GSE145964_Developmental_Context_ChIP_DRIP/Data/Raw_Reads/SRR11185284_2.fastq",
                      "../EUFA_BRCA2/"),
-    "control" = c("SRX2481504", "SRX2918367", NA, "GSM3936517", "GSM3936517", NA,
+    "control" = c("SRX2481504", "GSM2326824", "SRX2918367", NA, "GSM3936517", "GSM3936517", NA,
                   "GSM3936517", "SRX5129664", NA, NA, "GSM2550995",
                   NA, NA),
-    "genome" = c(NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+    "genome" = c(NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
                  "hg38", "hg38"),
-    "strand_specific" = c(FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, TRUE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE),
+    "strand_specific" = c(FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, TRUE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE),
     stringsAsFactors = F
   )
   #####################

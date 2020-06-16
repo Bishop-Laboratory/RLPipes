@@ -1,10 +1,16 @@
+########################################################################################################################
+##############################################   Parse inputs    #######################################################
+########################################################################################################################
 import json
-import os
+
 output_json = json.load(open('run_vars.json'))
 # SAMPLES = output_json['SRX1798990_24hr_input_S_96_DRIP_Seq'] # For merging SE reps
 # SAMPLES = output_json['SRX2481503_S96_DRIP_Seq_1'] # For paired_end unstranded
-SAMPLES = output_json['SRX6427720_DRB_qDRIP-seq_1'] # For paired_end and strand-specific
+# SAMPLES = output_json['SRX6427720_DRB_qDRIP-seq_1'] # For paired_end and strand-specific
 # SAMPLES = output_json['SRX1070678_NT2_DRIP-seq_1']
+# SAMPLES = output_json['SRX2187024_DRIP_shCtrl_S96_rep2']
+SAMPLES = output_json['SRX6427720_DRB_qDRIP-seq_1'] # For single_end and strand-specific
+
 
 # Basic vars
 paired_end=SAMPLES['paired_end'][0]
@@ -20,125 +26,183 @@ outdir=SAMPLES['out_dir'][0]
 experiments=SAMPLES['experiments'][0]
 controls=SAMPLES['controls'][0]
 
-if paired_end:
-    output_fastq_1 = expand("{outdir}/fastqs_cleaned/{sample_name}_R1.fastq",
-                     sample_name=sample_name, outdir=outdir)
-    output_fastq_2 = expand("{outdir}/fastqs_cleaned/{sample_name}_R2.fastq",
-                     sample_name=sample_name, outdir=outdir)
-    merge_input_1 = expand("{outdir}/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
+# Set expected output and inputs for merging of technical replicates
+output_fastq_experiment_1 = expand("{outdir}/fastqs/{sample_name}_experiment_R1.fastq",
+                 sample_name=sample_name, outdir=outdir)
+output_fastq_experiment_2 = expand("{outdir}/fastqs/{sample_name}_experiment_R2.fastq",
+                 sample_name=sample_name, outdir=outdir)
+merge_input_experiment_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
                            sample_name=sample_name,
                            srr_acc=experiments, outdir=outdir)
-    merge_input_2 = expand("{outdir}/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
+merge_input_experiment_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
                            sample_name=sample_name,
-                           srr_acc=experiments, outdir=outdir)
-else:
-    output_fastq = expand("{outdir}/fastqs_cleaned/{sample_name}.fastq",
-                     sample_name=sample_name, outdir=outdir)
-    merge_input = expand("{outdir}/fastqs_raw/{sample_name}/{srr_acc}.sra.fastq",
+                           srr_acc=experiments, outdir=outdir),
+output_fastq_control_1 = expand("{outdir}/fastqs/{sample_name}_control_R1.fastq",
+                 sample_name=sample_name, outdir=outdir)
+output_fastq_control_2 = expand("{outdir}/fastqs/{sample_name}_control_R2.fastq",
+                 sample_name=sample_name, outdir=outdir)
+merge_input_control_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
+                           sample_name=sample_name,
+                           srr_acc=controls, outdir=outdir)
+merge_input_control_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
+                           sample_name=sample_name,
+                           srr_acc=controls, outdir=outdir)
+output_fastq_experiment = expand("{outdir}/fastqs/{sample_name}.fastq",
+                 sample_name=sample_name, outdir=outdir)
+merge_input_experiment = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra.fastq",
                          sample_name=sample_name,
-                         srr_acc=experiments, outdir=outdir)
+                         srr_acc=experiments, outdir=outdir),
+output_fastq_control = expand("{outdir}/fastqs/{sample_name}.fastq",
+                 sample_name=sample_name, outdir=outdir)
+merge_input_control = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra.fastq",
+                         sample_name=sample_name,
+                         srr_acc=controls, outdir=outdir)
 
+# Set expected outputs of pipeline
 if strand_specific:
-    coverage_output = expand("{outdir}/coverage/{sample}.{genome}.p.bw", genome=genome,
-                        sample=sample_name, outdir=outdir)
+    coverage_output = [expand("{outdir}/coverage_stranded/{sample}.{genome}.p.bw", genome=genome,
+                        sample=sample_name, outdir=outdir),
+                        expand("{outdir}/coverage_unstranded/{sample}.{genome}.bw", genome=genome,
+                            sample=sample_name, outdir=outdir)]
+    peak_output = [expand("{outdir}/peaks_macs_unstranded/{sample}_{genome}_peaks.broadPeak", genome=genome,
+                         sample=sample_name, outdir=outdir),
+                   expand("{outdir}/peaks_epic_unstranded/{sample}_{genome}.bed", genome=genome,
+                         sample=sample_name, outdir=outdir),
+                   expand("{outdir}/peaks_epic_stranded/{sample}_{genome}_plus.bed", genome=genome,
+                         sample=sample_name, outdir=outdir),
+                   expand("{outdir}/peaks_epic_stranded/{sample}_{genome}_minus.bed", genome=genome,
+                         sample=sample_name, outdir=outdir),
+                   expand("{outdir}/peaks_macs_stranded/{sample}_{genome}_plus_peaks.xls", genome=genome,
+                         sample=sample_name, outdir=outdir)]
 else:
-    coverage_output = expand("{outdir}/coverage/{sample}.{genome}.bw", genome=genome,
+    coverage_output = expand("{outdir}/coverage_unstranded/{sample}.{genome}.bw", genome=genome,
                             sample=sample_name, outdir=outdir)
+    peak_output = [expand("{outdir}/peaks_macs_unstranded/{sample}_{genome}_peaks.broadPeak", genome=genome,
+                         sample=sample_name, outdir=outdir),
+                   expand("{outdir}/peaks_epic_unstranded/{sample}_{genome}.bed", genome=genome,
+                         sample=sample_name, outdir=outdir)
+                   ]
+
+########################################################################################################################
+##############################################   Main pipeline    ######################################################
+########################################################################################################################
 
 rule output:
         input:
-            # expand("{outdir}/libtype_infer/{sample_name}.{genome}/lib_format_counts.json", genome=SAMPLES['genome'],
-            #        sample_name=SAMPLES['sample_name'], outdir=SAMPLES['out_dir'])
-            #  expand("{outdir}/bams_stranded/{sample}.{genome}.p.bam", genome=SAMPLES['genome'],
-            #        sample=SAMPLES['sample_name'], outdir=SAMPLES['out_dir']),
-            #  expand("{outdir}/coverage/{sample}.{genome}.p.bw", genome=SAMPLES['genome'],
-            #        sample=SAMPLES['sample_name'], outdir=SAMPLES['out_dir']),
-             expand("{outdir}/peaks_macs/{sample}_{genome}_peaks.broadPeak", genome=genome,
-                   sample=sample_name, outdir=outdir),
-             expand("{outdir}/peaks_epic/{sample}_{genome}.bed", genome=genome,
-                   sample=sample_name, outdir=outdir),
-             expand("{outdir}/peaks_macs/{sample}_{genome}_plus_peaks.xls", genome=genome,
-                   sample=sample_name, outdir=outdir),
-             coverage_output,
-             expand("{outdir}/bams/{sample}.{genome}.bam.bai", genome=genome,
-                   sample=sample_name, outdir=outdir),
-            # expand(SAMPLES['genome_dir'][0] + "/{genome}/salmon_index/info.json", genome=SAMPLES['genome'],
-            #       sample_name=SAMPLES['sample_name'], outdir=SAMPLES['out_dir'])
-
+            peak_output,
+            coverage_output
 
 rule download_sra:
-    output: "{outdir}/fastqs_raw/{sample_name}/{srr_acc}.sra"
+    output:
+        temp("{outdir}/tmp/sras/{sample_name}/{srr_acc}.sra")
     shell:
         "prefetch {wildcards.srr_acc} --output-file {output}"
 
 if paired_end:
-    rule sra_to_fastq:
-        output:
-            "{outdir}/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
-            "{outdir}/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq"
-        input: "{outdir}/fastqs_raw/{sample_name}/{srr_acc}.sra"
-        threads: SAMPLES['cores'][0]
-        shell:
-            "fasterq-dump -e {threads} --split-files -O {wildcards.outdir}/fastqs_raw/{wildcards.sample_name}/ {input}"
 
-    rule merge_fastq:
-        output:
-            R1="{outdir}/fastqs/{sample_name}_R1.fastq",
-            R2="{outdir}/fastqs/{sample_name}_R2.fastq"
+    rule sra_to_fastq_pe:
         input:
-            R1=merge_input_1,
-            R2=merge_input_2
+            "{outdir}/tmp/sras/{sample_name}/{srr_acc}.sra"
+        output:
+            temp("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq"),
+            temp("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq")
+        threads: cores
+        shell:
+            "fasterq-dump -e {threads} --split-files -O {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample_name}/ {input}"
+
+    rule merge_fastq_pe_experiment:
+        input:
+            R1=merge_input_experiment_1,
+            R2=merge_input_experiment_2
+        output:
+            R1=temp("{outdir}/tmp/fastqs_dup/{sample_name}_experiment_R1.fastq"),
+            R2=temp("{outdir}/tmp/fastqs_dup/{sample_name}_experiment_R2.fastq")
         shell: """
             cat {input.R1} > {output.R1}
             cat {input.R2} > {output.R2}
         """
 
+    rule merge_fastq_pe_control:
+        input:
+            R1=merge_input_control_1,
+            R2=merge_input_control_2
+        output:
+            R1=temp("{outdir}/tmp/fastqs_dup/{sample_name}_control_R1.fastq"),
+            R2=temp("{outdir}/tmp/fastqs_dup/{sample_name}_control_R2.fastq")
+        shell: """
+            cat {input.R1} > {output.R1}
+            cat {input.R2} > {output.R2}
+        """
+
+    rule clumpify_pe:
+        input:
+            R1="{outdir}/tmp/fastqs_dup/{sample_name}_{exp_type}_R1.fastq",
+            R2="{outdir}/tmp/fastqs_dup/{sample_name}_{exp_type}_R2.fastq"
+        output:
+            R1=temp("{outdir}/tmp/fastqs_dedup/{sample_name}_{exp_type}_R1.fastq"),
+            R2=temp("{outdir}/tmp/fastqs_dedup/{sample_name}_{exp_type}_R2.fastq")
+        params: ""
+        threads: cores
+        shell:
+            "clumpify.sh t={threads} {params} in1={input.R1} in2={input.R2} out1={output.R1} out2={output.R2} dedupe"
+
     rule fastp_pe:
         input:
-            sample=["{outdir}/fastqs/{sample}_R1.fastq", "{outdir}/fastqs/{sample}_R2.fastq"]
+            sample=["{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R1.fastq",
+                    "{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R2.fastq"]
         output:
-            trimmed=["{outdir}/fastqs_cleaned/{sample}_R1.fastq", "{outdir}/fastqs_cleaned/{sample}_R2.fastq"],
-            html="{outdir}/QC/fastq/{sample}.html",
-            json="{outdir}/QC/fastq/{sample}.json"
+            trimmed=["{outdir}/fastqs/{sample}_{exp_type}_R1.fastq",
+                     "{outdir}/fastqs/{sample}_{exp_type}_R2.fastq"],
+            html="{outdir}/QC/fastq/{sample}.{exp_type}.html",
+            json="{outdir}/QC/fastq/{sample}.{exp_type}.json"
         log:
-            "{outdir}/logs/{sample}_fastp.log"
+            "{outdir}/logs/{sample}_{exp_type}_fastp.log"
         params:
             extra=""
         threads: cores
         wrapper:
             "0.60.0/bio/fastp"
+
 else:
-    rule sra_to_fastq:
-        output: "{outdir}/fastqs_raw/{sample_name}/{srr_acc}.sra.fastq"
-        input: "{outdir}/fastqs_raw/{sample_name}/{srr_acc}.sra"
+
+    rule sra_to_fastq_se:
+        input: "{outdir}/tmp/sras/{sample_name}/{srr_acc}.sra"
+        output: temp("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra.fastq")
         threads: cores
         shell:
-            "fasterq-dump -e {threads} --split-files -O {wildcards.outdir}/fastqs_raw/{wildcards.sample_name}/ {input}"
+            "fasterq-dump -e {threads} --split-files -O {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample_name}/ {input}"
 
-    rule merge_fastq:
-        output: "{outdir}/fastqs/{sample_name}.fastq"
-        input: merge_input
+    rule merge_fastq_se_experiment:
+        input: merge_input_experiment
+        output: temp("{outdir}/tmp/fastqs_dup/{sample_name}_experiment.fastq")
         shell: "cat {input} > {output}"
+
+    rule merge_fastq_se_control:
+        input: merge_input_control
+        output: temp("{outdir}/tmp/fastqs_dup/{sample_name}_control.fastq")
+        shell: "cat {input} > {output}"
+
+    rule clumpify_se:
+        input: "{outdir}/tmp/fastqs_dup/{sample_name}_{exp_type}.fastq"
+        output: temp("{outdir}/tmp/fastqs_dedup/{sample_name}_{exp_type}.fastq")
+        params: ""
+        threads: cores
+        shell: "clumpify.sh t={threads} {params} in={input} out={output} dedupe"
 
     rule fastp_se:
         input:
-            sample=["{outdir}/fastqs/{sample}.fastq"]
+             sample=["{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}.fastq"]
         output:
-            trimmed="{outdir}/fastqs_cleaned/{sample}.fastq",
-            html="{outdir}/QC/fastq/{sample}.html",
-            json="{outdir}/QC/fastq/{sample}.json"
+            trimmed="{outdir}/fastqs/{sample}_{exp_type}.fastq",
+            html="{outdir}/QC/fastq/{sample}.{exp_type}.html",
+            json="{outdir}/QC/fastq/{sample}.{exp_type}.json"
         log:
-            "{outdir}/logs/{sample}_fastp.log"
+            "{outdir}/logs/{sample}_{exp_type}_fastp.log"
         params:
             extra=""
         threads: cores
         wrapper:
             "0.60.0/bio/fastp"
-
-if paired_end:
-    bwa_reads=["{outdir}/fastqs_cleaned/{sample}_R1.fastq", "{outdir}/fastqs_cleaned/{sample}_R2.fastq"]
-else:
-    bwa_reads=["{outdir}/fastqs_cleaned/{sample}.fastq"]
 
 rule download_fasta:
     output:
@@ -164,17 +228,22 @@ rule bwa_index:
     wrapper:
         "0.60.0/bio/bwa/index"
 
+if paired_end:
+    bwa_reads=["{outdir}/fastqs/{sample}_{exp_type}_R1.fastq", "{outdir}/fastqs/{sample}_{exp_type}_R2.fastq"]
+else:
+    bwa_reads=["{outdir}/fastqs/{sample}_{exp_type}.fastq"]
+
 rule bwa_mem:
     input:
         bwa_index_done=genome_home_dir + "/{genome}/bwa_index/{genome}.amb",
         reads=bwa_reads
     output:
-        bam="{outdir}/bam_dups/{sample}.{genome}.bam"
+        bam="{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
     log:
-        "{outdir}/logs/{sample}_{genome}_bwa.log"
+        "{outdir}/logs/{sample}_{genome}_{exp_type}_bwa.log"
     params:
         index=genome_home_dir + "/{genome}/bwa_index/{genome}",
-        bwa_extra=r"-R '@RG\tID:{sample}\tSM:{sample}'",
+        bwa_extra=r"-R '@RG\tID:{sample}_{exp_type}\tSM:{sample}_{exp_type}'",
         picard_extra="",
         samtools_sort_extra=""
     threads: cores
@@ -184,21 +253,9 @@ rule bwa_mem:
         samtools sort {params.samtools_sort_extra} -@ {threads} -o {output.bam} - 
      """
 
-rule mark_duplicates:
-    input: "{outdir}/bam_dups/{sample}.{genome}.bam"
-    output:
-        bam="{outdir}/bams/{sample}.{genome}.bam",
-        metrics="{outdir}/info/{sample}.{genome}.duplicate.metrics.txt"
-    params:
-        ""
-    threads: cores
-    shell: """
-        picard MarkDuplicates I={input} O={output.bam} M={output.metrics}
-    """
-
 rule index_bam:
-    input: "{outdir}/bams/{sample}.{genome}.bam"
-    output: "{outdir}/bams/{sample}.{genome}.bam.bai"
+    input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
+    output: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam.bai"
     threads: cores
     shell: """
         samtools index -@ {threads} {input}
@@ -206,29 +263,30 @@ rule index_bam:
 
 if strand_specific and paired_end:
     rule split_strands_pe:
-        input: "{outdir}/bams/{sample}.{genome}.bam",
+        input:
+            bam="{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
         output:
-            plus="{outdir}/bams_stranded/{sample}.{genome}.p.bam",
-            minus="{outdir}/bams_stranded/{sample}.{genome}.m.bam"
+            plus="{outdir}/bams_stranded/{sample}.{genome}.{exp_type}.p.bam",
+            minus="{outdir}/bams_stranded/{sample}.{genome}.{exp_type}.m.bam"
         threads: cores
         shell: """
             # Adapted from https://deeptools.readthedocs.io/en/develop/content/tools/bamCoverage.html
             (mkdir {wildcards.outdir}/bams_tmp) &> /dev/null || true
-            samtools view -@ {threads} -b -f 128 -F 16 {input} > {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.fwd1.bam
-            samtools view -@ {threads} -b -f 80 {input} > {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.fwd2.bam
-            samtools merge -@ {threads} -f {output.plus} {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.fwd1.bam {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.fwd2.bam
+            samtools view -@ {threads} -b -f 128 -F 16 {input} > {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.{wildcards.exp_type}.fwd1.bam
+            samtools view -@ {threads} -b -f 80 {input} > {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.{wildcards.exp_type}.fwd2.bam
+            samtools merge -@ {threads} -f {output.plus} {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.{wildcards.exp_type}.fwd1.bam {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.{wildcards.exp_type}.fwd2.bam
             samtools index -@ {threads} {output.plus}
-            samtools view -@ {threads} -b -f 144 {input} > {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.rev1.bam
-            samtools view -@ {threads} -b -f 64 -F 16 {input} > {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.rev2.bam
-            samtools merge -@ {threads} -f {output.minus} {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.rev1.bam {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.rev2.bam
+            samtools view -@ {threads} -b -f 144 {input} > {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.{wildcards.exp_type}.rev1.bam
+            samtools view -@ {threads} -b -f 64 -F 16 {input} > {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.{wildcards.exp_type}.rev2.bam
+            samtools merge -@ {threads} -f {output.minus} {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.{wildcards.exp_type}.rev1.bam {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.{wildcards.exp_type}.rev2.bam
             samtools index -@ {threads} {output.minus}
         """
 elif strand_specific:
     rule split_strands_se:
-        input: "{outdir}/bams/{sample}.{genome}.bam",
+        input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam",
         output:
-            plus="{outdir}/bams_stranded/{sample}.{genome}.p.bam",
-            minus="{outdir}/bams_stranded/{sample}.{genome}.m.bam"
+            plus="{outdir}/bams_stranded/{sample}.{genome}.{exp_type}.p.bam",
+            minus="{outdir}/bams_stranded/{sample}.{genome}.{exp_type}.m.bam"
         threads: cores
         shell: """
             # Adapted from https://deeptools.readthedocs.io/en/develop/content/tools/bamCoverage.html
@@ -237,164 +295,97 @@ elif strand_specific:
             samtools view -@ {threads} -b -f 16 {input} > {output.minus}
         """
 
-if paired_end:
-    macs2_params="--broad -g -f BAMPE " + str(effective_genome_size)
-else:
-    macs2_params="--broad -g " + str(effective_genome_size)
 
-rule macs2_callpeak:
+rule macs2_predictd:
+            input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
+            output: "{outdir}/info/{sample}.{genome}.{exp_type}_predictd.txt"
+            params: "-g " + str(effective_genome_size) + " --outdir " + outdir + "/info"
+            shell: "macs2 predictd -i {input} --outdir {wildcards.outdir}/tmp &> {output}"
+
+# Set up arguments for peak callers
+treat_file_macs2="{outdir}/bams/{sample}.{genome}.experiment.bam"
+if paired_end:
+    params_macs2="-f BAMPE --broad-cutoff .01 -q .01 --broad -g " + str(effective_genome_size)
+    treat_file_epic="{outdir}/tmp/pe_beds/{sample}.{genome}.experiment.bed"
+    epic_info=treat_file_epic
+    index_epic=treat_file_epic
+else:
+    params_macs2="--broad-cutoff .01 -q .01 --broad -g " + str(effective_genome_size)
+    epic_info="{outdir}/info/{sample}.{genome}.experiment_predictd.txt"
+    treat_file_epic="{outdir}/bams/{sample}.{genome}.experiment.bam"
+
+if controls is not None:
+    control_file_macs2="{outdir}/bams/{sample}.{genome}.control.bam"
+    macs2_command="macs2 callpeak -t {input.treatment} -c {input.control} {params} --outdir {wildcards.outdir}/peaks_macs_unstranded/ -n {wildcards.sample}_{wildcards.genome}"
+    epic2_command="epic2 -t {input.treatment} -c {input.control} {params.epic} --output {output}"
+    if paired_end:
+        control_file_epic="{outdir}/tmp/pe_beds/{sample}.{genome}.control.bed"
+    else:
+        control_file_epic="{outdir}/bams/{sample}.{genome}.control.bam"
+        index_epic=["{outdir}/bams/{sample}.{genome}.experiment.bam.bai",
+                    "{outdir}/bams/{sample}.{genome}.control.bam.bai"]
+else:
+    control_file_macs2=treat_file_macs2
+    control_file_epic=treat_file_epic
+    index_epic="{outdir}/bams/{sample}.{genome}.experiment.bam.bai"
+    macs2_command="macs2 callpeak -t {input.treatment} {params} --outdir {wildcards.outdir}/peaks_macs_unstranded/ -n {wildcards.sample}_{wildcards.genome}"
+    epic2_command="epic2 -t {input.treatment} {params.epic} --output {output}"
+
+if paired_end:
+    epic2_command_lt="wget {params.wget_in} -O {params.wget_out} && " + epic2_command
+else:
+    epic2_command_lt="frag_med=$(cat {input.info} | grep -o 'predicted fragment length is [0-9]* bps' | cut -d ' ' -f 5) &&" \
+        + " wget {params.wget_in} -O {params.wget_out} && " + epic2_command + " --fragment-size ${{frag_med%.*}}"
+
+
+rule macs2_callpeak_unstranded:
     input:
-        "{outdir}/bams/{sample}.{genome}.bam",
+        treatment=treat_file_macs2,
+        control=control_file_macs2
     output:
-        "{outdir}/peaks_macs/{sample}_{genome}_peaks.broadPeak",
-    params: macs2_params
+        "{outdir}/peaks_macs_unstranded/{sample}_{genome}_peaks.broadPeak",
+    params: params_macs2
+    shell: macs2_command
+
+rule bampe_to_bedpe:
+    # adapted from https://github.com/biocore-ntnu/epic2/issues/24
+    # awk only accepts MAPQ score > 30 and non-negative start position
+    input:
+        "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
+    output:
+        temp("{outdir}/tmp/pe_beds/{sample}.{genome}.{exp_type}.bed")
+    params:
+        samtools_sort_extra="-n",
+        bedtools_bamtobed_extra="-bedpe"
+    threads: cores
     shell: """
-        macs2 callpeak -t {input} {params} --outdir {wildcards.outdir}/peaks_macs/ -n {wildcards.sample}_{wildcards.genome}
+        samtools sort {params.samtools_sort_extra} -@ {threads} -o /dev/stdout {input} | \
+        (bedtools bamtobed -i /dev/stdin {params.bedtools_bamtobed_extra} > /dev/stdout) 2> /dev/null | \
+        awk '{{if($2 >= 1 && $8 >= 30) print}}' /dev/stdin > {output}
     """
 
-if paired_end:
-    rule bampe_to_bedpe:
+rule epic2_callpeak_unstranded:
+    input:
+         treatment=treat_file_epic,
+         control=control_file_epic,
+         index_epic=index_epic,
+         info=epic_info
+    output:
+        "{outdir}/peaks_epic_unstranded/{sample}_{genome}.bed",
+    params:
+        epic="-e 100 -fdr .01 --effective-genome-fraction " + str(effective_genome_fraction) \
+             + " --mapq 30 --chromsizes {outdir}/tmp/" + genome + ".chrom.sizes",
+        wget_in="ftp://hgdownload.soe.ucsc.edu/goldenPath/" + genome +\
+             "/bigZips/" + SAMPLES['genome'][0] + ".chrom.sizes",
+        wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
+    shell: epic2_command_lt
+
+# Calculate this for all reads
+rule deeptools_coverage_unstranded:
         input:
-            "{outdir}/bams/{sample}.{genome}.bam"
-        output:
-            "{outdir}/bedpes/{sample}.{genome}.bed"
-        shell:
-
-
-    rule epic2_pe_callpeak:
-        input:
-            "{outdir}/bedpes/{sample}.{genome}.bed",
-        output:
-            "{outdir}/peaks_epic/{sample}_{genome}.bed",
-        params:
-            epic="--effective-genome-fraction " + str(effective_genome_fraction) \
-                 + " --chromsizes {outdir}/tmp/" + genome + ".chrom.sizes --output peaks.txt",
-            wget_in="ftp://hgdownload.soe.ucsc.edu/goldenPath/" + genome +\
-                 "/bigZips/" + SAMPLES['genome'][0] + ".chrom.sizes",
-            wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
-        shell: """
-            wget {params.wget_in} -O {params.wget_out}
-            epic2 --treatment {input} {params.epic} --output {output}
-        """
-else:
-    rule epic2_se_callpeak:
-        input:
-            "{outdir}/bams/{sample}.{genome}.bam",
-        output:
-            "{outdir}/peaks_epic/{sample}_{genome}.bed",
-        params:
-            epic="--effective-genome-fraction " + str(effective_genome_fraction) \
-                 + " --chromsizes {outdir}/tmp/" + genome + ".chrom.sizes --output peaks.txt",
-            wget_in="ftp://hgdownload.soe.ucsc.edu/goldenPath/" + genome +\
-                 "/bigZips/" + SAMPLES['genome'][0] + ".chrom.sizes",
-            wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
-        shell: """
-            wget {params.wget_in} -O {params.wget_out}
-            epic2 --treatment {input} {params.epic} --output {output}
-        """
-
-
-
-if strand_specific and paired_end:
-    rule deeptools_get_pe_fragment_sizes:
-        input: "{outdir}/bams/{sample}.{genome}.bam",
-        output:
-            info="{outdir}/info/{sample}.{genome}.frag_lengths.txt",
-            plot="{outdir}/info/{sample}.{genome}.frag_lengths.png"
-        params: "--samplesLabel " + sample_name
-        threads: cores
-        shell: "bamPEFragmentSize --bamfiles {input} --histogram {output.plot} --table {output.info} -p {threads}"
-
-
-    # rule epic_callpeaks_pe_stranded:
-    #     input:
-    #         info="{outdir}/info/{sample}.{genome}.frag_lengths.txt",
-    #         plus="{outdir}/bams_stranded/{sample}.{genome}.p.bam",
-    #         minus="{outdir}/bams_stranded/{sample}.{genome}.m.bam"
-    #     output:
-    #         plus="{outdir}/peaks_macs/{sample}_{genome}_plus_peaks.xls",
-    #         minus="{outdir}/peaks_macs/{sample}_{genome}_minus_peaks.xls"
-    #     params:
-    #         epic="--effective-genome-fraction " + str(effective_genome_fraction) \
-    #              + " --chromsizes {outdir}/tmp/" + genome + ".chrom.sizes --output peaks.txt",
-    #         wget_in="ftp://hgdownload.soe.ucsc.edu/goldenPath/" + genome +\
-    #              "/bigZips/" + SAMPLES['genome'][0] + ".chrom.sizes",
-    #         wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
-    #     shell: """
-    #         frag_med=$(head -n 2 {input.info} | tail -n 1 | awk "{{print \$6}}")
-    #         frag_min=$(head -n 2 {input.info} | tail -n 1 | awk "{{print \$11}}")
-    #         frag_max=$(head -n 2 {input.info} | tail -n 1 | awk "{{print \$19}}")
-    #         wget {params.wget_in} -O {params.wget_out}
-    #         epic2 --treatment {input} {params.epic} --output {output}
-    #
-    #         macs2 callpeak -t {input.plus} {params.extra} --min-length $frag_min --nomodel --ext-size $frag_med --outdir {wildcards.outdir}/peaks_macs/ -n {wildcards.sample}_{wildcards.genome}_plus
-    #         macs2 callpeak -t {input.minus} {params.extra} --min-length $frag_min --nomodel --ext-size $frag_med --outdir {wildcards.outdir}/peaks_macs/ -n {wildcards.sample}_{wildcards.genome}_minus
-    #     """
-
-    rule macs2_callpeaks_pe_stranded:
-        input:
-            info="{outdir}/info/{sample}.{genome}.frag_lengths.txt",
-            plus="{outdir}/bams_stranded/{sample}.{genome}.p.bam",
-            minus="{outdir}/bams_stranded/{sample}.{genome}.m.bam"
-        output:
-            plus="{outdir}/peaks_macs/{sample}_{genome}_plus_peaks.xls",
-            minus="{outdir}/peaks_macs/{sample}_{genome}_minus_peaks.xls"
-        params:
-            callpeak="--broad -g " + str(effective_genome_size)
-        shell: """
-            frag_med=$(head -n 2 {input.info} | tail -n 1 | awk "{{print \$6}}")
-            frag_min=$(head -n 2 {input.info} | tail -n 1 | awk "{{print \$11}}")
-            frag_max=$(head -n 2 {input.info} | tail -n 1 | awk "{{print \$19}}")
-            macs2 callpeak -t {input.plus} {params.callpeak} --min-length $frag_min --nomodel --ext-size $frag_med --outdir {wildcards.outdir}/peaks_macs/ -n {wildcards.sample}_{wildcards.genome}_plus
-            macs2 callpeak -t {input.minus} {params.callpeak} --min-length $frag_min --nomodel --ext-size $frag_med --outdir {wildcards.outdir}/peaks_macs/ -n {wildcards.sample}_{wildcards.genome}_minus
-        """
-
-    rule deeptools_coverage_stranded:
-        input:
-            bam="{outdir}/bams/{sample}.{genome}.bam",
-            index="{outdir}/bams/{sample}.{genome}.bam.bai"
-        output:
-            plus="{outdir}/coverage/{sample}.{genome}.p.bw",
-            minus="{outdir}/coverage/{sample}.{genome}.m.bw"
-        threads: cores
-        params:
-            extra="--ignoreForNormalization chrX chrY chrM --ignoreDuplicates --minMappingQuality" \
-                  + " 30 --binSize 20 --effectiveGenomeSize " + str(effective_genome_size)
-        shell: """
-            bamCoverage -b {input.bam} -p {threads} {params.extra} --filterRNAstrand forward -o {output.plus}
-            bamCoverage -b {input.bam} -p {threads} {params.extra} --filterRNAstrand reverse -o {output.minus}
-        """
-elif strand_specific:
-    # TODO: Need to write single-end stranded caller
-    rule macs2_predictd:
-        input: "{outdir}/bams/{sample}.{genome}.bam"
-        output: "{outdir}/info/{sample}.{genome}.macs2_d.txt"
-        params: "-g " + str(effective_genome_size) + " --outdir " + outdir + "/info"
-        shell: "macs2 predictd -i {input} > {output}"
-
-    rule macs2_callpeaks_se_stranded:
-        # Based on https://github.com/PEHGP/drippipline
-        input:
-            info="{outdir}/info/{sample}.{genome}.macs2_d.txt",
-            plus="{outdir}/bams_stranded/{sample}.{genome}.p.bam",
-            minus="{outdir}/bams_stranded/{sample}.{genome}.m.bam"
-        output:
-            plus="{outdir}/peaks/{sample}_{genome}_plus_peaks.xls",
-            minus="{outdir}/peaks/{sample}_{genome}_minus_peaks.xls"
-        params:
-            predictd="-f BAMPE -g " + str(effective_genome_size),
-            callpeak="--broad -f BAMPE -g " + str(effective_genome_size)
-        shell: """
-            frag_size=$(cat {input.info} | grep 'predicted fragment length is ([0-9]+) bps')
-            macs2 callpeak -t {input.plus} {params.callpeak} --no-model --ext-size $frag_size --outdir {wildcards.outdir}/peaks/ -n {wildcards.sample}_{wildcards.genome}_plus
-            macs2 callpeak -t {input.minus} {params.callpeak} --no-model --ext-size $frag_size --outdir {wildcards.outdir}/peaks/ -n {wildcards.sample}_{wildcards.genome}_minus
-        """
-else:
-    rule deeptools_coverage_unstranded:
-        input:
-            bam="{outdir}/bams/{sample}.{genome}.bam",
-            index="{outdir}/bams/{sample}.{genome}.bam.bai"
-        output: "{outdir}/coverage/{sample}.{genome}.bw"
+            bam="{outdir}/bams/{sample}.{genome}.experiment.bam",
+            index="{outdir}/bams/{sample}.{genome}.experiment.bam.bai"
+        output: "{outdir}/coverage_unstranded/{sample}.{genome}.bw"
         threads: cores
         params:
             extra="--ignoreForNormalization chrX chrY chrM --ignoreDuplicates --minMappingQuality" \
@@ -403,6 +394,141 @@ else:
             bamCoverage -b {input.bam} -p {threads} {params.extra} -o {output}
         """
 
+# Handles stranded peak calls and coverage
+if strand_specific:
+
+    experiment_plus = "{outdir}/bams_stranded/{sample}.{genome}.experiment.p.bam"
+    experiment_minus = "{outdir}/bams_stranded/{sample}.{genome}.experiment.m.bam"
+    index = ["{outdir}/bams_stranded/{sample}.{genome}.experiment.p.bam.bai",
+             "{outdir}/bams_stranded/{sample}.{genome}.experiment.m.bam.bai"]
+    if controls is not None:
+        control_plus = "{outdir}/bams_stranded/{sample}.{genome}.control.p.bam"
+        control_minus = "{outdir}/bams_stranded/{sample}.{genome}.control.m.bam"
+        index.extend(["{outdir}/bams_stranded/{sample}.{genome}.control.p.bam.bai",
+                     "{outdir}/bams_stranded/{sample}.{genome}.control.m.bam.bai"]),
+        macs2_ss_command="macs2 callpeak -t {input.experiment_plus} -c {input.control_plus} {params.callpeak} --nomodel" \
+                         + " --extsize ${{frag_med%.*}} --outdir {wildcards.outdir}/peaks_macs_stranded/ " \
+                         + "-n {wildcards.sample}_{wildcards.genome}_plus && " \
+                         + "macs2 callpeak -t {input.experiment_minus} -c {input.control_minus} {params.callpeak} --nomodel" \
+                         + " --extsize ${{frag_med%.*}} --outdir {wildcards.outdir}/peaks_macs_stranded/ " \
+                         + "-n {wildcards.sample}_{wildcards.genome}_minus"
+        epic2_ss_command="epic2 -t {input.experiment_plus} -c {input.control_plus} {params.epic} -fs ${{frag_med%.*}}" \
+                         + " --output {output.plus} && " \
+                         + "epic2 -t {input.experiment_minus} -c {input.control_minus} {params.epic} -fs ${{frag_med%.*}}" \
+                         + " --output {output.minus}"
+    else:
+        control_plus = experiment_plus
+        control_minus = experiment_minus
+        macs2_ss_command="macs2 callpeak -t {input.experiment_plus} {params.callpeak} --nomodel" \
+                         + " --extsize ${{frag_med%.*}} --outdir {wildcards.outdir}/peaks_macs_stranded/ " \
+                         + "-n {wildcards.sample}_{wildcards.genome}_plus && " \
+                         + "macs2 callpeak -t {input.experiment_minus} {params.callpeak} --nomodel" \
+                         + " --extsize ${{frag_med%.*}} --outdir {wildcards.outdir}/peaks_macs_stranded/ " \
+                         + "-n {wildcards.sample}_{wildcards.genome}_minus"
+        epic2_ss_command="epic2 -t {input.experiment_plus} {params.epic} -fs ${{frag_med%.*}}" \
+                         + " --output {output.plus} && " \
+                         + "epic2 -t {input.experiment_minus} {params.epic} -fs ${{frag_med%.*}}" \
+                         + " --output {output.minus}"
+
+    if paired_end:
+        rule deeptools_get_pe_fragment_sizes:
+            # TODO: First, remove the low MAPQ score reads as they increase the overall size
+            input:
+                bam="{outdir}/bams/{sample}.{genome}.experiment.bam",
+                index="{outdir}/bams/{sample}.{genome}.experiment.bam.bai"
+            output:
+                info="{outdir}/info/{sample}.{genome}.experiment.frag_lengths.txt",
+                plot="{outdir}/info/{sample}.{genome}.experiment.frag_lengths.png"
+            params: "--samplesLabel " + sample_name
+            threads: cores
+            shell: "bamPEFragmentSize --bamfiles {input.bam} --histogram {output.plot} --table {output.info} -p {threads}"
+
+        rule epic_callpeaks_pe_stranded:
+            input:
+                info="{outdir}/info/{sample}.{genome}.experiment.frag_lengths.txt",
+                experiment_plus=experiment_plus,
+                experiment_minus=experiment_minus,
+                control_plus=control_plus,
+                control_minus=control_minus
+            output:
+                plus="{outdir}/peaks_epic_stranded/{sample}_{genome}_plus.bed",
+                minus="{outdir}/peaks_epic_stranded/{sample}_{genome}_minus.bed"
+            params:
+                epic="-e 100 -fdr .01 --effective-genome-fraction " + str(effective_genome_fraction) \
+                     + " --mapq 30 --chromsizes {outdir}/tmp/" + genome + ".chrom.sizes",
+                wget_in="ftp://hgdownload.soe.ucsc.edu/goldenPath/" + genome +\
+                     "/bigZips/" + SAMPLES['genome'][0] + ".chrom.sizes",
+                wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
+            shell: "frag_med=$(head -n 2 {input.info} | tail -n 1 | awk '{{print $6}}')" \
+                   + " && wget {params.wget_in} -O {params.wget_out} && " + epic2_ss_command
+
+        rule macs2_callpeaks_pe_stranded:
+            input:
+                info="{outdir}/info/{sample}.{genome}.experiment.frag_lengths.txt",
+                experiment_plus=experiment_plus,
+                experiment_minus=experiment_minus,
+                control_plus=control_plus,
+                control_minus=control_minus
+            output:
+                plus="{outdir}/peaks_macs_stranded/{sample}_{genome}_plus_peaks.xls",
+                minus="{outdir}/peaks_macs_stranded/{sample}_{genome}_minus_peaks.xls"
+            params:
+                callpeak="--broad-cutoff .01 -q .01 --broad -g " + str(effective_genome_size)
+            shell: "frag_med=$(head -n 2 {input.info} | tail -n 1 | awk '{{print $6}}') && " + macs2_ss_command
+
+        rule deeptools_coverage_stranded:
+            input:
+                bam="{outdir}/bams/{sample}.{genome}.experiment.bam",
+                index="{outdir}/bams/{sample}.{genome}.experiment.bam.bai"
+            output:
+                plus="{outdir}/coverage_stranded/{sample}.{genome}.p.bw",
+                minus="{outdir}/coverage_stranded/{sample}.{genome}.m.bw"
+            threads: cores
+            params:
+                extra="--ignoreForNormalization chrX chrY chrM --ignoreDuplicates --minMappingQuality" \
+                      + " 30 --binSize 20 --effectiveGenomeSize " + str(effective_genome_size)
+            shell: """
+                bamCoverage -b {input.bam} -p {threads} {params.extra} --filterRNAstrand forward -o {output.plus}
+                bamCoverage -b {input.bam} -p {threads} {params.extra} --filterRNAstrand reverse -o {output.minus}
+            """
+    else:
+        # TODO: Need to write single-end stranded caller
+        rule macs2_predictd:
+            input: "{outdir}/bams/{sample}.{genome}.bam"
+            output: "{outdir}/info/{sample}.{genome}.macs2_d.txt"
+            params: "-g " + str(effective_genome_size) + " --outdir " + outdir + "/info"
+            shell: "macs2 predictd -i {input} > {output}"
+
+        rule epic_callpeaks_se_stranded:
+            input:
+                info="{outdir}/info/{sample}.{genome}.experiment_predictd.txt",
+                plus="{outdir}/bams_stranded/{sample}.{genome}.p.bam",
+                minus="{outdir}/bams_stranded/{sample}.{genome}.m.bam"
+            output:
+                plus="{outdir}/peaks_epic_stranded/{sample}_{genome}_plus.bed",
+                minus="{outdir}/peaks_epic_stranded/{sample}_{genome}_minus.bed"
+            params:
+                epic="-e 100 -fdr .01 --effective-genome-fraction " + str(effective_genome_fraction) \
+                     + " --mapq 30 --chromsizes {outdir}/tmp/" + genome + ".chrom.sizes",
+                wget_in="ftp://hgdownload.soe.ucsc.edu/goldenPath/" + genome +\
+                     "/bigZips/" + SAMPLES['genome'][0] + ".chrom.sizes",
+                wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
+            shell: "frag_med=$(cat {input.info} | grep -o 'predicted fragment length is [0-9]* bps' | cut -d ' ' -f 5)" \
+                   + " && wget {params.wget_in} -O {params.wget_out} && " + epic2_ss_command
+
+        rule macs2_callpeaks_se_stranded:
+            # Based on https://github.com/PEHGP/drippipline
+            input:
+                info="{outdir}/info/{sample}.{genome}.experiment_predictd.txt",
+                plus="{outdir}/bams_stranded/{sample}.{genome}.p.bam",
+                minus="{outdir}/bams_stranded/{sample}.{genome}.m.bam"
+            output:
+                plus="{outdir}/peaks/{sample}_{genome}_plus_peaks.xls",
+                minus="{outdir}/peaks/{sample}_{genome}_minus_peaks.xls"
+            params:
+                callpeak="--broad-cutoff .01 -q .01 --broad -f BAMPE -g " + str(effective_genome_size)
+            shell: "frag_med=$(cat {input.info} | grep -o 'predicted fragment length is [0-9]* bps' | cut -d ' ' -f 5)" \
+                   + " && " + macs2_ss_command
 
 
 rule download_annotation:

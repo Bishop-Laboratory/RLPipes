@@ -105,7 +105,17 @@ rule get_read_lengths:
         bamfile.close()
         mean_read_len = sum(read_lens)/len(read_lens)
 
-
+rule mark_duplicates:
+    input: "{outdir}/bam_dups/{sample}.{genome}.{exp_type}.bam"
+    output:
+        bam="{outdir}/bams/{sample}.{genome}.{exp_type}.bam",
+        metrics="{outdir}/info/{sample}.{genome}.{exp_type}.duplicate.metrics.txt"
+    params:
+        ""
+    threads: cores
+    shell: """
+        picard MarkDuplicates I={input} O={output.bam} M={output.metrics}
+    """
 
 
 
