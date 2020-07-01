@@ -1,0 +1,20 @@
+<!doctype html>
+<title>{% block title %}{% endblock %} - RSeq</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<nav>
+  <h1>RSeq</h1>
+  <ul>
+    <li><a href="{{ url_for('pipeline.run_builder') }}">Builder</a>
+    <li><a href="{{ url_for('pipeline.monitor') }}">Monitor</a>
+    <li><a href="{{ url_for('report.reports') }}">Reports</a>
+  </ul>
+</nav>
+<section class="content">
+  <header>
+    {% block header %}{% endblock %}
+  </header>
+  {% for message in get_flashed_messages() %}
+    <div class="flash">{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</section>
