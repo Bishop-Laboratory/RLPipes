@@ -289,9 +289,9 @@ get_genome_sizes <- function() {
     fasta_file <- paste0("ftp://hgdownload.soe.ucsc.edu/goldenPath/",
                          genome_now, "/bigZips/", genome_now, ".fa.gz")
     dir.create(file.path(system.file(package = "RSeq"),
-                      "extra/genomes", genome_now), recursive = TRUE, showWarnings = FALSE)
+                         "../extra/genomes", genome_now), recursive = TRUE, showWarnings = FALSE)
     out_file <- file.path(system.file(package = "RSeq"),
-                          "extra/genomes", genome_now,
+                          "../extra/genomes", genome_now,
                           paste0(genome_now, ".fa.gz"))
     if (! file.exists(out_file) & ! file.exists(paste0(out_file, "_300.txt"))) {
 

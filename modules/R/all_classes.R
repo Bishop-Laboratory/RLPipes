@@ -324,7 +324,7 @@ RSeqDataSet <- function(se, design, ignoreRank=FALSE) {
     dups <- unique(rnms[duplicated(rnms)])
     for (rn in dups) {
       idx <- which(rnms == rn)
-      rnms[idx[-1]] <- paste(rnms[idx[-1]], c(seq_len(length(idx) - 1)), sep=".")
+      rnms[idx[-1]] <- paste(rnms[idx[-1]], c(seq_len(length(idx) - 1)), sep= "../..")
     }
     rownames(se) <- rnms
   }

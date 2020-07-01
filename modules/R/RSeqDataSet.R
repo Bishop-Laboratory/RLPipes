@@ -180,7 +180,7 @@ makeRSeqDataSet <- function(mode = NULL,
                             genome = NULL,
                             outname = NULL,
                             genome_dir = "~/.RSeq_genomes/",
-                            outdir = 'RSeq_out',
+                            outdir = '../RSeq_out',
                             analysis_params = NULL,
                             samples = NULL) {
 
@@ -198,7 +198,7 @@ makeRSeqDataSet <- function(mode = NULL,
   convert_bams = TRUE
   out_name = NULL
   cores = NULL
-  source("R/utils.R")
+  source("utils.R")
   ## For bug testing ##
   samples <- data.frame(
     "experiment" = c("SRX2481503", "GSM2326832", "SRX2918366", "GSM3937232", "GSM3936514", "GSM3936515", "GSM1720615",
@@ -249,7 +249,7 @@ makeRSeqDataSet <- function(mode = NULL,
   if (length(badGenomeSpec)) {
     stop("User must supply a genome directory location under 'genome' or a genomes home folder as 'genome_home_dir'.",
          " For sample(s) ", samples$experiment[badGenomeSpec], ", the genome supplied is ", samples$genome[badGenomeSpec],
-         " and the genome home directory is ", samples$genome_home_dir[badGenomeSpec], ".")
+         " and the genome home directory is ", samples$genome_home_dir[badGenomeSpec], "../..")
   }
 
   # Set file type and attempt to set sample_names
@@ -393,9 +393,9 @@ makeRSeqDataSet <- function(mode = NULL,
       samples$read_length[ind] <- get_fastq_read_length(fastq_1)
     } else if (wild_bool) {
       fqFiles <- list.files(path = dirname(fqNow), full.names = TRUE,
-                            pattern = basename(gsub(fqNow, pattern = "\\*", replacement = ".")))
+                            pattern = basename(gsub(fqNow, pattern = "\\*", replacement = "../..")))
       if (length(fqFiles) == 2) {
-        warning("RSeq identified using the wildcard '*' as a mate pair: ", fqFiles[1], " & ", fqFiles[2],".",
+        warning("RSeq identified using the wildcard '*' as a mate pair: ", fqFiles[1], " & ", fqFiles[2], "../..",
                 " If this was incorrect, please remove the wildcard and specify mates directly using",
                 " 'sample_name_1.fastq+sample_name_2.fastq' nomenclature")
         fastq_1 <- fqFiles[grep(fqFiles, pattern = R1_pattern)]
@@ -493,7 +493,7 @@ makeRSeqDataSet <- function(mode = NULL,
         if (! all(sra_info_new$genome.x == sra_info_new$genome.y)) {
           warning("RSeq has detected the newest genome assembly for ",
                   unique(sra_info_new$experiment), " as ", unique(sra_info_new$genome.y), "
-                  but user has specified ", unique(sra_info_new$genome.x), ". ",
+                  but user has specified ", unique(sra_info_new$genome.x), "../.. ",
                   unique(sra_info_new$genome.x), " will be used instead.")
         }
         sra_info_new$genome <- sra_info_new$genome.x
@@ -547,9 +547,9 @@ makeRSeqDataSet <- function(mode = NULL,
   }
 
   # Set directories and file output names
-  if (! "outdir" %in% colnames(samples)) {samples$outdir <- "RSeq_out"} else {
+  if (! "outdir" %in% colnames(samples)) {samples$outdir <- "../RSeq_out" } else {
     samples$outdir[is.na(samples$outdir) || is.null(samples$outdir) ||
-                     samples$outdir == ""] <- "RSeq_out"
+                     samples$outdir == ""] <- "../RSeq_out"
   }
   # -- fastqs
   fastq_dir <- file.path(samples$outdir, "fastqs")
@@ -593,7 +593,7 @@ makeRSeqDataSet <- function(mode = NULL,
   samples$report_dir <- file.path(samples$outdir, "report")
 
   # Misc
-  RSeq_version <- paste0(unlist(utils::packageVersion("RSeq")), collapse = ".")
+  RSeq_version <- paste0(unlist(utils::packageVersion("RSeq")), collapse = "../..")
 
   # Get effective genome size
   available_genomes <- RSeq::available_genomes
@@ -651,7 +651,7 @@ makeRSeqDataSet <- function(mode = NULL,
       vars_now@genome_home_dir <- vars_now@genome
       if (is.na(samples_now$effective_genome_size)) {
         # TODO: Run unique-kmers.py and save as a txt file in that dir if missing.
-        stop("No effective genome size provided for user-supplied genome: ", vars_now@genome,".",
+        stop("No effective genome size provided for user-supplied genome: ", vars_now@genome, "../..",
              " Please calculate effective genome sizes using unique-kmers.py from the khmer package",
              " and supply as a column in 'samples' or as a vector to 'makeRSeqDataSet'.")
       }
@@ -700,7 +700,7 @@ makeRSeqDataSet <- function(mode = NULL,
 
   names(vars_list) <- samples$sample_name
 
-  jsonlite::write_json(vars_list, path = "run_vars.json")
+  jsonlite::write_json(vars_list, path = "../run_vars.json")
   #analysis_params <- validate_params(analysis_params)
   #rsds <- new("RSeqDataSet", samples, analysis_params)
   #return(analyze_RSeq(rsds))
