@@ -1,0 +1,15 @@
+DROP TABLE IF EXISTS runs;
+DROP TABLE IF EXISTS pipelines;
+
+
+CREATE TABLE IF NOT EXISTS runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_name TEXT NOT NULL,
+    pipeline_id INT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pipelines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pipeline_name TEXT UNIQUE NOT NULL,
+    pipeline_author TEXT NOT NULL
+);

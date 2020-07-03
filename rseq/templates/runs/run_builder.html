@@ -1,15 +1,45 @@
 {% extends 'base.html' %}
+{% set active_page = "run_builder" %}
 
 {% block header %}
   <h1>{% block title %}Build a new run{% endblock %}</h1>
 {% endblock %}
 
 {% block content %}
-  <form method="post">
-    <label for="pipeline_name">Which pipeline</label>
-    <input name="pipeline_name" id="pipeline_name" required>
-    <label for="run_name">Name of run</label>
-    <input name="run_name" id="run_name" required>
-    <input type="submit" value="Register Run">
-  </form>
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-3">
+        <h2>Runs!</h2>
+      </div>
+      <div class="col-sm-2">
+        <h2>Build a new run!</h2>
+          <form method="post" enctype="multipart/form-data">
+            <div class="input-group mb-3">
+              <div class="input-group-prepend">
+                <span class="input-group-text">Run name</span>
+              </div>
+              <input name="run_name" id="run_name" required>
+            </div>
+            <div class="input-group mb-3">
+              <div class="input-group-prepend">
+                <span class="input-group-text">Pipeline</span>
+              </div>
+              <select class="custom-select" id="pipeline_name">
+                <option selected>Choose...</option>
+                {% for pipeline in pipelines %}
+                <option value="{{ pipeline }}">{{ pipeline }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="upload_sample_sheet">Upload sample sheet</label>
+              <input type="file" id="upload_sample_sheet" class="form-control-file" name="file">
+            </div>
+            <input type="submit" class="btn btn-primary" value="Register Run">
+          </form>
+      </div>
+    </div>
+
+  </div>
+
 {% endblock %}

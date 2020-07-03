@@ -65,7 +65,7 @@ merge_input_control = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sr
                          sample_name=sample_name,
                          srr_acc=controls, outdir=outdir)
 
-# Set expected outputs of pipeline
+# Set expected outputs of runs
 if strand_specific:
     coverage_output = [expand("{outdir}/coverage_stranded/{sample}.{genome}.p.bw", genome=genome,
                         sample=sample_name, outdir=outdir),
@@ -93,7 +93,7 @@ else:
 # Set the TMPDIR
 
 ########################################################################################################################
-##############################################   Main pipeline    ######################################################
+##############################################   Main runs    ######################################################
 ########################################################################################################################
 
 rule output:
