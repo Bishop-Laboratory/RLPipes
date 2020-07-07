@@ -3,5 +3,34 @@
 {% block content %}
 <p>Sample_sheet</p>
 <div id="example"></div>
-
+<script src="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.js"></script>
+<script>
+  function toArray(obj) {
+      const result = [];
+      for (const prop in obj) {
+          const value = obj[prop];
+          if (typeof value === 'object') {
+              result.push(toArray(value)); // <- recursive call
+          }
+          else {
+              result.push(value);
+          }
+      }
+      return result;
+  }
+  console.log(' {{  data|tojson|safe  }} ')
+  var json = JSON.parse('{{ data|tojson|safe }}');
+  var headers = JSON.parse('{{ colnames|tojson|safe }}');
+  console.log(headers)
+  var data=toArray(json);
+  var container = document.getElementById('example');
+  var hot;
+  var hot = new Handsontable(container, {
+    data: data,
+    rowHeaders: true,
+    colHeaders: headers,
+    filters: true,
+    dropdownMenu: true
+  });
+</script>
 {% endblock %}

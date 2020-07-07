@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 from rseq.models import Run, Pipeline
 from rseq.database import db_session
 import pandas as pd
+import numpy as np
 
 bp = Blueprint('runs', __name__, url_prefix='/runs')
 ALLOWED_EXTENSIONS = {'txt', 'csv', 'tsv', 'tab', 'xls', 'xlsx'}
@@ -33,6 +34,7 @@ def get_run(run_id):
     """
     run = db_session.query(Run).filter_by(id=run_id).first()
     return run
+
 
 @bp.route('/create', methods=('GET', 'POST'))
 def create_run():
@@ -110,6 +112,11 @@ def sample_sheet(run_id):
 
     table_path = run.sample_sheet_path
     table_data = pd.read_csv(table_path)
-    return render_template('sample_sheet.html', data=table_data.to_json())
+    table_data = table_data.replace(np.nan, '', regex=True)
+    table_data_t = table_data.transpose()
+    print(table_data.columns.values.tolist())
+    return render_template('sample_sheet.html', data=table_data_t.to_dict(), colnames=table_data.columns.values.tolist())
+
+
 
 
