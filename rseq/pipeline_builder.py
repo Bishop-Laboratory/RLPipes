@@ -2,8 +2,8 @@ import functools
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
 )
-from rseq.db import get_db
-
+from rseq.models import Run, Pipeline
+from rseq.database import db_session
 bp = Blueprint('pipelines', __name__, url_prefix='/pipelines')
 
 
@@ -11,31 +11,26 @@ bp = Blueprint('pipelines', __name__, url_prefix='/pipelines')
 def pipeline_builder():
     if request.method == 'POST':
         pipeline_name = request.form['pipeline_name']
-        pipeline_author = request.form['pipeline_author']
-        db = get_db()
+        print(request.form)
         error = None
 
-        pipeline_id = db.execute(
-            'SELECT id FROM pipelines WHERE pipeline_name = ?', (pipeline_name,)
-        ).fetchone()
+        pipeline_id = db_session.query(Pipeline).filter_by(pipeline_name=pipeline_name).first()
 
         if pipeline_id is not None:
             error = 'Pipeline {} already exists.'.format(pipeline_name)
-        elif not pipeline_author:
-            error = 'pipeline_author is required.'
+        # elif not pipeline_author:
+        #     error = 'pipeline_author is required.'
 
         if error is None:
-            db.execute(
-                'INSERT INTO pipelines (pipeline_name, pipeline_author) VALUES (?, ?)',
-                (pipeline_name, pipeline_author)
-            )
-            db.commit()
+            pipe_now = Pipeline(pipeline_name=pipeline_name)
+            db_session.add(pipe_now)
+            db_session.commit()
             message = "Pipeline " + pipeline_name + " successfully created!"
             flash(message, category="success")
             return redirect(url_for('pipelines.pipeline_builder'))
 
         flash(error, category="danger")
 
-    return render_template('pipelines/pipeline_builder.html')
+    return render_template('pipeline_builder.html')
 
 
