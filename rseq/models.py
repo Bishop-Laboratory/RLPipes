@@ -12,6 +12,7 @@ class Run(Base):
     email_address = Column(String(1000))
     outdir = Column(String(1000))
     sample_sheet = Column(String(1000))
+    sample_sheet_json = Column(String(100000))
     sample_sheet_path = Column(String(1000))
     time_created = Column(DateTime(timezone=True), server_default=func.now())
     status = Column(String(1000))

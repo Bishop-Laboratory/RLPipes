@@ -185,6 +185,7 @@ makeRSeqDataSet <- function(mode = NULL,
                             samples = NULL) {
 
   # Bug testing
+  setwd("modules")
   mode = NULL
   experiment = NULL
   control = NULL
@@ -198,7 +199,7 @@ makeRSeqDataSet <- function(mode = NULL,
   convert_bams = TRUE
   out_name = NULL
   cores = NULL
-  source("utils.R")
+  source("R/utils.R")
   ## For bug testing ##
   samples <- data.frame(
     "experiment" = c("SRX2481503", "GSM2326832", "SRX2918366", "GSM3937232", "GSM3936514", "GSM3936515", "GSM1720615",
@@ -213,6 +214,7 @@ makeRSeqDataSet <- function(mode = NULL,
     "strand_specific" = c(FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, TRUE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE),
     stringsAsFactors = F
   )
+  write.csv(samples, file = "../instance/sample_sheet_example.csv")
   #####################
 
   # Additional data

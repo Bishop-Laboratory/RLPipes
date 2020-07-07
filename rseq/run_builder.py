@@ -1,4 +1,5 @@
 import os
+import json
 import random
 import string
 from flask import (
@@ -106,17 +107,25 @@ def edit_run(run_id):
 
 
 @bp.route('/<int:run_id>/sample_sheet', methods=['GET', 'POST'])
-def sample_sheet(run_id):
+def sample_sheet_edit(run_id):
     run = get_run(run_id)
-    print(run)
-
-    table_path = run.sample_sheet_path
-    table_data = pd.read_csv(table_path)
+    table_data = pd.read_csv(run.sample_sheet_path)
     table_data = table_data.replace(np.nan, '', regex=True)
     table_data_t = table_data.transpose()
-    print(table_data.columns.values.tolist())
-    return render_template('sample_sheet.html', data=table_data_t.to_dict(), colnames=table_data.columns.values.tolist())
+    return render_template('sample_sheet.html', data=table_data_t.to_dict(),
+                           colnames=table_data.columns.values.tolist(), run_id=run_id)
 
 
+@bp.route('/<int:run_id>/sample_sheet/save', methods = ['GET', 'POST'])
+def sample_sheet_save(run_id):
+    # Get the table from save
+    json_data = request.get_json()
+    new_sample_sheet = pd.DataFrame(json_data[1:], columns=json_data[0])
 
+    # Overwrite original
+    run = get_run(run_id)
+    table_path = run.sample_sheet_path
+    new_sample_sheet.to_csv(table_path)
+
+    return json.dumps(True)
 
