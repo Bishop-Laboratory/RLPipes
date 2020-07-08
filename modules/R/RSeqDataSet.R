@@ -172,50 +172,52 @@
 makeRSeqDataSet <- function(mode = NULL,
                             experiment = NULL,
                             control = NULL,
+                            outdir = NULL,
+                            analysis_params = NULL,
                             condition = NULL,
                             replicate = NULL,
                             RNH_check = TRUE,
-                            convert_bams = FALSE,
-                            cores = NULL,
                             genome = NULL,
-                            outname = NULL,
-                            genome_dir = "~/.RSeq_genomes/",
-                            outdir = '../RSeq_out',
-                            analysis_params = NULL,
+                            genome_home_dir = file.path(path.expand("~"), ".RSeq_genomes"),
+                            convert_bams = TRUE,
+                            out_name = NULL,
+                            cores = NULL,
                             samples = NULL) {
 
-  # Bug testing
-  setwd("modules")
-  mode = NULL
-  experiment = NULL
-  control = NULL
-  outdir = NULL
-  analysis_params = NULL
-  condition = NULL
-  replicate = NULL
-  RNH_check = TRUE
-  genome = NULL
-  genome_home_dir = file.path(path.expand("~"), ".RSeq_genomes")
-  convert_bams = TRUE
-  out_name = NULL
-  cores = NULL
-  source("R/utils.R")
-  ## For bug testing ##
-  samples <- data.frame(
-    "experiment" = c("SRX2481503", "GSM2326832", "SRX2918366", "GSM3937232", "GSM3936514", "GSM3936515", "GSM1720615",
-                     "GSM3936516", "SRX5129665", "GSM2104456", "GSM1720613", "GSM2550993",
-                     "~/Bishop.lab/Preprocessing/DRIP_Seq/GSE145964_Developmental_Context_ChIP_DRIP/Data/Raw_Reads/SRR11185284_1.fastq+~/Bishop.lab/Preprocessing/DRIP_Seq/GSE145964_Developmental_Context_ChIP_DRIP/Data/Raw_Reads/SRR11185284_2.fastq",
-                     "../EUFA_BRCA2/"),
-    "control" = c("SRX2481504", "GSM2326824", "SRX2918367", NA, "GSM3936517", "GSM3936517", NA,
-                  "GSM3936517", "SRX5129664", NA, NA, "GSM2550995",
-                  NA, NA),
-    "genome" = c(NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
-                 "hg38", "hg38"),
-    "strand_specific" = c(FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, TRUE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE),
-    stringsAsFactors = F
-  )
-  write.csv(samples, file = "../instance/sample_sheet_example.csv")
-  #####################
+
+  # ## For bug testing ##
+  # mode = "DRIP"
+  # experiment = NULL
+  # control = NULL
+  # outdir = NULL
+  # analysis_params = NULL
+  # condition = NULL
+  # replicate = NULL
+  # RNH_check = TRUE
+  # genome = NULL
+  # genome_home_dir = file.path(path.expand("~"), ".RSeq_genomes")
+  # convert_bams = TRUE
+  # out_name = NULL
+  # cores = NULL
+  # source("R/utils.R")
+  # samples <- data.frame(
+  #   "experiment" = c("SRX2481503", "GSM2326832", "SRX2918366", "GSM3937232", "GSM3936514", "GSM3936515", "GSM1720615",
+  #                    "GSM3936516", "SRX5129665", "GSM2104456", "GSM1720613", "GSM2550993",
+  #                    "~/Bishop.lab/Preprocessing/DRIP_Seq/GSE145964_Developmental_Context_ChIP_DRIP/Data/Raw_Reads/SRR11185284_1.fastq+~/Bishop.lab/Preprocessing/DRIP_Seq/GSE145964_Developmental_Context_ChIP_DRIP/Data/Raw_Reads/SRR11185284_2.fastq",
+  #                    "../EUFA_BRCA2/"),
+  #   "control" = c("SRX2481504", "GSM2326824", "SRX2918367", NA, "GSM3936517", "GSM3936517", NA,
+  #                 "GSM3936517", "SRX5129664", NA, NA, "GSM2550995",
+  #                 NA, NA),
+  #   "genome" = c(NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+  #                "hg38", "hg38"),
+  #   "strand_specific" = c(FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, TRUE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE),
+  #   stringsAsFactors = F
+  # )
+  # write.csv(samples, file = "../instance/sample_sheet_example.csv")
+  # samples <- data.frame(
+  #   "experiment" = c("SRX2481503", "GSM2326832")
+  # )
+  # #####################
 
   # Additional data
   read_align_pattern <- "\\.bam$|\\.f[ast]*q$"
@@ -224,23 +226,80 @@ makeRSeqDataSet <- function(mode = NULL,
   R2_pattern <- "[\\._]+[rR]*2\\.f[ast]*q$"
   fq_end_pattern <- paste0(R1_pattern, "|", R2_pattern, "|[\\._]+[rR]*\\*.f[ast]*q$|\\.f[ast]*q$")
 
+  mode_df <- data.frame(
+    mode = c("DRIP", "ssDRIP", "qDRIP",
+             "sDRIP", "S1-DRIP", "bisDRIP",
+             "SMRF", "RDIP", "DRIPc",
+             "R-ChIP", "RR-ChIP", "DRIVE",
+             "MapR", "RNH-CnR"),
+    strand_specific = c(FALSE, rep(TRUE, 3), FALSE, rep(TRUE, 6), rep(FALSE, 3)),
+    ip_type = c(rep("S9.6", 9), rep("RNaseH1", 5)),
+    moeity = c(rep("DNA", 7), rep("RNA", 7))
+  )
+  modes <- c(mode_df$mode, "custom")
+
   # Parse arguments
   tryCatch(stopifnot(! is.null(samples) | ! is.null(experiment)),
            error = function(x) stop("Must provide 'experiment' or 'samples'"))
+  if (! is.null(samples)) {
+    # Check if samples is a csv file
+    if (typeof(samples) == "character") {
+      if (file.exists(samples)) {
+        samples <- read.csv(samples)
+      } else {
+        stop("Samples is provided as a character, but no such file exists: ", samples, ". Supply either a valid",
+             " file name or a data frame as the sample sheet.")
+      }
+    }
+    if (! "experiment" %in% colnames(samples)) {
+      stop("Column 'experiment' is required but not provided in sample sheet.")
+    }
+  }
+
+
   if (! "cores" %in% colnames(samples) &
       is.null(cores)) samples$cores <- parallel::detectCores()/2
   if (! "RNH_check" %in% colnames(samples)) samples$RNH_check <- RNH_check
   if (! "condition" %in% colnames(samples)) {samples$condition <- NA}
+  if (! "control" %in% colnames(samples)) {samples$control <- NA}
   if (! "paired_end" %in% colnames(samples)) {samples$paired_end <- NA}
   if (! "replicate" %in% colnames(samples)) {samples$replicate <- NA}
   if (! "effective_genome_size" %in% colnames(samples)) {samples$effective_genome_size <- NA}
   if (! "full_genome_length" %in% colnames(samples)) {samples$full_genome_length <- NA}
   if (! "genome_home_dir" %in% colnames(samples)) {samples$genome_home_dir <- genome_home_dir}
+  if (! "genome" %in% colnames(samples)) {samples$genome <- NA}
+
+  # Deal with strand specificity and mode type
+  if (! is.null(mode) & ! "mode" %in% colnames(samples)) {
+    samples$mode <- mode
+  } else if (! "mode" %in% colnames(samples) & is.null(mode)) {
+    stop("Mode was not specified in arguments or in sample sheet. Please see usage for more details.")
+  }
+  if (! all(samples$mode %in% modes)) {
+    bad_mode <- unique(samples$mode[! samples$mode %in% modes])
+    stop(paste0("Mode(s) specified in sample sheet are not available: ", paste0(bad_mode, collapse = ", ")))
+  }
+  if (! "strand_specific" %in% colnames(samples)) {samples$strand_specific <- NA}
+  if (! "moeity" %in% colnames(samples)) {samples$moeity <- NA}
+  if (! "ip_type" %in% colnames(samples)) {samples$ip_type <- NA}
+  for (i in 1:length(samples$experiment)) {
+    mode_now <- samples$mode[i]
+    if(is.na(samples$strand_specific[i])) {samples$strand_specific[i] <- mode_df$strand_specific[mode_df$mode == mode_now]}
+    if(is.na(samples$moeity[i])) {samples$moeity[i] <- mode_df$moeity[mode_df$mode == mode_now]}
+    if(is.na(samples$ip_type[i])) {samples$ip_type[i] <- mode_df$ip_type[mode_df$mode == mode_now]}
+  }
+
 
   # Mark files, dirs, and 'other'
   dirIndExp <- which(dir.exists(samples$experiment))
   fileIndExp <- grep(samples$experiment, pattern = read_align_pattern)
   publicIndExp <- grep(samples$experiment, pattern = public_pattern)
+
+  # Check for missing
+  bad_ind <- samples$experiment[c(-dirIndExp, -fileIndExp, -publicIndExp)]
+  if (length(bad_ind)) {
+    stop(paste0("Could not find experiment(s): ", paste0(bad_ind, collapse = ",")))
+  }
 
   # Must provide assembly for local files
   assembly <- samples$genome[c(fileIndExp, dirIndExp)]
@@ -472,6 +531,7 @@ makeRSeqDataSet <- function(mode = NULL,
     samples_public$control <- new_ctr_vec
 
     # Get info for experimental samples
+    samples_public <- samples_public[! is.na(samples_public$experiment),]
     sra_info_exp <- get_public_run_info(samples_public$experiment)
     # -- collate
     public_sample_list <- list()
@@ -630,7 +690,7 @@ makeRSeqDataSet <- function(mode = NULL,
   ## Generate RSeq_variable object for each sample
   vars_list <- lapply(samples$sample_name, FUN = function(exp_now) {
     # # Bug testing
-    #exp_now <- samples$sample_name[1]
+    # exp_now <- samples$sample_name[1]
 
     vars_now <- new("RSeq_variables")
     samples_now <- samples[samples$sample_name == exp_now, , drop = TRUE]
@@ -692,6 +752,8 @@ makeRSeqDataSet <- function(mode = NULL,
     vars_now@effective_genome_size <- samples_now$effective_genome_size
     vars_now@full_genome_length <- samples_now$full_genome_length
     vars_now@strand_specific <- samples_now$strand_specific
+    vars_now@moeity <- samples_now$moeity
+    vars_now@ip_type <- samples_now$ip_type
     vars_now@sample_name <- samples_now$sample_name
     vars_now@out_name <- samples_now$out_name
     slots <- methods::slotNames(vars_now)
@@ -702,7 +764,8 @@ makeRSeqDataSet <- function(mode = NULL,
 
   names(vars_list) <- samples$sample_name
 
-  jsonlite::write_json(vars_list, path = "../run_vars.json")
+  return(vars_list)
+  # jsonlite::write_json(vars_list, path = "../run_vars.json")
   #analysis_params <- validate_params(analysis_params)
   #rsds <- new("RSeqDataSet", samples, analysis_params)
   #return(analyze_RSeq(rsds))

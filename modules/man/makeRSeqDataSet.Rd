@@ -8,16 +8,16 @@ makeRSeqDataSet(
   mode = NULL,
   experiment = NULL,
   control = NULL,
+  outdir = NULL,
+  analysis_params = NULL,
   condition = NULL,
   replicate = NULL,
   RNH_check = TRUE,
-  convert_bams = FALSE,
-  cores = NULL,
   genome = NULL,
-  outname = NULL,
-  genome_dir = "~/.RSeq_genomes/",
-  outdir = "RSeq_out",
-  analysis_params = NULL,
+  genome_home_dir = file.path(path.expand("~"), ".RSeq_genomes"),
+  convert_bams = TRUE,
+  out_name = NULL,
+  cores = NULL,
   samples = NULL
 )
 }
@@ -40,6 +40,11 @@ more information.}
 \item{control}{Same as \code{experiment} but for control/input samples.
 Provide in the same order as \code{experiment} entries so that there is a 1:1 match
 between each \code{experiment} sample and the corresponding control.}
+
+\item{outdir}{Character specifying folder locations to save data to. Default is \code{'RSeq_out'}. Can
+be specified in \code{samples}.}
+
+\item{analysis_params}{Nested named list used to override default parameters. See \code{details} below.}
 
 \item{condition}{Character specifying the biological condition of each sample (e.g., 'HeLa_WT_siCTR').
 Should be provided in the same order as \code{experiment} entries so that there is a 1:1 match.
@@ -64,22 +69,17 @@ the latest available pre-built genome annotations corresponding to the detected 
 local data, this information must be supplied. \code{RSeq} will download and build the appropriate annotation set in
 all cases where that is possible. If not possible or not desired, use \code{custom_genome}.}
 
-\item{outname}{Character specifying name (in the case of individual samples) or prefix (in the case of
-folders/studies with multiple samples) to be used for plotting, reports, and output files. If not supplied,
-\code{RSeq} will attempt to use the condition and replicate arguments (if unique) or the GEO or SRA sample
-name if available and the file prefixes in the case of local files. If \code{replicate} does not indicate RNaseH}
-
-\item{outdir}{Character specifying folder locations to save data to. Default is \code{'RSeq_out'}. Can
-be specified in \code{samples}.}
-
-\item{analysis_params}{Nested named list used to override default parameters. See \code{details} below.}
-
 \item{samples}{Data frame containing sample info and analysis parameters. See \code{details} below.}
 
 \item{custom_genome}{Character specifying a path to the folder containing \code{bwa} indexes for the custom
 genome or idices for another aligner if specified in 'analysis_params'.
 If a length-two character vector, second item should specify the path to a custom gene annotation set in bed format
 in which the genes are the 4th column (e.g., c("data/myo_myotis_bwa_indices/", "data/myo_myotis_genes.bed"))}
+
+\item{outname}{Character specifying name (in the case of individual samples) or prefix (in the case of
+folders/studies with multiple samples) to be used for plotting, reports, and output files. If not supplied,
+\code{RSeq} will attempt to use the condition and replicate arguments (if unique) or the GEO or SRA sample
+name if available and the file prefixes in the case of local files. If \code{replicate} does not indicate RNaseH}
 
 \item{operations}{Character specifying which analysis steps should be included. Default is \code{'all'} which
 includes \code{c('fastq_QC', 'alignment', 'post_alignment', 'call_peaks', 'annotate', 'rloop_QC')}. Can be specified

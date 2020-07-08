@@ -17,9 +17,7 @@ def dashboard():
 def get_table():
     runs = pd.read_sql_table('Runs', con=app.config['SQLALCHEMY_DATABASE_URI'])
     runs['edit'] = runs['id'].apply(
-        lambda x: '''\
-        <a class="btn btn-primary" role="button" href="/runs/{0}/edit">Edit</a>\
-        '''.format(x))
+        lambda x: '<a class="btn btn-primary" role="button" href="/runs/{0}/edit">Edit</a>'.format(x))
     runs['delete'] = runs[['id', 'run_name']].apply(
         lambda x: '''
             <!-- Button to Open the Modal -->

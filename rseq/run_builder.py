@@ -2,6 +2,7 @@ import os
 import json
 import random
 import string
+import rpy2
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for, current_app as app
 )
@@ -59,7 +60,8 @@ def create_run():
             file.save(sample_sheet_path)
             run_now = Run(run_name=run_name,
                           sample_sheet=file.filename,
-                          sample_sheet_path=sample_sheet_path)
+                          sample_sheet_path=sample_sheet_path,
+                          status='<strong class="text-muted">uninitialized</strong>')
             db_session.add(run_now)
             db_session.commit()
             message = "Successfully created new run " + run_name
@@ -127,7 +129,7 @@ def sample_sheet_edit(run_id):
                            colnames=table_data.columns.values.tolist(), run_id=run_id)
 
 
-@bp.route('/<int:run_id>/sample_sheet/save', methods = ['GET', 'POST'])
+@bp.route('/<int:run_id>/sample_sheet/save', methods=['GET', 'POST'])
 def sample_sheet_save(run_id):
     # Get the table from save
     # TODO: Issue with save function -- conflict with empty lists
@@ -140,4 +142,12 @@ def sample_sheet_save(run_id):
     new_sample_sheet.to_csv(table_path, index=False)
 
     return json.dumps(True)
+
+
+@bp.route('/<int:run_id>/initialize')
+def initialize_run(run_id):
+    # Takes the sample sheet and uses R to build the final run info
+
+    return True
+
 
