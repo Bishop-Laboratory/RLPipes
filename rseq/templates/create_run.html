@@ -9,5 +9,12 @@
   <input type="file" name="sample_sheet" id="sample_sheet">
   <input type="submit" value="enter">
 </form>
-
+<hr>
+<div id="row">
+  <div id="col">
+    <a role="button" href="{{ url_for('dashboard.dashboard') }}" class="btn btn-default btn-lg">
+      <span class="fa fa-chevron-left"></span> Dashboard
+    </a>
+  </div>
+</div>
 {% endblock %}

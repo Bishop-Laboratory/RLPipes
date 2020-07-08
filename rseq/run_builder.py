@@ -106,11 +106,22 @@ def edit_run(run_id):
     return render_template('edit_run.html', run=run)
 
 
+@bp.route('/<int:run_id>/delete', methods=('GET',))
+def delete_run(run_id):
+    run = get_run(run_id)
+    msg = "Deleted run " + run.run_name
+    db_session.delete(run)
+    db_session.commit()
+    flash(msg, category="warning")
+    return redirect("/")
+
+
 @bp.route('/<int:run_id>/sample_sheet', methods=['GET', 'POST'])
 def sample_sheet_edit(run_id):
     run = get_run(run_id)
     table_data = pd.read_csv(run.sample_sheet_path)
     table_data = table_data.replace(np.nan, '', regex=True)
+    table_data = table_data.replace('[]', '')
     table_data_t = table_data.transpose()
     return render_template('sample_sheet.html', data=table_data_t.to_dict(),
                            colnames=table_data.columns.values.tolist(), run_id=run_id)
@@ -119,13 +130,14 @@ def sample_sheet_edit(run_id):
 @bp.route('/<int:run_id>/sample_sheet/save', methods = ['GET', 'POST'])
 def sample_sheet_save(run_id):
     # Get the table from save
+    # TODO: Issue with save function -- conflict with empty lists
     json_data = request.get_json()
     new_sample_sheet = pd.DataFrame(json_data[1:], columns=json_data[0])
-
+    new_sample_sheet = new_sample_sheet.replace('[]', '')
     # Overwrite original
     run = get_run(run_id)
     table_path = run.sample_sheet_path
-    new_sample_sheet.to_csv(table_path)
+    new_sample_sheet.to_csv(table_path, index=False)
 
     return json.dumps(True)
 
