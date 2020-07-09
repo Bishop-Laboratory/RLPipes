@@ -2,7 +2,6 @@ import os
 import json
 import random
 import string
-import rpy2
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for, current_app as app
 )
@@ -11,6 +10,9 @@ from rseq.models import Run, Pipeline
 from rseq.database import db_session
 import pandas as pd
 import numpy as np
+from rpy2.robjects.packages import importr
+
+
 
 bp = Blueprint('runs', __name__, url_prefix='/runs')
 ALLOWED_EXTENSIONS = {'txt', 'csv', 'tsv', 'tab', 'xls', 'xlsx'}
@@ -42,6 +44,7 @@ def get_run(run_id):
 def create_run():
     if request.method == 'POST':
         run_name = request.form['run_name']
+        mode = request.form['mode']
         file = request.files['sample_sheet']
         print(file.filename)
         error = None
@@ -59,6 +62,7 @@ def create_run():
             print(sample_sheet_path)
             file.save(sample_sheet_path)
             run_now = Run(run_name=run_name,
+                          mode=mode,
                           sample_sheet=file.filename,
                           sample_sheet_path=sample_sheet_path,
                           status='<strong class="text-muted">uninitialized</strong>')
@@ -147,7 +151,15 @@ def sample_sheet_save(run_id):
 @bp.route('/<int:run_id>/initialize')
 def initialize_run(run_id):
     # Takes the sample sheet and uses R to build the final run info
-
-    return True
+    RSeq = importr('RSeq')
+    run = get_run(run_id)
+    run.sample_sheet_path_init = os.path.splitext(run.sample_sheet_path)[0] + ".init.csv"
+    run.status = '<strong class="text-info">Initialized. Ready for pre-flight</strong>'
+    db_session.commit()
+    RSeq.initialize_run(samples=run.sample_sheet_path, mode=run.mode,
+                        output_csv=run.sample_sheet_path_init)
+    message = "Successfully edited run " + run.run_name
+    flash(message, category="success")
+    return redirect("/")
 
 

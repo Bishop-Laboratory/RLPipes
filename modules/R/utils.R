@@ -183,6 +183,7 @@ get_public_run_info <- function(accessions) {
       content_sra <- content_sra$content
     }
   }
+
   result <- XML::xmlToList(XML::xmlParse(content_sra))
 
   # Need to map back to original entries -- very annoying...

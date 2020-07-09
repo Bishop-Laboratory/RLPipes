@@ -57,7 +57,19 @@ def get_table():
     runs['sample_sheet'] = runs[['id', 'sample_sheet']].apply(
         lambda x: '<a class="btn btn-primary" role="button" href="/runs/{0}/sample_sheet">{1}</a>'.format(
             x[0], x[1]), axis=1)
-    cols_selected = ['time_created', 'run_name', 'sample_sheet', 'outdir', 'status', 'edit', 'delete']
+    action = []
+    print(runs)
+    for ind, row in runs.iterrows():
+        print(row)
+        if row['status'] == '<strong class="text-muted">uninitialized</strong>':
+            action.append(
+                '<a class="btn btn-primary" role="button" href="/runs/{0}/initialize">Initialize</a>'.format(row['id']))
+        else:
+            action.append(
+                '<a class="btn btn-primary" role="button" href="/runs/{0}/something">something</a>'.format(row['id']))
+    runs['action'] = action
+    runs.head()
+    cols_selected = ['time_created', 'run_name', 'sample_sheet', 'outdir', 'status', 'edit', 'delete', 'action']
     runs = runs[cols_selected]
     print(runs)
     return jsonify(run_table=runs.to_html(classes='table table-striped" id = "run_table',

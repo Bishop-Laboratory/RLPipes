@@ -169,20 +169,21 @@
 #'                               whichCompareGroups = "normal")
 #'
 #' @export
-makeRSeqDataSet <- function(mode = NULL,
-                            experiment = NULL,
-                            control = NULL,
-                            outdir = NULL,
-                            analysis_params = NULL,
-                            condition = NULL,
-                            replicate = NULL,
-                            RNH_check = TRUE,
-                            genome = NULL,
-                            genome_home_dir = file.path(path.expand("~"), ".RSeq_genomes"),
-                            convert_bams = TRUE,
-                            out_name = NULL,
-                            cores = NULL,
-                            samples = NULL) {
+initialize_run <- function(mode = NULL,
+                           experiment = NULL,
+                           control = NULL,
+                           outdir = NULL,
+                           analysis_params = NULL,
+                           condition = NULL,
+                           replicate = NULL,
+                           RNH_check = TRUE,
+                           genome = NULL,
+                           genome_home_dir = file.path(path.expand("~"), ".RSeq_genomes"),
+                           convert_bams = TRUE,
+                           out_name = NULL,
+                           cores = NULL,
+                           samples = NULL,
+                           output_csv = NULL) {
 
 
   # ## For bug testing ##
@@ -234,7 +235,7 @@ makeRSeqDataSet <- function(mode = NULL,
              "MapR", "RNH-CnR"),
     strand_specific = c(FALSE, rep(TRUE, 3), FALSE, rep(TRUE, 6), rep(FALSE, 3)),
     ip_type = c(rep("S9.6", 9), rep("RNaseH1", 5)),
-    moeity = c(rep("DNA", 7), rep("RNA", 7))
+    moeity = c(rep("DNA", 7), rep("RNA", 7)), stringsAsFactors = FALSE
   )
   modes <- c(mode_df$mode, "custom")
 
@@ -251,6 +252,9 @@ makeRSeqDataSet <- function(mode = NULL,
              " file name or a data frame as the sample sheet.")
       }
     }
+    # Replace factor with char
+    i <- sapply(samples, is.factor)
+    samples[i] <- lapply(samples[i], as.character)
     if (! "experiment" %in% colnames(samples)) {
       stop("Column 'experiment' is required but not provided in sample sheet.")
     }
@@ -609,9 +613,9 @@ makeRSeqDataSet <- function(mode = NULL,
   }
 
   # Set directories and file output names
-  if (! "outdir" %in% colnames(samples)) {samples$outdir <- "../RSeq_out" } else {
+  if (! "outdir" %in% colnames(samples)) {samples$outdir <- "~/RSeq_out" } else {
     samples$outdir[is.na(samples$outdir) || is.null(samples$outdir) ||
-                     samples$outdir == ""] <- "../RSeq_out"
+                     samples$outdir == ""] <- "~/RSeq_out"
   }
   # -- fastqs
   fastq_dir <- file.path(samples$outdir, "fastqs")
@@ -763,6 +767,13 @@ makeRSeqDataSet <- function(mode = NULL,
   })
 
   names(vars_list) <- samples$sample_name
+
+  if (! is.null(output_csv)) {
+    df <- data.frame(t(sapply(vars_list,c)))
+    i <- sapply(df, is.list)
+    df[i] <- lapply(df[i], unlist) # TODO: Figure out why this throws a warning
+    write.csv(df, file = output_csv, quote = FALSE, row.names = FALSE)
+  }
 
   return(vars_list)
   # jsonlite::write_json(vars_list, path = "../run_vars.json")
