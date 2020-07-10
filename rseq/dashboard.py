@@ -64,6 +64,9 @@ def get_table():
         if row['status'] == '<strong class="text-muted">uninitialized</strong>':
             action.append(
                 '<a class="btn btn-primary" role="button" href="/runs/{0}/initialize">Initialize</a>'.format(row['id']))
+        elif row['status'] == '<strong class="text-info">Initialized. Ready for pre-flight ☑</strong>':
+            action.append(
+                '<a class="btn btn-info" role="button" href="/runs/{0}/monitor">Pre-flight</a>'.format(row['id']))
         else:
             action.append(
                 '<a class="btn btn-primary" role="button" href="/runs/{0}/something">something</a>'.format(row['id']))

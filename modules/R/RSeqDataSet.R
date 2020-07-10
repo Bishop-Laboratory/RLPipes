@@ -183,7 +183,7 @@ initialize_run <- function(mode = NULL,
                            out_name = NULL,
                            cores = NULL,
                            samples = NULL,
-                           output_csv = NULL) {
+                           output_json = NULL) {
 
 
   # ## For bug testing ##
@@ -768,11 +768,15 @@ initialize_run <- function(mode = NULL,
 
   names(vars_list) <- samples$sample_name
 
-  if (! is.null(output_csv)) {
-    df <- data.frame(t(sapply(vars_list,c)))
-    i <- sapply(df, is.list)
-    df[i] <- lapply(df[i], unlist) # TODO: Figure out why this throws a warning
-    write.csv(df, file = output_csv, quote = FALSE, row.names = FALSE)
+  # if (! is.null(output_csv)) {
+  #   df <- data.frame(t(sapply(vars_list,c)))
+  #   i <- sapply(df, is.list)
+  #   df[i] <- lapply(df[i], unlist) # TODO: Figure out why this throws a warning
+  #   write.csv(df, file = output_csv, quote = FALSE, row.names = FALSE)
+  # }
+
+  if (! is.null(output_json)) {
+    jsonlite::write_json(vars_list, path = output_json)
   }
 
   return(vars_list)

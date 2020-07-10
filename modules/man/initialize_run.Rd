@@ -19,7 +19,7 @@ initialize_run(
   out_name = NULL,
   cores = NULL,
   samples = NULL,
-  output_csv = NULL
+  output_json = NULL
 )
 }
 \arguments{

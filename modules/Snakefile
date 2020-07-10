@@ -3,7 +3,7 @@
 ########################################################################################################################
 import json
 
-output_json = json.load(open('run_vars.json'))
+output_json = json.load(open('/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/instance/uploads/lzjuoygzegsnaqcxfkhw__xXxXx__sample_sheet_example.init.json'))
 # SAMPLES = output_json['SRX1798990_24hr_input_S_96_DRIP_Seq'] # For merging SE reps
 # SAMPLES = output_json['SRX2481503_S96_DRIP_Seq_1'] # For paired_end unstranded
 # SAMPLES = output_json['SRX6427720_DRB_qDRIP-seq_1'] # For paired_end and strand-specific

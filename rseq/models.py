@@ -15,6 +15,7 @@ class Run(Base):
     sample_sheet = Column(String(1000))
     sample_sheet_path = Column(String(1000))
     sample_sheet_path_initialized = Column(String(1000))
+    sample_database = Column(String(1000))
     time_created = Column(DateTime(timezone=True), server_default=func.now())
     status = Column(String(1000))
     steps = Column(String(10000))
@@ -43,3 +44,5 @@ class Pipeline(Base):
 
     def __repr__(self):
         return '<Pipeline %r>' % self.pipeline_name
+
+
