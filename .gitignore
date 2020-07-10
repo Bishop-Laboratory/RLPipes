@@ -27,3 +27,4 @@ build/
 *.egg-info/
 .Rproj.user
 /.snakemake/
+/.snakemake/log/
