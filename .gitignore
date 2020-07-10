@@ -10,7 +10,6 @@ modules/run_vars.json
 
 venv/
 
-.snakemake*
 
 rseq/uploads/
 
@@ -27,3 +26,4 @@ dist/
 build/
 *.egg-info/
 .Rproj.user
+/.snakemake/
