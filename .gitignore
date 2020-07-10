@@ -10,7 +10,7 @@ modules/run_vars.json
 
 venv/
 
-.snakemake/
+.snakemake*
 
 rseq/uploads/
 
