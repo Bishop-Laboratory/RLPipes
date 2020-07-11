@@ -1,37 +1,20 @@
 ########################################################################################################################
 ##############################################   Parse inputs    #######################################################
 ########################################################################################################################
-import json
-
-output_json = json.load(open('/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/instance/uploads/lzjuoygzegsnaqcxfkhw__xXxXx__sample_sheet_example.init.json'))
-# SAMPLES = output_json['SRX1798990_24hr_input_S_96_DRIP_Seq'] # For merging SE reps
-# SAMPLES = output_json['SRX2481503_S96_DRIP_Seq_1'] # For paired_end unstranded
-# SAMPLES = output_json['SRX6427720_DRB_qDRIP-seq_1'] # For paired_end and strand-specific
-# SAMPLES = output_json['SRX1070678_NT2_DRIP-seq_1']
-# SAMPLES = output_json['SRX2187024_DRIP_shCtrl_S96_rep2']
-SAMPLES = output_json['SRX6428486_shCTRL_ssDRIP_rep1']
-# SAMPLES = output_json['SRX2675003_HKE293-D210N-V5ChIP-Rep1'] # For single-end and stranded
-# SAMPLES = output_json['SRX1070676_NT2_DRIPc-seq_rep_1'] # DRIPc reversed p/m for peaks
-# SAMPLES = output_json['SRX1674681_3T3_DRIPc-seq'] # DRIPc mouse
-# SAMPLES = output_json['EUFA_BRCA2_1_S37_unique_sorted'] # TODO: Local bam of the wrong assembly
-
-# import snakemake.gui as gui
-
-
 
 # Basic vars
-paired_end=SAMPLES['paired_end'][0]
-strand_specific=SAMPLES['strand_specific'][0]
-genome=SAMPLES['genome'][0]
-genome_home_dir=SAMPLES['genome_home_dir'][0]
-effective_genome_size=SAMPLES['effective_genome_size'][0]
-full_genome_length=SAMPLES['full_genome_length'][0]
-effective_genome_fraction=effective_genome_size/full_genome_length
-cores=SAMPLES['cores'][0]
-sample_name=SAMPLES['sample_name'][0]
-outdir=SAMPLES['out_dir'][0]
-experiments=SAMPLES['experiments'][0]
-controls=SAMPLES['controls'][0]
+paired_end=config['paired_end'][0]
+strand_specific=config['strand_specific'][0]
+genome=config['genome'][0]
+genome_home_dir=config['genome_home_dir'][0]
+effective_genome_size=config['effective_genome_size'][0]
+full_genome_length=config['full_genome_length'][0]
+effective_genome_fraction = effective_genome_size/full_genome_length
+cores=config['cores'][0]
+sample_name=config['sample_name'][0]
+outdir=config['out_dir'][0]
+experiments=config['experiments'][0]
+controls=config['controls'][0]
 
 # Set expected output and inputs for merging of technical replicates
 output_fastq_experiment_1 = expand("{outdir}/fastqs/{sample_name}_experiment_R1.fastq",
@@ -90,7 +73,7 @@ else:
                          sample=sample_name, outdir=outdir)
                    ]
 
-# Set the TMPDIR
+# TODO: Set the TMPDIR
 
 ########################################################################################################################
 ##############################################   Main runs    ######################################################
@@ -387,7 +370,7 @@ rule epic2_callpeak_unstranded:
         epic="-e 100 -fdr .01 --effective-genome-fraction " + str(effective_genome_fraction) \
              + " --mapq 30 --chromsizes {outdir}/tmp/" + genome + ".chrom.sizes",
         wget_in="ftp://hgdownload.soe.ucsc.edu/goldenPath/" + genome +\
-             "/bigZips/" + SAMPLES['genome'][0] + ".chrom.sizes",
+             "/bigZips/" + genome + ".chrom.sizes",
         wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
     shell: epic2_command_lt
 
@@ -483,7 +466,7 @@ if strand_specific:
                 epic="-e 100 -fdr .01 --effective-genome-fraction " + str(effective_genome_fraction) \
                      + " --mapq 30 --chromsizes {outdir}/tmp/" + genome + ".chrom.sizes",
                 wget_in="ftp://hgdownload.soe.ucsc.edu/goldenPath/" + genome +\
-                     "/bigZips/" + SAMPLES['genome'][0] + ".chrom.sizes",
+                     "/bigZips/" + genome + ".chrom.sizes",
                 wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
             shell: "frag_med=$(head -n 2 {input.info} | tail -n 1 | awk '{{print $6}}')" \
                    + " && wget {params.wget_in} -O {params.wget_out} && " + epic2_ss_command
@@ -517,7 +500,7 @@ if strand_specific:
                 epic="-e 100 -fdr .01 --effective-genome-fraction " + str(effective_genome_fraction) \
                      + " --mapq 30 --chromsizes {outdir}/tmp/" + genome + ".chrom.sizes",
                 wget_in="ftp://hgdownload.soe.ucsc.edu/goldenPath/" + genome +\
-                     "/bigZips/" + SAMPLES['genome'][0] + ".chrom.sizes",
+                     "/bigZips/" + genome + ".chrom.sizes",
                 wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
             shell: "frag_med=$(cat {input.info} | grep -o 'predicted fragment length is [0-9]* bps' | cut -d ' ' -f 5)" \
                    + " && wget {params.wget_in} -O {params.wget_out} && " + epic2_ss_command

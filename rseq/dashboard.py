@@ -54,9 +54,10 @@ def get_table():
             </div>
             </div>
             '''.replace('\n', '').format(x[0], x[1]), axis=1)
+    runs['sample_sheet'] = runs['run_path'] + '/samples.csv'
     runs['sample_sheet'] = runs[['id', 'sample_sheet']].apply(
         lambda x: '<a class="btn btn-primary" role="button" href="/runs/{0}/sample_sheet">{1}</a>'.format(
-            x[0], x[1]), axis=1)
+            x[0], 'samples'), axis=1)
     action = []
     print(runs)
     for ind, row in runs.iterrows():
@@ -66,7 +67,7 @@ def get_table():
                 '<a class="btn btn-primary" role="button" href="/runs/{0}/initialize">Initialize</a>'.format(row['id']))
         elif row['status'] == '<strong class="text-info">Initialized. Ready for pre-flight ☑</strong>':
             action.append(
-                '<a class="btn btn-info" role="button" href="/runs/{0}/monitor">Pre-flight</a>'.format(row['id']))
+                '<a class="btn btn-info" role="button" href="/runs/{0}/monitor">View</a>'.format(row['id']))
         else:
             action.append(
                 '<a class="btn btn-primary" role="button" href="/runs/{0}/something">something</a>'.format(row['id']))

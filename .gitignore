@@ -7,7 +7,7 @@ modules/.snakemake
 modules/RSeq.Rproj
 .idea
 modules/run_vars.json
-
+RSeq_out/
 venv/
 
 

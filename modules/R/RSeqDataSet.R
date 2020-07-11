@@ -613,9 +613,9 @@ initialize_run <- function(mode = NULL,
   }
 
   # Set directories and file output names
-  if (! "outdir" %in% colnames(samples)) {samples$outdir <- "~/RSeq_out" } else {
+  if (! "outdir" %in% colnames(samples)) {samples$outdir <- "RSeq_out"} else {
     samples$outdir[is.na(samples$outdir) || is.null(samples$outdir) ||
-                     samples$outdir == ""] <- "~/RSeq_out"
+                     samples$outdir == ""] <- "RSeq_out"
   }
   # -- fastqs
   fastq_dir <- file.path(samples$outdir, "fastqs")
@@ -768,6 +768,7 @@ initialize_run <- function(mode = NULL,
 
   names(vars_list) <- samples$sample_name
 
+
   # if (! is.null(output_csv)) {
   #   df <- data.frame(t(sapply(vars_list,c)))
   #   i <- sapply(df, is.list)
@@ -776,6 +777,12 @@ initialize_run <- function(mode = NULL,
   # }
 
   if (! is.null(output_json)) {
+    # # TODO: Switch over to multisample model
+    # df <- data.frame(t(sapply(vars_list,c)))
+    # i <- sapply(df, is.list)
+    # df[i] <- lapply(df[i], unlist) # TODO: Figure out why this throws a warning
+    # json <- jsonlite::toJSON(df, dataframe = 'columns')
+    # jsonlite::write_json(json, path = output_json)
     jsonlite::write_json(vars_list, path = output_json)
   }
 

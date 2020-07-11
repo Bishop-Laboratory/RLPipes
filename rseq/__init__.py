@@ -8,6 +8,7 @@ def create_app(test_config=None):
     app.config['UPLOAD_FOLDER'] = os.path.join(app.instance_path, 'uploads')
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///" + os.path.join(app.instance_path, "rseq.db")
 
+    # Import blueprints
     from . import run_builder
     app.register_blueprint(run_builder.bp)
 
