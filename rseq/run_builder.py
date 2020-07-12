@@ -325,48 +325,21 @@ def monitor(run_id):
 #     return json.dumps(sample["progress"])
 
 
-def check_logs(run_id):
-
-    run = get_run(run_id)
-    log_file = run.log_file
-
-
-    with sqlite3.connect(run.sample_database) as conn:
-        # sample_db = '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/instance/uploads/lzjuoygzegsnaqcxfkhw__xXxXx__sample_sheet_example.init.db'
-        # conn = sqlite3.connect(sample_db)
-        c = conn.cursor()
-        if level == "progress":
-            print("Progress")
-            c.execute("UPDATE samples SET progress = ? WHERE sample_name = ?", (msg, sample))
-        elif level in ("info", "error", "job_info", "job_finished"):
-            print("LOginn")
-            prev_log = c.execute("SELECT log FROM samples WHERE sample_name = ?", (sample,)).fetchone()
-            prev_log = prev_log[0]
-            print(prev_log)
-            if prev_log == "":
-                current_log = {0: json.dumps(msg)}
-            else:
-                top_ind = prev_log.keys().max
-                current_ind = top_ind + 1
-                current_log = prev_log
-                current_log[current_ind] = json.dumps(msg)
-
-            print(current_log)
-            # sample["log"].append(msg)
-            c.execute("UPDATE samples SET log = ? WHERE sample_name = ?", (json.dumps(current_log), sample))
-        conn.commit()
-        conn.close()
-
-
-def _execute(run_id, dryrun=False, force=False, dag=False):
+def _execute(run_id, dryrun=False, force=False, dag=False, cores=-1):
     run = get_run(run_id)
     run_sheet = run.run_path + '/samples.init.json'
     config_dict = json.load(open(run_sheet))
+    if cores == -1:
+        import multiprocessing
+        cores = multiprocessing.cpu_count()
+
+    cmds = []
     for sample, config in config_dict.items():
         sample_path = os.path.join(run.run_path, sample)
         os.makedirs(sample_path, exist_ok=True)
         config_file = os.path.join(sample_path, 'config.json')
         dag_file = os.path.join(sample_path, 'dag.svg')
+
         json.dump(config, open(config_file, 'w'))
         snake_file = 'modules/rseq.smk'
         cmd = "snakemake -s " + snake_file + " --configfile " + config_file
@@ -376,7 +349,25 @@ def _execute(run_id, dryrun=False, force=False, dag=False):
                 cmd += " -R output"
         elif dag:
             cmd += " --dag | dot -Tsvg > " + dag_file
-        os.system(cmd)
+        else:
+            cmd += " -j " + str(cores)
+        cmds.append(cmd)
+
+    cmd_final = " && ".join(cmds)
+    import sys
+    import subprocess
+    # cmd_final = "( " + cmd_final + " ) |& tee logfile.txt"
+    print(cmd_final)
+    # p = subprocess.Popen(cmd_final, shell=True, stdout=subprocess.PIPE)
+    os.system(cmd_final)
+
+    # TODO: Get the module names, log files, and status from the dry-run with parser function
+
+    # with subprocess.Popen(cmd_final, shell=True, stdout=subprocess.PIPE) as proc:
+    #     stdout_log = open(run.run_path + '/output_log.txt', 'wb')
+    #     error_log = open(run.run_path + '/error_log.txt', 'wb')
+    #     stdout_log.write(proc.stdout.read())
+    #     # error_log.write(proc.stderr.read())
 
     return json.dumps(True)
 
