@@ -1,0 +1,37 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 192
+Rules claiming more threads will be scaled down.
+Conda environments: ignored
+Job counts:
+	count	jobs
+	1	deeptools_coverage_unstranded
+	1	output
+	2
+
+[Sun Jul 12 20:44:39 2020]
+rule deeptools_coverage_unstranded:
+    input: RSeq_out/bams/SRX2481503_S96_DRIP_Seq_1.hg38.experiment.bam, RSeq_out/bams/SRX2481503_S96_DRIP_Seq_1.hg38.experiment.bam.bai
+    output: RSeq_out/coverage_unstranded/SRX2481503_S96_DRIP_Seq_1.hg38.bw
+    log: RSeq_out/logs/SRX2481503_S96_DRIP_Seq_1/hg38__deeptools_coverage_unstranded.log
+    jobid: 3
+    wildcards: outdir=RSeq_out, sample=SRX2481503_S96_DRIP_Seq_1, genome=hg38
+    threads: 96
+
+/bin/bash: line 1: 143092 Terminated              ( bamCoverage -b RSeq_out/bams/SRX2481503_S96_DRIP_Seq_1.hg38.experiment.bam -p 96 --ignoreForNormalization chrX chrY chrM --ignoreDuplicates --minMappingQuality 30 --binSize 20 --effectiveGenomeSize 2167233843 -o RSeq_out/coverage_unstranded/SRX2481503_S96_DRIP_Seq_1.hg38.bw ) &> RSeq_out/logs/SRX2481503_S96_DRIP_Seq_1/hg38__deeptools_coverage_unstranded.log
+[Sun Jul 12 20:45:17 2020]
+Error in rule deeptools_coverage_unstranded:
+    jobid: 3
+    output: RSeq_out/coverage_unstranded/SRX2481503_S96_DRIP_Seq_1.hg38.bw
+    log: RSeq_out/logs/SRX2481503_S96_DRIP_Seq_1/hg38__deeptools_coverage_unstranded.log (check log file(s) for error message)
+    shell:
+        
+            (bamCoverage -b RSeq_out/bams/SRX2481503_S96_DRIP_Seq_1.hg38.experiment.bam -p 96 --ignoreForNormalization chrX chrY chrM --ignoreDuplicates --minMappingQuality 30 --binSize 20 --effectiveGenomeSize 2167233843 -o RSeq_out/coverage_unstranded/SRX2481503_S96_DRIP_Seq_1.hg38.bw) &> RSeq_out/logs/SRX2481503_S96_DRIP_Seq_1/hg38__deeptools_coverage_unstranded.log
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+
+Removing output files of failed job deeptools_coverage_unstranded since they might be corrupted:
+RSeq_out/coverage_unstranded/SRX2481503_S96_DRIP_Seq_1.hg38.bw
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: /home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/.snakemake/log/2020-07-12T204439.668844.snakemake.log
