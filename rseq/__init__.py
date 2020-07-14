@@ -1,8 +1,5 @@
 import os
 from flask import Flask
-# from flask_socketio import SocketIO
-#
-# socketio = SocketIO()
 
 
 def create_app(test_config=None):
@@ -46,5 +43,4 @@ def create_app(test_config=None):
     init_db()
     app.secret_key = 'super secret key'
     app.config['SESSION_TYPE'] = 'filesystem'
-    # socketio.init_app(app)
     return app

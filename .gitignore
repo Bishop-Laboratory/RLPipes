@@ -1,12 +1,12 @@
-modules/.Rproj.user
-modules/.Rhistory
+R-package/.Rproj.user
+R-package/.Rhistory
 .RData
 .Ruserdata
-modules/RSeq_out
-modules/.snakemake
-modules/RSeq.Rproj
+R-package/RSeq_out
+R-package/.snakemake
+R-package/RSeq.Rproj
 .idea
-modules/run_vars.json
+R-package/run_vars.json
 RSeq_out/
 venv/
 

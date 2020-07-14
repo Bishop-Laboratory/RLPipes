@@ -2,6 +2,7 @@ import os
 import json
 import random
 import string
+import time
 from flask import (
     Blueprint, flash, redirect, render_template, session, url_for, request, current_app
 )
@@ -166,61 +167,51 @@ def initialize_run(run_id):
     return redirect('/runs/' + str(run_id) + '/monitor')
 
 
+@bp.route('/<int:run_id>/preflight')
+def pre_flight(run_id):
+    run = get_run(run_id)
+    print("DRY")
+    _execute(run_id, dryrun=True)
+    time.sleep(1)
+    error_file = run.run_path + '/logs-dryrun/' + 'error.log'
+    if os.path.exists(error_file):
+        error = json.load(open(error_file))
+        print('err')
+        print(error)
+        msg = "Error encountered. Check logs for more info.\n" + error['0']['msg']
+        flash(msg, category="danger")
+        return redirect("/")
+    else:
+        print("DAGG")
+        _execute(run_id, dryrun=False, dag=True)
+        msg = "preflight checks for " + run.run_name + " succeeded! Workflow is ready for execution."
+        flash(msg, category="success")
+        return redirect("/")
+
+
+
+
 @bp.route('/<int:run_id>/monitor')
 def monitor(run_id):
-    return render_template('run_info_page.html',
-                           run_id=run_id)
+    return render_template('run_info_page.html', run_id=run_id)
 
 
-def _execute(run_id, dryrun=False, force=False, dag=False, cores=-1):
-    run = get_run(run_id)
-    run_sheet = run.run_path + '/samples.init.json'
-    config_dict = json.load(open(run_sheet))
-    if cores == -1:
-        import multiprocessing
-        cores = multiprocessing.cpu_count()
-
-    cmds = []
-    config_files = []
-    for sample, config in config_dict.items():
-        sample_path = os.path.join(run.run_path, sample)
-        os.makedirs(sample_path, exist_ok=True)
-        config_file = os.path.join(sample_path, 'config.json')
-        print(config_file)
-        config_files.append(config_file)
-        dag_file = os.path.join(sample_path, 'dag.svg')
-
-        json.dump(config, open(config_file, 'w'))
-        snake_file = 'rseq/rseq.smk'
-        cmd = "snakemake -s " + snake_file + " --configfile " + config_file
-        if dryrun:
-            cmd += " -np"
-            if force:
-                cmd += " -R output"
-        elif dag:
-            cmd += " --dag | dot -Tsvg > " + dag_file
-
-        cmds.append(cmd)
-
-    cmd_final = " && ".join(cmds)
-
-    if dryrun or dag:
-        os.system(cmd_final)
-    else:
-        args = ['python', 'rseq/make_snakes.py', run.run_path]
-        args.extend(config_files)
-        proc = subprocess.Popen(args=args)
-        session['run_data'] = {run_id: proc.pid}
+@bp.route('/<int:run_id>/execute_run')
+def execute_run(run_id):
+    _execute(run_id)
+    return redirect(url_for('runs.monitor', run_id=run_id))
 
 
-    # TODO: Get the module names, log files, and status from the dry-run with parser function
-    # with subprocess.Popen(cmd_final, shell=True, stdout=subprocess.PIPE) as proc:
-    #     stdout_log = open(run.run_path + '/output_log.txt', 'wb')
-    #     error_log = open(run.run_path + '/error_log.txt', 'wb')
-    #     stdout_log.write(proc.stdout.read())
-    #     # error_log.write(proc.stderr.read())
+@bp.route('/<int:run_id>/execute_dryrun')
+def execute_dryrun(run_id):
+    _execute(run_id, dryrun=True)
+    return redirect(url_for('runs.monitor', run_id=run_id))
 
-    return json.dumps(True)
+
+@bp.route('/<int:run_id>/execute_dag')
+def execute_dag(run_id):
+    _execute(run_id, dryrun=False, dag=True)
+    return redirect(url_for('runs.monitor', run_id=run_id))
 
 
 @bp.route('/<int:run_id>/terminate_run')
@@ -244,20 +235,31 @@ def terminate_run(run_id):
     return redirect(url_for('runs.monitor', run_id=run_id))
 
 
-@bp.route('/<int:run_id>/execute_run')
-def execute_run(run_id):
-    print("EXECURTIN")
-    _execute(run_id)
-    return redirect(url_for('runs.monitor', run_id=run_id))
+def _execute(run_id, dryrun=False, dag=False):
+    run = get_run(run_id)
+    run_sheet = run.run_path + '/samples.init.json'
+    config_dict = json.load(open(run_sheet))
+    config_files = []
+    for sample, config in config_dict.items():
+        sample_path = os.path.join(run.run_path, sample)
+        os.makedirs(sample_path, exist_ok=True)
+        config_file = os.path.join(sample_path, 'config.json')
+        json.dump(config, open(config_file, 'w'))
+        config_files.append(config_file)
+        dag_file = os.path.join(sample_path, 'dag.svg')
 
+    args = ['python', 'rseq/make_snakes.py']
+    args.extend(config_files)
+    args.extend([run.run_path, str(dryrun), str(dag)])
+    print(args)
+    proc = subprocess.Popen(args=args)
+    session['run_data'] = {run_id: proc.pid}
 
-@bp.route('/<int:run_id>/execute_dryrun')
-def execute_dryrun(run_id):
-    _execute(run_id, dryrun=True, force=True)
-    return redirect(url_for('runs.monitor', run_id=run_id))
+    # TODO: Get the module names, log files, and status from the dry-run with parser function
+    # with subprocess.Popen(cmd_final, shell=True, stdout=subprocess.PIPE) as proc:
+    #     stdout_log = open(run.run_path + '/output_log.txt', 'wb')
+    #     error_log = open(run.run_path + '/error_log.txt', 'wb')
+    #     stdout_log.write(proc.stdout.read())
+    #     # error_log.write(proc.stderr.read())
 
-
-@bp.route('/<int:run_id>/execute_dag')
-def execute_dag(run_id):
-    _execute(run_id, dryrun=False, force=False, dag=True)
-    return redirect(url_for('runs.monitor', run_id=run_id))
+    return json.dumps(True)

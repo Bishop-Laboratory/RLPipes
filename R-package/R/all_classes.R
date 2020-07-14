@@ -64,7 +64,7 @@ setClass("RSeq_module",
 
 setValidity("RSeq_module", function(object) {
 
-  ## Validate parameter modules ##
+  ## Validate parameter R-package ##
   if (! length(object@name)) {
     stop("RSeq_modules must all contain 'name'.")
   }
@@ -107,7 +107,7 @@ setClass("RSeq_workflow",
 
 setValidity("RSeq_workflow", function(object) {
 
-  ## Validate parameter modules ##
+  ## Validate parameter R-package ##
   if (! length(object@name)) {
     stop("RSeq_workflow must all contain 'name'.")
   }
@@ -217,7 +217,7 @@ setValidity("RSeqDataSet", function(object) {
 #' analysis of R-loop mapping.
 #' The constructor functions create a RSeqDataSet object
 #' from various types of input:
-#' a RangedSummarizedExperiment and a list of modules corresponding to
+#' a RangedSummarizedExperiment and a list of R-package corresponding to
 #' workflows for each sample.
 #' See the vignette for examples of construction from different types.
 #'

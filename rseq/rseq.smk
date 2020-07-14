@@ -16,6 +16,7 @@ outdir=config['out_dir'][0]
 experiments=config['experiments'][0]
 controls=config['controls'][0]
 
+
 # Set expected output and inputs for merging of technical replicates
 output_fastq_experiment_1 = expand("{outdir}/fastqs/{sample_name}_experiment_R1.fastq",
                  sample_name=sample_name, outdir=outdir)
