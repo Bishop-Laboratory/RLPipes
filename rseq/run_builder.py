@@ -207,10 +207,11 @@ def _execute(run_id, dryrun=False, force=False, dag=False, cores=-1):
     if dryrun or dag:
         os.system(cmd_final)
     else:
-        args = ['python', 'rseq/make_snakes.py']
+        args = ['python', 'rseq/make_snakes.py', run.run_path]
         args.extend(config_files)
         proc = subprocess.Popen(args=args)
         session['run_data'] = {run_id: proc.pid}
+
 
     # TODO: Get the module names, log files, and status from the dry-run with parser function
     # with subprocess.Popen(cmd_final, shell=True, stdout=subprocess.PIPE) as proc:

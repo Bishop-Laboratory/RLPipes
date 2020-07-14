@@ -14,7 +14,6 @@ manager = Manager(create_app)
 
 
 class Server(_Server):
-    help = description = 'Runs the Socket.IO web server'
 
     def get_options(self):
         options = (
