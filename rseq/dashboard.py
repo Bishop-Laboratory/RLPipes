@@ -10,7 +10,11 @@ bp = Blueprint('dashboard', __name__)
 
 @bp.route('/')
 def dashboard():
-    return render_template('dashboard.html')
+    runs = pd.read_sql_table('Runs', con=app.config['SQLALCHEMY_DATABASE_URI'])
+    run_exists = True
+    if len(runs['run_name']) == 0:
+        run_exists = False
+    return render_template('dashboard.html', run_exists=run_exists)
 
 
 @bp.route('/_get_table')
@@ -65,16 +69,13 @@ def get_table():
                 '<a class="btn btn-primary" role="button" href="/runs/{0}/initialize">Initialize</a>'.format(row['id']))
         elif row['status'] == '<strong class="text-info">Initialized. Ready for pre-flight ☑</strong>':
             action.append(
-                '<a class="btn btn-info" role="button" href="/runs/{0}/preflight">Preflight ☑️</a>'.format(row['id']))
-        elif row['status'] == '<strong class="text-info">Ready for takeoff 🛫</strong>':
+                '<a class="btn btn-info" role="button" href="/runs/{0}/preflight">Preflight</a>'.format(row['id']))
+        elif row['status'] in ('<strong class="text-info">In flight ✈️</strong>',
+                               '<strong class="text-info">Safely aborting</strong>',
+                               '<strong class="text-info">Ready for takeoff 🛫</strong>',
+                               '<strong class="text-info">Complete! ✔️</strong>'):
             action.append("""
-                <a class="btn btn-info" role="button" href="/runs/{0}/preview">Preview ️🛫</a>
-                <a class="btn btn-info" role="button" href="/runs/{0}/takeoff">Takeoff ️🛫</a>
-            """.replace("\n", "").format(row['id']))
-        elif row['status'] == '<strong class="text-info">In-flight</strong>':
-            action.append("""
-                <a class="btn btn-info" role="button" href="/runs/{0}/track">Track</a>
-                <a class="btn btn-info" role="button" href="/runs/{0}/abort">Abort</a>
+                <a class="btn btn-info" role="button" href="/runs/{0}/monitor">Dashboard</a>
             """.replace("\n", "").format(row['id']))
         else:
             action.append(
@@ -85,9 +86,4 @@ def get_table():
     runs = runs[cols_selected]
     return jsonify(run_table=runs.to_html(classes='table table-striped" id = "run_table',
                                           index=False, border=0, escape=False))
-
-
-
-
-
 

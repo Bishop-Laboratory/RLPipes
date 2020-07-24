@@ -4,9 +4,7 @@
 \name{available_genomes}
 \alias{available_genomes}
 \title{A data frame of genome info from UCSC}
-\format{
-An object of class \code{data.frame} with 199 rows and 26 columns.
-}
+\format{An object of class \code{data.frame} with 199 rows and 26 columns.}
 \usage{
 available_genomes
 }

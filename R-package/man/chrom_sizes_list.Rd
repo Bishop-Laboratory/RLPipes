@@ -4,9 +4,7 @@
 \name{chrom_sizes_list}
 \alias{chrom_sizes_list}
 \title{A list of chrom.sizes from UCSC}
-\format{
-An object of class \code{list} of length 206.
-}
+\format{An object of class \code{list} of length 206.}
 \usage{
 chrom_sizes_list
 }

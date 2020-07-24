@@ -3,6 +3,7 @@ import json
 import random
 import string
 import time
+import re
 from flask import (
     Blueprint, flash, redirect, render_template, session, url_for, request, current_app
 )
@@ -164,57 +165,157 @@ def initialize_run(run_id):
     db_session.commit()
     message = "Successfully edited run " + run.run_name
     flash(message, category="success")
-    return redirect('/runs/' + str(run_id) + '/monitor')
+    return redirect('/')
 
 
 @bp.route('/<int:run_id>/preflight')
 def pre_flight(run_id):
     run = get_run(run_id)
-    print("DRY")
     _execute(run_id, dryrun=True)
     time.sleep(1)
     error_file = run.run_path + '/logs-dryrun/' + 'error.log'
     if os.path.exists(error_file):
         error = json.load(open(error_file))
-        print('err')
-        print(error)
         msg = "Error encountered. Check logs for more info.\n" + error['0']['msg']
         flash(msg, category="danger")
         return redirect("/")
     else:
-        print("DAGG")
         _execute(run_id, dryrun=False, dag=True)
-        msg = "preflight checks for " + run.run_name + " succeeded! Workflow is ready for execution."
+        run.status = '<strong class="text-info">Ready for takeoff 🛫</strong>'
+        db_session.commit()
+        msg = "preflight checks for run: '" + run.run_name + "' succeeded! Ready for take off!."
         flash(msg, category="success")
         return redirect("/")
 
 
+@bp.route('/<int:run_id>/track_flight')
+def track_flight(run_id):
+    """Checks snakemake logs and updates run status"""
+    run = get_run(run_id)
+    samples = request.args.getlist('samples[]')
+    status_dict = {}
+    for sample in samples:
+        dag_log_dir = run.run_path + "/logs-dag/" + sample + "/job_info.log"
+        run_info_log = run.run_path + "/logs/" + sample + "/job_info.log"
+        if not os.path.exists(run_info_log):
+            # CASE: only dry-run so far
+            run_info_log = run.run_path + "/logs-dryrun/" + sample + "/job_info.log"
+
+        run_info = json.load(open(run_info_log))
+        key_int = max([int(x) for x in run_info.keys()])
+        run_max = run_info[str(key_int)]['msg']
+        status_dict[sample] = {"current_run": key_int}
+
+    return json.dumps(status_dict)
+
+
+    #
+    # run_info = json.load(open(run_info_log))
+    # if run.status == '<strong class="text-info">Safely aborting</strong>':
+    #     key_int = max([int(x) for x in run_info.keys()])
+    #     run_max = run_info[str(key_int)]['msg']
+    #     if run_max[:13] == 'Complete log:':
+    #         run.status = '<strong class="text-info">Ready for takeoff 🛫</strong>'
+    #         db_session.commit()
+    #         msg = "Run '" + run.run_name + "' successfully aborted."
+    #         flash(msg, 'info')
+    #         return json.dumps({'msg': 'aborted'})
+    #     else:
+    #         return json.dumps({'msg': 'aborting'})
+    # else:
+    #     completed_log = run.run_path + "/logs/completed.log"  # This will exist if run has finished
+    #     failed_log = run.run_path + "/logs/failed.log"  # This will exist if run failed with non-zero exit code
+    #     if os.path.exists(failed_log):
+    #         run.status = '<strong class="text-danger">Failed! ❌</strong>'
+    #         db_session.commit()
+    #         msg = "Run '" + run.run_name + "' failed. Please see error logs for " \
+    #             + "additional details. Re-run after addressing errors. Please also contact package maintainer."
+    #         flash(msg, 'danger')
+    #         return json.dumps({'msg': 'failed'})
+    #     elif os.path.exists(completed_log):
+    #         run.status = '<strong class="text-info">Complete! ✔️</strong>'
+    #         db_session.commit()
+    #         msg = "Run '" + run.run_name + "' complete!"
+    #         flash(msg, 'success')
+    #         return json.dumps({'msg': 'completed'})
+    #     else:
+    #         return json.dumps({'msg': 'in flight!'})
 
 
 @bp.route('/<int:run_id>/monitor')
 def monitor(run_id):
-    return render_template('run_info_page.html', run_id=run_id)
+    run = get_run(run_id)
+    run_sheet = run.run_path + '/samples.init.json'
+    config_dict = json.load(open(run_sheet))
+    # Check on status of each sample
+    for sample, config in config_dict.items():
+        dry_run = run.run_path + "/" + sample + "/dryrun.log"
+
+        # Add some additional info
+        with open(dry_run) as f_dryrun:
+            dry_run_lines = f_dryrun.readlines()
+
+        if 'Nothing to be done.\n' in dry_run_lines:
+            config_dict[sample]['current_step'] = 'done'
+            config_dict[sample]['status'] = 'Complete'
+            config_dict[sample]['card_color'] = 'success'
+            libstr = ""
+            if config['paired_end']:
+                libstr += "Paired-end"
+            else:
+                libstr += "Single-end"
+            libstr += " (" + str(config['read_length']) + ")"
+            if config['strand_specific']:
+                libstr += ", Strand-specific"
+            else:
+                libstr += ", Unstranded"
+            config_dict[sample]['library'] = "Strand-specific"
+        else:
+            # Get number of completed jobs
+            r_dryrun = re.compile('^\t\d+\n$')
+            num_complete = list(filter(r_dryrun.match, dry_run_lines))
+            num_complete = re.sub(pattern='^\t(\d+)\n$', string=num_complete[0], repl='\\1')
+            if num_complete == 0:
+                config_dict[sample]['status'] = 'Ready'
+                config_dict[sample]['card_color'] = 'primary'
+                config_dict[sample]['progress'] = "0%"
+                config_dict[sample]['current_step'] = 'None'
+            else:
+                dag_file = run.run_path + "/" + sample + "/dag.gv"
+                with open(dag_file) as f_dag:
+                    dag_lines = f_dag.readlines()
+                r_dag = re.compile(r'.+\d+\[label.+')
+                num_total = list(filter(r_dag.match, dag_lines))
+                num_total = max([int(re.sub(pattern=r'\t([\d]+)\[label.+\n', repl="\\1", string=x)) for x in num_total])
+                config_dict[sample]['current_step'] = dry_run_lines[4][3:]
+                config_dict[sample]['status'] = 'In progress'
+                config_dict[sample]['card_color'] = 'info'
+                print(num_complete)
+                print(num_total)
+                prog = 100 * int(num_complete)/num_total
+                config_dict[sample]['progress'] = str(prog.__round__()) + "%"
+
+    return render_template('run_info_page.html', run_id=run_id, sample_dict=config_dict,
+                           run_name=run.run_name, status=run.status)
 
 
-@bp.route('/<int:run_id>/execute_run')
+@bp.route('/<int:run_id>/takeoff')
 def execute_run(run_id):
-    _execute(run_id)
-    return redirect(url_for('runs.monitor', run_id=run_id))
+    # check for re-run request
+    print(request.args)
+    force = False
+    if 'rerun' in request.args:
+        force = True
+    _execute(run_id, force=force)
+    run = get_run(run_id)
+    run.status = '<strong class="text-info">In flight ✈️</strong>'
+    db_session.commit()
+    msg = "Flight in progress!"
+    flash(msg, category="success")
+    return redirect(url_for('runs.monitor', run_id=run_id, status=run.status))
 
 
-@bp.route('/<int:run_id>/execute_dryrun')
-def execute_dryrun(run_id):
-    _execute(run_id, dryrun=True)
-    return redirect(url_for('runs.monitor', run_id=run_id))
-
-
-@bp.route('/<int:run_id>/execute_dag')
-def execute_dag(run_id):
-    _execute(run_id, dryrun=False, dag=True)
-    return redirect(url_for('runs.monitor', run_id=run_id))
-
-
-@bp.route('/<int:run_id>/terminate_run')
+@bp.route('/<int:run_id>/abort')
 def terminate_run(run_id):
     """Kills an active snakemake run
 
@@ -232,10 +333,15 @@ def terminate_run(run_id):
     pid = session['run_data'][str(run_id)]
     cmd = 'kill $(ps -s $$ -o pid={pid})'.format(pid=pid)
     os.system(cmd)
-    return redirect(url_for('runs.monitor', run_id=run_id))
+    run = get_run(run_id)
+    run.status = '<strong class="text-info">Safely aborting</strong>'
+    db_session.commit()
+    msg = "Aborting safely. Waiting on current jobs to finish... Data corruption may result if this is interrupted."
+    flash(msg, 'warning')
+    return redirect(url_for('runs.monitor', run_id=run_id, run_name=run.run_name, status=run.status))
 
 
-def _execute(run_id, dryrun=False, dag=False):
+def _execute(run_id, dryrun=False, dag=False, force=False):
     run = get_run(run_id)
     run_sheet = run.run_path + '/samples.init.json'
     config_dict = json.load(open(run_sheet))
@@ -246,20 +352,12 @@ def _execute(run_id, dryrun=False, dag=False):
         config_file = os.path.join(sample_path, 'config.json')
         json.dump(config, open(config_file, 'w'))
         config_files.append(config_file)
-        dag_file = os.path.join(sample_path, 'dag.svg')
 
     args = ['python', 'rseq/make_snakes.py']
     args.extend(config_files)
-    args.extend([run.run_path, str(dryrun), str(dag)])
+    args.extend([run.run_path, str(dryrun), str(dag), str(force)])
     print(args)
     proc = subprocess.Popen(args=args)
     session['run_data'] = {run_id: proc.pid}
-
-    # TODO: Get the module names, log files, and status from the dry-run with parser function
-    # with subprocess.Popen(cmd_final, shell=True, stdout=subprocess.PIPE) as proc:
-    #     stdout_log = open(run.run_path + '/output_log.txt', 'wb')
-    #     error_log = open(run.run_path + '/error_log.txt', 'wb')
-    #     stdout_log.write(proc.stdout.read())
-    #     # error_log.write(proc.stderr.read())
 
     return json.dumps(True)

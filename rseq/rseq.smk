@@ -209,7 +209,7 @@ rule download_fasta:
         genome_home_dir + "/{genome}/{genome}.fa"
     params:
           prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
-          check=outdir + "/" + sample_name + "/{genome}__download_fasta.log"
+          check=outdir + "/logs/" + sample_name + "/{genome}__download_fasta.log"
     shell: """
         (wget -O {output}.gz ftp://hgdownload.soe.ucsc.edu/goldenPath/{wildcards.genome}/bigZips/{wildcards.genome}.fa.gz
         gunzip {output}.gz && echo "Indexing BAM at {params.prefix} ... This may take some time ...") &> {params.check}

@@ -753,9 +753,11 @@ initialize_run <- function(mode = NULL,
     vars_now@out_dir <- samples_now$outdir
     vars_now@report_dir <- samples_now$report_dir
     vars_now@paired_end <- samples_now$paired_end
+    vars_now@mode <- samples_now$mode
     vars_now@effective_genome_size <- samples_now$effective_genome_size
     vars_now@full_genome_length <- samples_now$full_genome_length
     vars_now@strand_specific <- samples_now$strand_specific
+    vars_now@read_length <- samples_now$read_length
     vars_now@moeity <- samples_now$moeity
     vars_now@ip_type <- samples_now$ip_type
     vars_now@sample_name <- samples_now$sample_name

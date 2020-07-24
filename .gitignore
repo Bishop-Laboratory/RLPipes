@@ -7,7 +7,7 @@ R-package/.snakemake
 R-package/RSeq.Rproj
 .idea
 R-package/run_vars.json
-RSeq_out/
+RSeq_out*
 venv/
 
 
