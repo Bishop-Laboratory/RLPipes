@@ -6,6 +6,10 @@ $(document).ready(function() {
   });
 });
 
-
+// from https://stackoverflow.com/questions/46995456/showing-a-bootstrap-alert-message-for-a-specific-time-in-html-and-css
+$(function () {
+    var duration = 4000; // 4 seconds
+    setTimeout(function () { $('#mainAlertMessage').fadeOut(); }, duration);
+});
 
 
