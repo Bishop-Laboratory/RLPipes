@@ -7,3 +7,23 @@
   margin-top: 10px;
 }
 
+
+/* Following is for site footer. From https://getbootstrap.com/docs/4.0/examples/sticky-footer-navbar/#:~:text=Sticky%20footer%20with%20fixed%20navbar,sticky%20footer%20minus%20the%20navbar. */
+html {
+  position: relative;
+  min-height: 100%;
+}
+body {
+  /* Margin bottom by footer height + extra 10px */
+  margin-bottom: 70px;
+}
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  /* Set the fixed height of the footer here */
+  height: 60px;
+  line-height: 60px; /* Vertically center the text there */
+  background-color: #f5f5f5;
+}
+
