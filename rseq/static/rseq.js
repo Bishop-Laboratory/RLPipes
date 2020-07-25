@@ -12,4 +12,10 @@ $(function () {
     setTimeout(function () { $('#mainAlertMessage').fadeOut(); }, duration);
 });
 
-
+// from https://stackoverflow.com/questions/48613992/bootstrap-4-file-input-doesnt-show-the-file-name
+$('#sample_sheet').on('change',function(){
+    //get the file name
+    var fileName = $(this).val().replace('C:\\fakepath\\', " ");
+    //replace the "Choose a file" label
+    $(this).next('.custom-file-label').html(fileName);
+})
