@@ -22,6 +22,7 @@
     });
   }, false);
 })();
+
 </script>
 
 <hr>
@@ -63,7 +64,7 @@
       </div>
     </div>
     <div class="form-row">
-      <div class="col-md-4">
+      <div class="col-md-8">
         <div class="custom-file">
           <input type="file" name="sample_sheet" class="custom-file-input" id="sample_sheet" required>
           <label class="custom-file-label" for="sample_sheet">Select sample sheet (.csv)</label>
@@ -71,10 +72,82 @@
         </div>
       </div>
     </div>
+    <div class="form-row">
+      <div class="col-md-4">
+        <br>
+        <span>Enter manually &nbsp;</span>
+        <label class="switch">
+          <input type="checkbox" name="manual_toggle" onclick="toggle_hot()">
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </div>
+
+
+    <div class="form-row">
+      <div class="col">
+        <br>
+        <div id="sample_sheet_hot" style="display: none;"></div>
+        <textarea id="hiddeninput" style="display: none;" name="hiddeninput"></textarea>
+      </div>
+    </div>
+
     <br>
-    <button class="btn btn-primary" type="submit">Create</button>
+    <button class="btn btn-primary" id="create" type="submit">Create</button>
   </form>
 </div>
+
+<script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.js"></script>
+<script>
+  // Code for Handson table
+  // get the div to replace with the handsontable
+
+  var container = document.getElementById('sample_sheet_hot');
+  var create = document.getElementById('create');
+
+  function toggle_hot() {
+    // Toggle the hot
+    if (container.style.display === "none") {
+      container.style.display = "block";
+    } else {
+      container.style.display = "none";
+    }
+    // Toggle the file upload component
+    var file_upload_div = document.getElementById('sample_sheet');
+    if (file_upload_div.disabled) {
+      file_upload_div.disabled = false;
+    } else {
+      file_upload_div.disabled = true;
+    }
+  }
+
+  var data = [
+    ['', 'Ford', 'Tesla', 'Toyota', 'Honda'],
+    ['2017', 10, 11, 12, 13],
+    ['2018', 20, 11, 14, 13],
+    ['2019', 30, 15, 12, 13]
+  ];
+
+  // Create the handsontable
+  var hot = new Handsontable(container, {
+    data: data,
+    rowHeaders: true,
+    colHeaders: true,
+    filters: true,
+    dropdownMenu: true,
+    licenseKey: 'non-commercial-and-evaluation',
+  });
+
+  // On form submission -- populate a text input field with hot data so it can be included in the request
+  $(function(){
+      $('#create').click(function () {
+          var mysave = JSON.stringify(hot.getSourceData());
+          $('#hiddeninput').val(mysave);
+      });
+  });
+
+</script>
 
 <hr>
 <div id="row">

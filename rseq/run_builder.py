@@ -3,6 +3,7 @@ import json
 import random
 import string
 import time
+import ast
 import re
 from flask import (
     Blueprint, flash, redirect, render_template, session, url_for, request, current_app
@@ -46,21 +47,32 @@ def create_run():
     if request.method == 'POST':
         run_name = request.form['run_name']
         mode = request.form['mode']
-        file = request.files['sample_sheet']
+        manual = False
         error = None
-        if not run_name:
-            error = 'run_name is required.'
-        elif not file:
-            error = "file is required"
-        elif not allowed_file(file.filename):
-            error = '{} is not an allowed filename'.format(file.filename)
+        if 'manual_toggle' in request.form.keys() and request.form['manual_toggle'] == 'on':
+            manual = True
+            to_parse = request.form['hiddeninput'].replace('null', '""')
+            res = ast.literal_eval(to_parse)
+            sample_sheet = pd.DataFrame(res[1:], columns=res[0]).dropna()
+            # Drop columns with empty column names
+            sample_sheet = sample_sheet[[col for col in sample_sheet.columns if col != ""]]
+        else:
+            file = request.files['sample_sheet']
+            if not run_name:
+                error = 'run_name is required.'
+            elif not allowed_file(file.filename):
+                error = '{} is not an allowed filename'.format(file.filename)
 
-        if file and allowed_file(file.filename) and error is None:
+        if error is None:
             run_str = random_string(50)
             run_path = os.path.join(current_app.config['UPLOAD_FOLDER'], run_str)
             os.makedirs(run_path, exist_ok=True)
             sample_sheet_path = os.path.join(run_path, "samples.csv")
-            file.save(sample_sheet_path)
+            if not manual:
+                file.save(sample_sheet_path)
+            else:
+                sample_sheet.to_csv(sample_sheet_path, index=False)
+
             run_now = Run(run_name=run_name,
                           run_path=run_path,
                           mode=mode,
