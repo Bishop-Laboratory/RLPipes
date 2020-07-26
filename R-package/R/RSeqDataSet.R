@@ -218,6 +218,7 @@ initialize_run <- function(mode = NULL,
   # samples <- data.frame(
   #   "experiment" = c("SRX2481503", "GSM2326832")
   # )
+  # samples <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/instance/uploads/eoepiutxyrigdcyffpippyzfwlsjdosqdcvysgcobzsxxxmsmw/samples.csv"
   # #####################
 
   # Additional data
@@ -246,12 +247,39 @@ initialize_run <- function(mode = NULL,
     # Check if samples is a csv file
     if (typeof(samples) == "character") {
       if (file.exists(samples)) {
-        samples <- read.csv(samples)
+        samples <- read.csv(samples, as.is = TRUE)
       } else {
         stop("Samples is provided as a character, but no such file exists: ", samples, ". Supply either a valid",
              " file name or a data frame as the sample sheet.")
       }
     }
+
+    # Remove any empty rows and columns
+    samplesbin <- as.data.frame(apply(samples, 1:2, function(x) {
+      if (x == "" || is.na(x)) {
+        x <- 0
+      } else {
+        x <- 1
+      }
+      return(x)
+    }))
+    rm_cols <- which(colSums(samplesbin) == 0)
+    rm_rows <- which(rowSums(samplesbin) == 0)
+    if (length(rm_cols)) {
+      samples <- samples[, -rm_cols, drop=FALSE]
+    }
+    if (length(rm_rows)) {
+      samples <- samples[-rm_rows, , drop=FALSE]
+    }
+
+    # Replace any empty cells with NA
+    samples <- as.data.frame(apply(samples, 1:2, function(x) {
+      if (x == "" || is.na(x)) {
+        x <- NA
+      }
+      return(x)
+    }))
+
     # Replace factor with char
     i <- sapply(samples, is.factor)
     samples[i] <- lapply(samples[i], as.character)

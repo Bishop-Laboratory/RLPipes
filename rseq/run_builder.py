@@ -53,9 +53,14 @@ def create_run():
             manual = True
             to_parse = request.form['hiddeninput'].replace('null', '""')
             res = ast.literal_eval(to_parse)
-            sample_sheet = pd.DataFrame(res[1:], columns=res[0]).dropna()
+            print(res)
+            sample_sheet = pd.DataFrame(res, columns=['sample_name', 'experiment', 'control', 'genome']).dropna()
+            exp_lst = [exp for exp in sample_sheet['experiment'] if exp != ""]
+            if not exp_lst:
+                error = "'experiment' column must not be empty"
             # Drop columns with empty column names
             sample_sheet = sample_sheet[[col for col in sample_sheet.columns if col != ""]]
+            print(sample_sheet)
         else:
             file = request.files['sample_sheet']
             if not run_name:
@@ -165,7 +170,10 @@ def initialize_run(run_id):
     rseq_r = importr('RSeq')
     run = get_run(run_id)
     sample_sheet_path = run.run_path + "/samples.csv"
+    print(sample_sheet_path)
+    print(run.mode)
     sample_sheet_path_initialized = run.run_path + "/samples.init.json"
+    print(sample_sheet_path_initialized)
     rseq_r.initialize_run(samples=sample_sheet_path, mode=run.mode,
                           output_json=sample_sheet_path_initialized)
     # # Fix issue with formatting -- only for multi-sample mode

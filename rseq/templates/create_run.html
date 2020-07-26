@@ -75,7 +75,7 @@
     <div class="form-row">
       <div class="col-md-4">
         <br>
-        <span>Enter manually &nbsp;</span>
+        <span>Enter samples manually &nbsp;</span>
         <label class="switch">
           <input type="checkbox" name="manual_toggle" onclick="toggle_hot()">
           <span class="slider round"></span>
@@ -101,7 +101,6 @@
 <script src="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.js"></script>
 <script>
   // Code for Handson table
-  // get the div to replace with the handsontable
 
   var container = document.getElementById('sample_sheet_hot');
   var create = document.getElementById('create');
@@ -123,11 +122,20 @@
   }
 
   var data = [
-    ['', 'Ford', 'Tesla', 'Toyota', 'Honda'],
-    ['2017', 10, 11, 12, 13],
-    ['2018', 20, 11, 14, 13],
-    ['2019', 30, 15, 12, 13]
+    [null, null, null, null],
+    [null, null, null, null],
+    [null, null, null, null],
+    [null, null, null, null],
+    [null, null, null, null],
+    [null, null, null, null]
   ];
+
+  var place_holders = {
+    'sample_name': 'S9.6 DRIP Seq_1',
+    'experiment': 'SRX2481503',
+    'control': 'SRX2481504',
+    'genome': 'hg38'
+  };
 
   // Create the handsontable
   var hot = new Handsontable(container, {
@@ -135,8 +143,24 @@
     rowHeaders: true,
     colHeaders: true,
     filters: true,
+    columnSorting: false,
+    minSpareRows: 2,
+    placeholder: 'Empty Cell',
     dropdownMenu: true,
     licenseKey: 'non-commercial-and-evaluation',
+    colHeaders: ['sample_name', 'experiment', 'control', 'genome'],
+    columns: [
+      {placeholder: place_holders.sample_name},
+      {placeholder: place_holders.experiment,
+       allowEmpty: false},
+      {placeholder: place_holders.control},
+      {placeholder: place_holders.genome}
+    ],
+    // null the placeholder text except first row using cell definitions
+    cells: function (row, col, prop) {
+    if (row != 0) {
+      this.placeholder = null;
+    }}
   });
 
   // On form submission -- populate a text input field with hot data so it can be included in the request
