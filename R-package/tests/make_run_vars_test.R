@@ -15,6 +15,6 @@ sample_sheet <- data.frame(
 run_vars <- initialize_run(mode = "DRIP", samples = sample_sheet, output_json = "output.json")
 
 
-sample_sheet <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/instance/uploads/eoepiutxyrigdcyffpippyzfwlsjdosqdcvysgcobzsxxxmsmw/samples.csv"
-run_vars <- initialize_run(mode='DRIP', samples=sample_sheet, output_json = "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/instance/uploads/eoepiutxyrigdcyffpippyzfwlsjdosqdcvysgcobzsxxxmsmw/samples.init.json")
+sample_sheet <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/instance/uploads/wduzweiptxfmtavettrtuenyzozylsvffhglffvjdbobhhwokd/samples.csv"
+run_vars <- initialize_run(mode='DRIP', samples=sample_sheet, output_json = "output.json")
 

@@ -6,12 +6,15 @@
 <style>
 </style>
 <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script src="//d3js.org/d3.v5.min.js"></script>
+<script src="https://unpkg.com/@hpcc-js/wasm@0.3.11/dist/index.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3-graphviz/3.1.0/d3-graphviz.min.js"></script>
 <script>
   var status = {{status|tojson|safe}};
   console.log(status);
 
   var configs = {{sample_dict|tojson|safe}}
-
+  console.log(configs)
 
   jQuery(document).ready(function($){
     $.ajax({
@@ -23,6 +26,9 @@
           success:function(response) {
             var json = JSON.parse(response);
             console.log(json);
+            console.log(json['SRX2481503_S96_DRIP_Seq_1']['DAG'])
+            var diagraph = json['SRX2481503_S96_DRIP_Seq_1']['DAG']
+            d3.select("#dag_canvas").graphviz().renderDot(diagraph);
           }
         });
   });
@@ -52,6 +58,7 @@
 
 </script>
 
+
 <div class="row">
   <div class="col">
     <div class="d-flex align-items-center">
@@ -75,28 +82,54 @@
 
 <hr>
 <div class="row">
-  <div class="col">
-    <h3>Flight plan</h3>
-    <div class="d-flex align-items-center">
-      <div class="card-deck">
-        {% for sample_name, sample_data in sample_dict.items() %}
-        <div class="card border-{{ sample_data['card_color'] }} mb-3" style="max-width: 30rem;">
-          <div class="card-header text-{{ sample_data['card_color'] }}"><strong>{{sample_name}}</strong></div>
-          <div class="card-body text-{{ sample_data['card_color'] }}">
-            <h5 class="card-title">Status: {{ sample_data['status'] }} ({{ sample_data['progress'] }})</h5>
-<!--            <p class="card-text">Pipeline: {{ sample_data['pipeline']}}</p>-->
-            <p class="card-text">Experiment: {{ sample_data['experiments']}}</p>
-            <p class="card-text">Control: {{ sample_data['controls']}}</p>
-            <p class="card-text">Moeity: {{ sample_data['moeity']}}</p>
-            <p class="card-text">IP type: {{ sample_data['ip_type']}}</p>
-            <p class="card-text">Library: {{ sample_data['library']}}</p>
-            <p class="card-text">Output: {{ sample_data['out_dir']}}</p>
-            <p class="card-text">Genome: {{ sample_data['genome']}}</p>
-            <p class="card-text">Pipeline: {{ sample_data['pipeline']}}</p>
+  <div class="col-4">
+    <div class="list-group">
+      {% for sample_name, sample_data in sample_dict.items() %}
+      <div class="list-group-item flex-column align-items-start">
+        <div class="d-flex w-100 justify-content-between">
+          <h5 class="mb-1">{{sample_name}}</h5>
+          <small>last updated</small>
+        </div>
+        <div class="d-flex w-100 justify-content-between">
+          <p class="mb-1">Status: {{ sample_data['status'] }}.</p>
+          <div class="nav btn-group">
+              <a href="#details" data-toggle="tab" class="btn btn-secondary">Details</a>
+              <a href="#logs" data-toggle="tab" class="btn btn-secondary">Logs</a>
+              <a href="#dag" data-toggle="tab" class="btn btn-secondary">DAG</a>
           </div>
         </div>
-        {% endfor %}
       </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="col-8">
+    <div class="tab-content" id="tabs">
+      {% for sample_name, sample_data in sample_dict.items() %}
+      <div class="tab-pane" id="details">
+        <div class="card card-body">
+          <h5 class="card-title">Details</h5>
+          <p class="card-text">Experiment: {{ sample_data['experiments']}}</p>
+          <p class="card-text">Control: {{ sample_data['controls']}}</p>
+          <p class="card-text">Moeity: {{ sample_data['moeity']}}</p>
+          <p class="card-text">IP type: {{ sample_data['ip_type']}}</p>
+          <p class="card-text">Paired end: {{ sample_data['paired_end']}}</p>
+          <p class="card-text">Output: {{ sample_data['out_dir']}}</p>
+          <p class="card-text">Genome: {{ sample_data['genome']}}</p>
+          <p class="card-text">Pipeline: {{ sample_data['mode']}}</p>
+        </div>
+      </div>
+      <div class="tab-pane" id="logs">
+        <div class="card card-body">
+          <h5 class="card-title">Logs</h5>
+        </div>
+      </div>
+      <div class="tab-pane" id="dag">
+        <div class="card card-body">
+          <h5 class="card-title">DAG</h5>
+          <div id="dag_canvas"></div>
+        </div>
+      </div>
+      {% endfor %}
     </div>
   </div>
 </div>
@@ -110,4 +143,5 @@
     </a>
   </div>
 </div>
+
 {% endblock %}

@@ -15,6 +15,9 @@ import pandas as pd
 import numpy as np
 from rpy2.robjects.packages import importr
 import subprocess
+import networkx
+from networkx.readwrite import json_graph
+import pydot
 
 bp = Blueprint('runs', __name__, url_prefix='/runs')
 ALLOWED_EXTENSIONS = {'txt', 'csv', 'tsv', 'tab', 'xls', 'xlsx'}
@@ -170,10 +173,7 @@ def initialize_run(run_id):
     rseq_r = importr('RSeq')
     run = get_run(run_id)
     sample_sheet_path = run.run_path + "/samples.csv"
-    print(sample_sheet_path)
-    print(run.mode)
     sample_sheet_path_initialized = run.run_path + "/samples.init.json"
-    print(sample_sheet_path_initialized)
     rseq_r.initialize_run(samples=sample_sheet_path, mode=run.mode,
                           output_json=sample_sheet_path_initialized)
     # # Fix issue with formatting -- only for multi-sample mode
@@ -215,16 +215,43 @@ def track_flight(run_id):
     samples = request.args.getlist('samples[]')
     status_dict = {}
     for sample in samples:
-        dag_log_dir = run.run_path + "/logs-dag/" + sample + "/job_info.log"
+        dag_file = run.run_path + "/" + sample + "/dag.gv"
+
+        # def dot_to_json(file_in):
+        #     graph_netx = networkx.drawing.nx_pydot.read_dot(file_in)
+        #     graph_json = json_graph.node_link_data(graph_netx)
+        #     return json_graph.node_link_data(graph_netx)
+
+        # gvjson = dot_to_json(dag_file)
+
+        with open(dag_file) as f:
+            gv = f.read().replace('\n', '')
+
         run_info_log = run.run_path + "/logs/" + sample + "/job_info.log"
         if not os.path.exists(run_info_log):
             # CASE: only dry-run so far
             run_info_log = run.run_path + "/logs-dryrun/" + sample + "/job_info.log"
 
-        run_info = json.load(open(run_info_log))
-        key_int = max([int(x) for x in run_info.keys()])
-        run_max = run_info[str(key_int)]['msg']
-        status_dict[sample] = {"current_run": key_int}
+            # Get the first entry. This is the next step to run.
+            run_info = json.load(open(run_info_log))
+
+            # Get the first entry in the run_info
+            key_int = min([int(x) for x in run_info.keys()])
+        else:
+            # CASE: Some progress already made
+            run_info = json.load(open(run_info_log))
+
+            # Get the most recent entry in the run_info
+            key_int = max([int(x) for x in run_info.keys()])
+
+        run_now = run_info[str(key_int)]['name']
+
+        # Gather into a response
+        status_dict[sample] = {
+            "current_step": run_now,
+            "current_step_ind": key_int,
+            "DAG": gv
+        }
 
     return json.dumps(status_dict)
 

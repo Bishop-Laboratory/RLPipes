@@ -353,8 +353,7 @@ initialize_run <- function(mode = NULL,
   samples$file_type[fileIndExp][grep(samples$experiment[fileIndExp],
                                      pattern = "\\.bam$")] <- "bam"
   samples$sample_name <- paste0(samples$condition, "_", samples$replicate)
-  samples$sample_name[samples$sample_name %in%
-                        samples$sample_name[duplicated(samples$sample_name)]] <- NA
+  samples$sample_name[samples$sample_name == "NA_NA"] <- NA
   samples$read_length <- NA
 
   # Convert directories into file lists

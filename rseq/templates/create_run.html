@@ -137,6 +137,7 @@
     'genome': 'hg38'
   };
 
+
   // Create the handsontable
   var hot = new Handsontable(container, {
     data: data,
@@ -149,6 +150,7 @@
     dropdownMenu: true,
     licenseKey: 'non-commercial-and-evaluation',
     colHeaders: ['sample_name', 'experiment', 'control', 'genome'],
+    autoColumnSize: true,
     columns: [
       {placeholder: place_holders.sample_name},
       {placeholder: place_holders.experiment,
