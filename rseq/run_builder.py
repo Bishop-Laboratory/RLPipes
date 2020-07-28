@@ -2,6 +2,7 @@ import os
 import json
 import random
 import string
+import requests
 import time
 import ast
 import re
@@ -15,9 +16,6 @@ import pandas as pd
 import numpy as np
 from rpy2.robjects.packages import importr
 import subprocess
-import networkx
-from networkx.readwrite import json_graph
-import pydot
 
 bp = Blueprint('runs', __name__, url_prefix='/runs')
 ALLOWED_EXTENSIONS = {'txt', 'csv', 'tsv', 'tab', 'xls', 'xlsx'}
@@ -190,6 +188,9 @@ def initialize_run(run_id):
 
 @bp.route('/<int:run_id>/preflight')
 def pre_flight(run_id):
+    # Modifier allows other requests to use pre_flight without side-effects like db changes and redirection
+    modifier = request.args.getlist('modify')
+
     run = get_run(run_id)
     _execute(run_id, dryrun=True)
     time.sleep(1)
@@ -198,53 +199,145 @@ def pre_flight(run_id):
         error = json.load(open(error_file))
         msg = "Error encountered. Check logs for more info.\n" + error['0']['msg']
         flash(msg, category="danger")
-        return redirect("/")
     else:
         _execute(run_id, dryrun=False, dag=True)
-        run.status = '<strong class="text-info">Ready for takeoff 🛫</strong>'
-        db_session.commit()
-        msg = "preflight checks for run: '" + run.run_name + "' succeeded! Ready for take off!."
-        flash(msg, category="success")
+        if not modifier:
+            run.status = '<strong class="text-info">Ready for takeoff 🛫</strong>'
+            db_session.commit()
+            msg = "preflight checks for run: '" + run.run_name + "' succeeded! Ready for take off!."
+            flash(msg, category="success")
+
+    if not modifier:
         return redirect("/")
+    else:
+        return json.dumps(True)
+
+
+def modify_digraph(digraph, completed_jobs):
+    """
+    Modifies a graphviz digraph object to reflected completed snakemake jobs
+    :param digraph: digraph to modify
+    :param completed_jobs: numeric list with the completed jobs inside
+    :return: Updated digraph
+    """
+    for job in completed_jobs:
+        digraph = re.sub(r'(\b%s\[label = "[a-zA-Z0-9: _\\n]+", color = "[0-9\\. ]+", style=")rounded("\];)' % str(job),
+                          r"\1rounded,dashed\2", digraph)
+    return digraph
 
 
 @bp.route('/<int:run_id>/track_flight')
 def track_flight(run_id):
     """Checks snakemake logs and updates run status"""
+
+    # TODO: Also collect the unfinished jobs (CASE: someone deletes part of the run's file system)
+    # TODO: Perhaps also rerun dryrun periodically
+
     run = get_run(run_id)
     samples = request.args.getlist('samples[]')
+    msg_now = ""
+    fail = False
+    complete = False
     status_dict = {}
     for sample in samples:
+
         dag_file = run.run_path + "/" + sample + "/dag.gv"
-
-        # def dot_to_json(file_in):
-        #     graph_netx = networkx.drawing.nx_pydot.read_dot(file_in)
-        #     graph_json = json_graph.node_link_data(graph_netx)
-        #     return json_graph.node_link_data(graph_netx)
-
-        # gvjson = dot_to_json(dag_file)
 
         with open(dag_file) as f:
             gv = f.read().replace('\n', '')
 
-        run_info_log = run.run_path + "/logs/" + sample + "/job_info.log"
-        if not os.path.exists(run_info_log):
+        job_info_log = run.run_path + "/logs/" + sample + "/job_info.log"
+        if not os.path.exists(job_info_log):
             # CASE: only dry-run so far
-            run_info_log = run.run_path + "/logs-dryrun/" + sample + "/job_info.log"
-
-            # Get the first entry. This is the next step to run.
-            run_info = json.load(open(run_info_log))
-
-            # Get the first entry in the run_info
-            key_int = min([int(x) for x in run_info.keys()])
+            print("Only dry")
+            # Get the first entry in the run_info (the first step for when the run starts)
+            job_info_log = run.run_path + "/logs-dryrun/" + sample + "/job_info.log"
+            job_info = json.load(open(job_info_log))
+            key_int = min([int(x) for x in job_info.keys()])
+            msg_now = "Ready for launch!"
         else:
             # CASE: Some progress already made
-            run_info = json.load(open(run_info_log))
+            job_info = json.load(open(job_info_log))
+            # Get the last entry in the run_info (the ind for the current step)
+            key_int = max([int(x) for x in job_info.keys()])
 
-            # Get the most recent entry in the run_info
-            key_int = max([int(x) for x in run_info.keys()])
+        # Get the run info
+        run_info_log = run.run_path + "/logs/" + sample + "/run_info.log"
+        if os.path.exists(run_info_log):
+            run_info_log = json.load(open(run_info_log))
 
-        run_now = run_info[str(key_int)]['name']
+        else:
+            run_info_log = {}
+
+        print(run_info_log)
+
+        # Find the finished jobs and modify the digraph
+        job_finished_log = run.run_path + "/logs/" + sample + "/job_finished.log"
+        if os.path.exists(job_finished_log):
+            job_finished_log = json.load(open(job_finished_log))
+            finished_jobs = [int(val['jobid']) for key, val in job_finished_log.items()]
+            gv = modify_digraph(gv, completed_jobs=finished_jobs)
+
+        print(run.status)
+        if run.status == '<strong class="text-info">Ready for takeoff 🛫</strong>':
+            msg_now = "ready for takeoff"
+            complete = False
+        elif run.status == '<strong class="text-info">Safely aborting</strong>':
+            print("Aborting")
+            print(run_info_log.keys())
+            reset = False
+            complete = False
+            last_entry = ""
+            print(len(run_info_log.keys()))
+            if len(run_info_log.keys()) == 0:
+                # CASE: mNo run info log keys
+                reset = True
+            else:
+                last_entry = run_info_log[str(max([int(x) for x in run_info_log.keys()]))]['msg']
+
+            if last_entry[:13] == 'Complete log:':
+                print("Aborted")
+
+                # Sends a get request to update the DAG
+                requests.get(request.url_root + '/runs/' + str(run_id) + '/preflight?modify=true')
+
+                run.status = '<strong class="text-info">Ready for takeoff 🛫</strong>'
+                db_session.commit()
+
+                msg = "Run '" + run.run_name + "' successfully aborted."
+                flash(msg, 'info')
+                msg_now = "aborted"
+            elif reset and msg_now != "aborting":
+                # CASE: True need for reset
+                print("Needs reset")
+            else:
+                print("Still aborting")
+                msg_now = "aborting"
+        elif run.status not in ['<strong class="text-danger">Failed! ❌</strong>', '<strong class="text-info">Complete! ✔️</strong>']:
+            # CASE: either the run is still in flight, its finished, or it failed
+            completed_log = run.run_path + "/logs/" + sample + "/completed.log"  # This will exist if run has finished
+            failed_log = run.run_path + "/logs/" + sample + "/failed.log"  # This will exist if run failed with non-zero exit code
+            if os.path.exists(failed_log):
+                # CASE: it failed
+                msg = "Run '" + run.run_name + "' failed. Please see error logs for " \
+                      + "additional details. Re-run after addressing errors. Please also contact package maintainer."
+                flash(msg, 'danger')
+                fail = True
+                complete = False
+                msg_now = "failed"
+            elif os.path.exists(completed_log):
+                # CASE: it finished
+                msg = "Run '" + run.run_name + "' complete!"
+                flash(msg, 'success')
+                complete = True
+                msg_now = "completed"
+            else:
+                # CASE: still flying
+                complete = False
+                msg_now = "In flight"
+
+        # Get current step
+        run_now = job_info[str(key_int)]['name']
 
         # Gather into a response
         status_dict[sample] = {
@@ -253,40 +346,18 @@ def track_flight(run_id):
             "DAG": gv
         }
 
-    return json.dumps(status_dict)
+    tracker = {'run_status': run.status,
+               'status_dict': status_dict,
+               'msg': msg_now}
 
+    if fail:
+        run.status = '<strong class="text-danger">Failed! ❌</strong>'
+        db_session.commit()
+    elif complete:
+        run.status = '<strong class="text-info">Complete! ✔️</strong>'
+        db_session.commit()
 
-    #
-    # run_info = json.load(open(run_info_log))
-    # if run.status == '<strong class="text-info">Safely aborting</strong>':
-    #     key_int = max([int(x) for x in run_info.keys()])
-    #     run_max = run_info[str(key_int)]['msg']
-    #     if run_max[:13] == 'Complete log:':
-    #         run.status = '<strong class="text-info">Ready for takeoff 🛫</strong>'
-    #         db_session.commit()
-    #         msg = "Run '" + run.run_name + "' successfully aborted."
-    #         flash(msg, 'info')
-    #         return json.dumps({'msg': 'aborted'})
-    #     else:
-    #         return json.dumps({'msg': 'aborting'})
-    # else:
-    #     completed_log = run.run_path + "/logs/completed.log"  # This will exist if run has finished
-    #     failed_log = run.run_path + "/logs/failed.log"  # This will exist if run failed with non-zero exit code
-    #     if os.path.exists(failed_log):
-    #         run.status = '<strong class="text-danger">Failed! ❌</strong>'
-    #         db_session.commit()
-    #         msg = "Run '" + run.run_name + "' failed. Please see error logs for " \
-    #             + "additional details. Re-run after addressing errors. Please also contact package maintainer."
-    #         flash(msg, 'danger')
-    #         return json.dumps({'msg': 'failed'})
-    #     elif os.path.exists(completed_log):
-    #         run.status = '<strong class="text-info">Complete! ✔️</strong>'
-    #         db_session.commit()
-    #         msg = "Run '" + run.run_name + "' complete!"
-    #         flash(msg, 'success')
-    #         return json.dumps({'msg': 'completed'})
-    #     else:
-    #         return json.dumps({'msg': 'in flight!'})
+    return json.dumps(tracker)
 
 
 @bp.route('/<int:run_id>/monitor')
@@ -341,9 +412,9 @@ def monitor(run_id):
                 print(num_total)
                 prog = 100 * int(num_complete)/num_total
                 config_dict[sample]['progress'] = str(prog.__round__()) + "%"
-
+    from flask import jsonify
     return render_template('run_info_page.html', run_id=run_id, sample_dict=config_dict,
-                           run_name=run.run_name, status=run.status)
+                           run_name=run.run_name, run_status=run.status)
 
 
 @bp.route('/<int:run_id>/takeoff')
@@ -357,9 +428,7 @@ def execute_run(run_id):
     run = get_run(run_id)
     run.status = '<strong class="text-info">In flight ✈️</strong>'
     db_session.commit()
-    msg = "Flight in progress!"
-    flash(msg, category="success")
-    return redirect(url_for('runs.monitor', run_id=run_id, status=run.status))
+    return json.dumps({'run_status': run.status})
 
 
 @bp.route('/<int:run_id>/abort')
@@ -383,9 +452,7 @@ def terminate_run(run_id):
     run = get_run(run_id)
     run.status = '<strong class="text-info">Safely aborting</strong>'
     db_session.commit()
-    msg = "Aborting safely. Waiting on current jobs to finish... Data corruption may result if this is interrupted."
-    flash(msg, 'warning')
-    return redirect(url_for('runs.monitor', run_id=run_id, run_name=run.run_name, status=run.status))
+    return json.dumps({'run_status': run.status})
 
 
 def _execute(run_id, dryrun=False, dag=False, force=False):
