@@ -1,0 +1,120 @@
+#!/bin/bash
+# shellcheck source=/dev/null
+
+# Usage info
+usage() {
+  echo
+  echo "################################################################################################################"
+  echo "                            ____  _____                        ________    ____             "
+  echo "                           / __ \/ ___/___  ____ _            / ____/ /   /  _/             "
+  echo "                          / /_/ /\__ \/ _ \/ __  /  ______   / /   / /    / /               "
+  echo "                         / _, _/___/ /  __/ /_/ /  /_____/  / /___/ /____/ /                "
+  echo "                        /_/ |_|/____/\___/\__, /            \____/_____/___/                "
+  echo "                                            /_/                                             "
+  echo "################################################################################################################"
+  echo
+  echo "RSeq [-m mode] [-s sampleSheet] [-o outputDir] [-g genomeDir] [-t threads] "
+  echo
+  echo "General options:"
+  echo
+  echo "  -m|--mode              mode      Choose analysis mode ('DRIP', 'RChIP', etc.) See full list in detailed usage."
+  echo "  -s|--sampleSheet       file      CSV file describing samples. See details."
+  echo "  -i|--inputDir          dir       Directory containing fastq/bam files. Not required for SRA samples."
+  echo "  -o|--outputDir         dir       Project directory. [default = 'RSeq_out/']"
+  echo "  -g|--genomeDir         dir       Genome directory. [default = '~/.RSeq_genomes']"
+  echo "  -t|--threads           int       Specify number of threads. [default = 1]"
+  echo "  --noFastp                        Do not use fastp to perform adapter trimming, filtering, and fastq QC."
+  echo "  --noDedupe                       Do not use clumpify.sh to perform read deduplication."
+  echo "  --keepTmp                        Do not delete intermediate files once processing is finished."
+  echo "  --returnBamsOnly                 Returns only bams, coverage tracks, and normalized signal tracks."
+  echo "  --noMerge                        Do not attempt to merge technical replicates from SRA."
+  echo "  --help                           Display detailed usage"
+  echo
+}
+
+usageDetail() {
+  usage
+  echo
+  echo "################################################################################################################"
+  echo "############################################ USAGE DETAILS #####################################################"
+  echo "################################################################################################################"
+  echo "sampleSheet:"
+  echo
+  echo "This is a required argument for RSeq. It is a CSV file containing the following columns:"
+  echo "1. 'experiment': GEO or SRA accession(s) of experimental samples to download and analyze and/or names of local
+  fastq or bam file(s). For local files, if no sample_names are provided, file prefixes will be
+  treated as sample_names. For local files, mate pairs should be indicated as file_one.R1.fastq+file_two.R2.fastq"
+  echo "3. 'species': with 'human' or 'mouse' as entries"
+  echo "'Run': the name of each sequencing file. e.g. 'ATMsiRNA' is the Run for 'ATMsiRNA_1.fastq'"
+  echo "If there are technical replicates, they will be merged using the 'Run' and 'Experiment' columns. For example:"
+  echo
+  echo "'Run': 'APBX2.1', 'APBX2.2', 'APBX2.3'; 'Experiment': 'APBX2', 'APBX2', 'APBX2'"
+  echo "Fastq files are merged 'APBX2.1_1.fastq' + 'APBX2.2_1.fastq' + 'APBX2.3_1.fastq' -> 'APBX2_1.fastq'"
+  echo
+  echo "################################################################################################################"
+  echo "################################################################################################################"
+}
+
+# Argparse
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -m) mode="$2"; shift 2;;
+    -s) sampleSheet="$2"; shift 2;;
+    -o) outputDir="$2"; shift 2;;
+    -i) inputDir="$2"; shift 2;;
+    -g) genomeDirTop="$2"; shift 2;;
+    -t) threads="$2"; shift 2;;
+
+    --mode=*) mode="${1#*=}"; shift 1;;
+    --outputDir=*) outputDir="${1#*=}"; shift 1;;
+    --sampleSheet=*) sampleSheet="${1#*=}"; shift 1;;
+    --genomeDir=*) genomeDirTop="${1#*=}"; shift 1;;
+    --threads=*) threads="${1#*=}"; shift 1;;
+    --keepTmp) keepTmp="${1#*=}"; shift 1;;
+    --returnBamsOnly) returnBamsOnly="${1#*=}"; shift 1;;
+    --noMerge) noMerge="${1#*=}"; shift 1;;
+    --noFastp) noFastp="${1#*=}"; shift 1;;
+    --noDedupe) noDedupe="${1#*=}"; shift 1;;
+    --help) help="${1#*=}"; shift 1;;
+
+    -*) echo "unknown option: $1" >&2; exit 1;;
+    *) handle_argument "$1"; shift 1;;
+  esac
+done
+
+
+### Set default variables ###
+threads=${threads:=1}
+genomeDirTop=${genomeDirTop:="$HOME/.RSeq_genomes"}
+outputDir=${outputDir:="RSeq_out"}
+outputDir=$(realpath $outputDir)
+
+### Validate user inputs ###
+echo
+# If specified, display usage info
+if [ -n "$help" ]; then
+  usageDetail
+  exit 1
+fi
+# Make sure genome directory exists
+if [ ! -d "$genomeDirTop" ]; then
+  echo "ERROR: Genome directory not found at $genomeDirTop"
+  echo
+  echo "Create a genome directory using the 'BishopLab_HTS_Pipeline -m genomeBuild' command."
+  exit 1
+fi
+# Validate Mode-specific inputs
+if [ -z ${condaEnv+x} ]; then
+  usage
+  echo
+  echo "ERROR: To run ChIPSeq mode, user must supply name of a conda environment with python 2.7 and macs2 installed."
+  echo
+  exit 1
+fi
+if [ -z "$groupInfo" ]; then
+  usage
+  echo
+  echo "ERROR: Provide a Group File to run ChIPSeq mode ... "
+  echo
+  exit 1
+fi
