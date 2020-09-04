@@ -1,0 +1,39 @@
+['/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/helpers/run_workflow.py', 'RSeq_CLI/tests/RSeq_out/rseqVars.json', '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_out', '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/helpers/rseq_workflow.smk', 'True', 'True', 'False']
+Dry run
+digraph snakemake_dag {
+    graph[bgcolor=white, margin=0];
+    node[shape=box, style=rounded, fontname=sans,                 fontsize=10, penwidth=2];
+    edge[penwidth=2, color=grey];
+	0[label = "output", color = "0.43 0.6 0.85", style="rounded"];
+	1[label = "macs2_callpeak_unstranded", color = "0.55 0.6 0.85", style="rounded"];
+	2[label = "epic2_callpeak_unstranded", color = "0.24 0.6 0.85", style="rounded"];
+	3[label = "deeptools_coverage_unstranded", color = "0.27 0.6 0.85", style="rounded"];
+	4[label = "bwa_mem", color = "0.63 0.6 0.85", style="rounded"];
+	5[label = "bampe_to_bedpe", color = "0.47 0.6 0.85", style="rounded"];
+	6[label = "index_bam", color = "0.59 0.6 0.85", style="rounded"];
+	7[label = "bwa_index", color = "0.16 0.6 0.85", style="rounded"];
+	8[label = "fastp_pe", color = "0.08 0.6 0.85", style="rounded"];
+	9[label = "download_fasta\ngenome: hg19", color = "0.20 0.6 0.85", style="rounded"];
+	10[label = "clumpify_pe\nexp_type: experiment", color = "0.04 0.6 0.85", style="rounded"];
+	11[label = "merge_fastq_pe_experiment\nsample: SRX2481504_HeLa_input_1_experiment", color = "0.51 0.6 0.85", style="rounded"];
+	12[label = "sra_to_fastq_pe", color = "0.35 0.6 0.85", style="rounded"];
+	13[label = "download_sra\noutdir: RSeq_CLI/tests/RSeq_out\nsample: SRX2481504_HeLa_input_1_experiment/RSeq_out/fastqs\nsrr_acc: SRX2481504_HeLa_input_1_experiment_R2.fastq", color = "0.31 0.6 0.85", style="rounded"];
+	1 -> 0
+	2 -> 0
+	3 -> 0
+	4 -> 1
+	5 -> 2
+	6 -> 2
+	4 -> 3
+	6 -> 3
+	7 -> 4
+	8 -> 4
+	4 -> 5
+	4 -> 6
+	9 -> 7
+	10 -> 8
+	11 -> 10
+	12 -> 11
+	13 -> 12
+}            
+OUT OF SNAKE

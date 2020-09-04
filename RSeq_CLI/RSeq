@@ -1,5 +1,6 @@
 #!/bin/bash
 # shellcheck source=/dev/null
+helpersDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/helpers
 
 # Usage info
 usage() {
@@ -41,9 +42,27 @@ usageDetail() {
   echo "sampleSheet:"
   echo
   echo "This is a required argument for RSeq. It is a CSV file containing the following columns:"
-  echo "1. 'experiment': GEO or SRA accession(s) of experimental samples to download and analyze and/or names of local
-  fastq or bam file(s). For local files, if no sample_names are provided, file prefixes will be
-  treated as sample_names. For local files, mate pairs should be indicated as file_one.R1.fastq+file_two.R2.fastq"
+  echo
+  echo "experiment "
+  echo
+  echo "    GEO or SRA accession(s) of experimental samples to download and analyze and/or names of local "
+  echo "    fastq or bam file(s). For local files, if no sample_names are provided, file prefixes will be    "
+  echo "    treated as sample_names. For local files, mate pairs should be indicated as file_one.R1.fastq+file_two.R2.fastq"
+  echo
+  echo "control "
+  echo
+  echo "    control Same as experiment but for control/input samples."
+  echo
+  echo "sample_name "
+  echo
+  echo "    Name for identifying this sample. Will default to the file basename (for fastq/bam files)"
+  echo "    or SRA sample name (for public data) if not given."
+  echo
+  echo "genome "
+  echo
+  echo "    The desired genome for the provided sample in UCSC format (hg38, mm10, etc). For SRA/GEO accessions, the latest"
+  echo "    genome assembly for the sample species will be automatically determined if no genome is supplied."
+  echo
   echo "3. 'species': with 'human' or 'mouse' as entries"
   echo "'Run': the name of each sequencing file. e.g. 'ATMsiRNA' is the Run for 'ATMsiRNA_1.fastq'"
   echo "If there are technical replicates, they will be merged using the 'Run' and 'Experiment' columns. For example:"
@@ -90,7 +109,6 @@ outputDir=${outputDir:="RSeq_out"}
 outputDir=$(realpath $outputDir)
 
 ### Validate user inputs ###
-echo
 # If specified, display usage info
 if [ -n "$help" ]; then
   usageDetail
@@ -104,17 +122,35 @@ if [ ! -d "$genomeDirTop" ]; then
   exit 1
 fi
 # Validate Mode-specific inputs
-if [ -z ${condaEnv+x} ]; then
-  usage
-  echo
-  echo "ERROR: To run ChIPSeq mode, user must supply name of a conda environment with python 2.7 and macs2 installed."
-  echo
-  exit 1
-fi
-if [ -z "$groupInfo" ]; then
-  usage
-  echo
-  echo "ERROR: Provide a Group File to run ChIPSeq mode ... "
-  echo
-  exit 1
-fi
+#if [ -z ${condaEnv+x} ]; then
+#  usage
+#  echo
+#  echo "ERROR: To run ChIPSeq mode, user must supply name of a conda environment with python 2.7 and macs2 installed."
+#  echo
+#  exit 1
+#fi
+#if [ -z "$groupInfo" ]; then
+#  usage
+#  echo
+#  echo "ERROR: Provide a Group File to run ChIPSeq mode ... "
+#  echo
+#  exit 1
+#fi
+
+outputDir="$HOME"/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/RSeq_out
+
+# Generate the config JSON file
+inputJSON=$(Rscript "$helpersDir"/process_input.R "$helpersDir" "$mode" "$outputDir" \
+"$genome" "$genomeDirTop" "$threads" "$sampleSheet")
+
+# Run Snakemake API
+python "$helpersDir"/run_workflow.py "$inputJSON" "$outputDir" "$helpersDir"/rseq_workflow.smk True False False && \
+python "$helpersDir"/run_workflow.py "$inputJSON" "$outputDir" "$helpersDir"/rseq_workflow.smk False True False
+
+python "$helpersDir"/run_workflow.py "$inputJSON" "$outputDir" "$helpersDir"/rseq_workflow.smk False False False
+
+#snakemake --dry-run --snakefile "$helpersDir"/rseq_workflow.smk --configfile "$inputJSON"
+
+
+
+
