@@ -20,15 +20,16 @@ usage() {
   echo
   echo "  -m|--mode              mode      Choose analysis mode ('DRIP', 'RChIP', etc.) See full list in detailed usage."
   echo "  -s|--sampleSheet       file      CSV file describing samples. See details."
-  echo "  -i|--inputDir          dir       Directory containing fastq/bam files. Not required for SRA samples."
+#  echo "  -i|--inputDir          dir       Directory containing fastq/bam files. Not required for SRA samples."
   echo "  -o|--outputDir         dir       Project directory. [default = 'RSeq_out/']"
   echo "  -g|--genomeDir         dir       Genome directory. [default = '~/.RSeq_genomes']"
   echo "  -t|--threads           int       Specify number of threads. [default = 1]"
+  echo "  --dryRun                         Perform a dry-run of the RSeq pipeline to ensure there are no errors."
   echo "  --noFastp                        Do not use fastp to perform adapter trimming, filtering, and fastq QC."
   echo "  --noDedupe                       Do not use clumpify.sh to perform read deduplication."
   echo "  --keepTmp                        Do not delete intermediate files once processing is finished."
-  echo "  --returnBamsOnly                 Returns only bams, coverage tracks, and normalized signal tracks."
-  echo "  --noMerge                        Do not attempt to merge technical replicates from SRA."
+#  echo "  --returnBamsOnly                 Returns only bams, coverage tracks, and normalized signal tracks."
+#  echo "  --noMerge                        Do not attempt to merge technical replicates from SRA."
   echo "  --help                           Display detailed usage"
   echo
 }
@@ -79,19 +80,21 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     -m) mode="$2"; shift 2;;
     -s) sampleSheet="$2"; shift 2;;
+    -g) genome="$2"; shift 2;;
     -o) outputDir="$2"; shift 2;;
-    -i) inputDir="$2"; shift 2;;
-    -g) genomeDirTop="$2"; shift 2;;
     -t) threads="$2"; shift 2;;
 
     --mode=*) mode="${1#*=}"; shift 1;;
     --outputDir=*) outputDir="${1#*=}"; shift 1;;
     --sampleSheet=*) sampleSheet="${1#*=}"; shift 1;;
-    --genomeDir=*) genomeDirTop="${1#*=}"; shift 1;;
+    --genome=*) genome="${1#*=}"; shift 1;;
     --threads=*) threads="${1#*=}"; shift 1;;
+    --genomeDir=*) genomeDir="${1#*=}"; shift 1;;
     --keepTmp) keepTmp="${1#*=}"; shift 1;;
-    --returnBamsOnly) returnBamsOnly="${1#*=}"; shift 1;;
-    --noMerge) noMerge="${1#*=}"; shift 1;;
+    --dryRun) dryRun="${1#*=}"; shift 1;;
+# TODO: Get returnbams and noMerge in the pipeline
+#    --returnBamsOnly) returnBamsOnly="${1#*=}"; shift 1;;
+#    --noMerge) noMerge="${1#*=}"; shift 1;;
     --noFastp) noFastp="${1#*=}"; shift 1;;
     --noDedupe) noDedupe="${1#*=}"; shift 1;;
     --help) help="${1#*=}"; shift 1;;
@@ -104,7 +107,7 @@ done
 
 ### Set default variables ###
 threads=${threads:=1}
-genomeDirTop=${genomeDirTop:="$HOME/.RSeq_genomes"}
+genomeDir=${genomeDir:="$HOME/.RSeq_genomes"}
 outputDir=${outputDir:="RSeq_out"}
 outputDir=$(realpath $outputDir)
 
@@ -115,8 +118,8 @@ if [ -n "$help" ]; then
   exit 1
 fi
 # Make sure genome directory exists
-if [ ! -d "$genomeDirTop" ]; then
-  echo "ERROR: Genome directory not found at $genomeDirTop"
+if [ ! -d "$genomeDir" ]; then
+  echo "ERROR: Genome directory not found at $genomeDir"
   echo
   echo "Create a genome directory using the 'BishopLab_HTS_Pipeline -m genomeBuild' command."
   exit 1
@@ -137,20 +140,19 @@ fi
 #  exit 1
 #fi
 
-outputDir="$HOME"/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/RSeq_out
-
 # Generate the config JSON file
 inputJSON=$(Rscript "$helpersDir"/process_input.R "$helpersDir" "$mode" "$outputDir" \
-"$genome" "$genomeDirTop" "$threads" "$sampleSheet")
+"$genome" "$genomeDir" "$threads" "$noDedupe" "$noFastp" "$sampleSheet")
 
-# Run Snakemake API
-python "$helpersDir"/run_workflow.py "$inputJSON" "$outputDir" "$helpersDir"/rseq_workflow.smk True False False && \
-python "$helpersDir"/run_workflow.py "$inputJSON" "$outputDir" "$helpersDir"/rseq_workflow.smk False True False
+echo "$inputJSON"
 
-python "$helpersDir"/run_workflow.py "$inputJSON" "$outputDir" "$helpersDir"/rseq_workflow.smk False False False
-
-#snakemake --dry-run --snakefile "$helpersDir"/rseq_workflow.smk --configfile "$inputJSON"
-
+if [ -n "$dryRun" ]; then
+  python "$helpersDir"/run_workflow.py "$inputJSON" "$outputDir" "$helpersDir"/rseq_workflow.smk True False False "$keepTmp"
+  python "$helpersDir"/run_workflow.py "$inputJSON" "$outputDir" "$helpersDir"/rseq_workflow.smk False True False "$keepTmp"
+else
+  python "$helpersDir"/run_workflow.py "$inputJSON" "$outputDir" "$helpersDir"/rseq_workflow.smk False True False "$keepTmp"
+  python "$helpersDir"/run_workflow.py "$inputJSON" "$outputDir" "$helpersDir"/rseq_workflow.smk False False False "$keepTmp"
+fi
 
 
 

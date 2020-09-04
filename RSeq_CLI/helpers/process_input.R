@@ -3,6 +3,8 @@ processInput <- function(mode = NULL,
                          genome = NULL,
                          genome_home_dir = file.path(path.expand("~"), ".RSeq_genomes"),
                          cores = NULL,
+                         no_dedupe = FALSE,
+                         no_fastp = FALSE,
                          samples = NULL) {
 
 
@@ -82,6 +84,9 @@ processInput <- function(mode = NULL,
       stop("Column 'experiment' is required but not provided in sample sheet.")
     }
   }
+
+  # Fix genome home dir if using tilde
+  genome_home_dir <- gsub(genome_home_dir, pattern = "~", replacement = path.expand("~"))
 
   # Check for arguments. If not set, replace with defaults
   if (! "cores" %in% colnames(samples) &
@@ -383,10 +388,8 @@ processInput <- function(mode = NULL,
 
     # Others
     vars_now@cores <- as.integer(samples_now$cores)
-    vars_now@experiments <- stringr::str_split(gsub(samples_now$experiment, pattern = ".+\\+(.+)",
-                            replacement = "\\1"), ",")[[1]]
-    vars_now@controls <- stringr::str_split(gsub(samples_now$control, pattern = ".+\\+(.+)",
-                            replacement = "\\1"), ",")[[1]]
+    vars_now@experiments <- samples_now$experiment
+    vars_now@controls <- ifelse(is.na(samples_now$control), "None", samples_now$control)
     vars_now@sample_name <- samples_now$sample_name
     vars_now@out_dir <- samples_now$outdir
     vars_now@paired_end <- samples_now$paired_end
@@ -397,6 +400,9 @@ processInput <- function(mode = NULL,
     vars_now@read_length <- samples_now$read_length
     vars_now@moeity <- samples_now$moeity
     vars_now@ip_type <- samples_now$ip_type
+    vars_now@no_dedupe <- no_dedupe
+    vars_now@no_fastp <- no_fastp
+    vars_now@sample_type <- samples_now$file_type
     vars_now@sample_name <- samples_now$sample_name
     slots <- methods::slotNames(vars_now)
     vars_now_list <- purrr::map(slots, ~ methods::slot(object = vars_now, name = .x))
@@ -416,17 +422,18 @@ processInput <- function(mode = NULL,
 }
 
 # Parse shell args
-args <- commandArgs(trailingOnly=TRUE)
+arg <- commandArgs(trailingOnly=TRUE)
+#cat(arg)
 
-# Bug testings
+### Bug testings
 #sampleSheet <- data.frame(
-#  "experiment" = c("RSeq_out/fastqs/SRX2481504_HeLa_input_1_experiment_R1.fastq+RSeq_out/fastqs/SRX2481504_HeLa_input_1_experiment_R2.fastq")
+#  "experiment" = c("RSeq_CLI/tests/NT2_DRIP_head.fastq")
 #)
 #write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test1.csv")
-arg <- c("~/Bishop.lab/Projects/RSeq/RSeq_CLI/helpers",
-          "DRIP", "RSeq_CLI/tests/RSeq_out",
-          "hg19", "~/.RSeq_genomes", 98,
-          "RSeq_CLI/tests/sampleSheet_test1.csv")
+#arg <- c("~/Bishop.lab/Projects/RSeq/RSeq_CLI/helpers",
+#          "DRIP", "RSeq_CLI/tests/RSeq_out",
+#          "hg38", "~/.RSeq_genomes", 98, FALSE, FALSE,
+#          "RSeq_CLI/tests/sampleSheet_test1.csv")
 
 # Source helpers
 source(file.path(arg[1], "utils.R"))
@@ -440,7 +447,9 @@ result <- processInput(mode = arg[2],
                        genome = arg[4],
                        genome_home_dir = arg[5],
                        cores = arg[6],
-                       samples = arg[7])
+                       no_dedupe = as.logical(arg[7]),
+                       no_fastp = as.logical(arg[8]),
+                       samples = arg[9])
 cat(result)
 
 

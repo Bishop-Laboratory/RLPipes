@@ -8,6 +8,7 @@ R-package/RSeq.Rproj
 .idea
 R-package/run_vars.json
 RSeq_out*
+*.fastq
 venv/
 
 

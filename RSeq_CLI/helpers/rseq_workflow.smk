@@ -2,7 +2,7 @@
 ##############################################   Parse inputs    #######################################################
 ########################################################################################################################
 
-# Basic vars
+# Config vars
 paired_end=config['paired_end'][0]
 strand_specific=config['strand_specific'][0]
 genome=config['genome'][0]
@@ -11,42 +11,60 @@ effective_genome_size=config['effective_genome_size'][0]
 full_genome_length=config['full_genome_length'][0]
 effective_genome_fraction = effective_genome_size/full_genome_length
 cores=config['cores'][0]
+sample_type=config['sample_type'][0]
+no_dedupe=config['no_dedupe'][0]
+no_fastp=config['no_fastp'][0]
 sample_name=config['sample_name'][0]
 outdir=config['out_dir'][0]
 experiments=config['experiments'][0]
 controls=config['controls'][0]
-
-# Set expected output and inputs for merging of technical replicates
+# Set expected output and inputs for merging of technical replicates (assumes public samples)
 output_fastq_experiment_1 = expand("{outdir}/fastqs/{sample_name}_experiment_R1.fastq",
                  sample_name=sample_name, outdir=outdir)
 output_fastq_experiment_2 = expand("{outdir}/fastqs/{sample_name}_experiment_R2.fastq",
                  sample_name=sample_name, outdir=outdir)
-merge_input_experiment_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
+if sample_type != "fastq":
+    merge_input_experiment_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
+                               sample_name=sample_name,
+                               srr_acc=experiments, outdir=outdir)
+    merge_input_experiment_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
+                               sample_name=sample_name,
+                               srr_acc=experiments, outdir=outdir)
+    merge_input_control_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
                            sample_name=sample_name,
-                           srr_acc=experiments, outdir=outdir)
-merge_input_experiment_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
-                           sample_name=sample_name,
-                           srr_acc=experiments, outdir=outdir),
+                           srr_acc=controls, outdir=outdir)
+    merge_input_control_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
+                               sample_name=sample_name,
+                               srr_acc=controls, outdir=outdir)
+elif paired_end:
+    # Fastq files are supplied, and they are paired end
+    merge_input_experiment_1 = experiments.split("+")[0]
+    merge_input_experiment_2 = experiments.split("+")[1]
+    if controls == "None":
+        merge_input_control_1 = None
+        merge_input_control_2 = None
+    else:
+        merge_input_control_1 = controls.split("+")[0]
+        merge_input_control_2 = controls.split("+")[1]
+else:
+    # Fastq files are supplied, and they are single end
+    merge_input_experiment = experiments
+    if controls == "None":
+        merge_input_control = None
+    else:
+        merge_input_control_1 = controls
+
+
+
 output_fastq_control_1 = expand("{outdir}/fastqs/{sample_name}_control_R1.fastq",
                  sample_name=sample_name, outdir=outdir)
 output_fastq_control_2 = expand("{outdir}/fastqs/{sample_name}_control_R2.fastq",
                  sample_name=sample_name, outdir=outdir)
-merge_input_control_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
-                           sample_name=sample_name,
-                           srr_acc=controls, outdir=outdir)
-merge_input_control_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
-                           sample_name=sample_name,
-                           srr_acc=controls, outdir=outdir)
+
 output_fastq_experiment = expand("{outdir}/fastqs/{sample_name}.fastq",
                  sample_name=sample_name, outdir=outdir)
-merge_input_experiment = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra.fastq",
-                         sample_name=sample_name,
-                         srr_acc=experiments, outdir=outdir),
 output_fastq_control = expand("{outdir}/fastqs/{sample_name}.fastq",
                  sample_name=sample_name, outdir=outdir)
-merge_input_control = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra.fastq",
-                         sample_name=sample_name,
-                         srr_acc=controls, outdir=outdir)
 
 # Set expected outputs of runs
 if strand_specific:
@@ -82,177 +100,192 @@ else:
 rule output:
         input:
             peak_output,
-            coverage_output
+            coverage_output,
+            expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam",
+                     sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment",])
 
-rule download_sra:
-    output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}.sra")
-    log: "{outdir}/{sample}/logs/{srr_acc}__download_sra.log"
-    shell: "(prefetch {wildcards.srr_acc} --output-file {output}) &> {log}"
 
-if paired_end:
-    rule sra_to_fastq_pe:
-        input:
-            "{outdir}/tmp/sras/{sample}/{srr_acc}.sra"
+if sample_type != "bam":
+    if sample_type == "public":
+        rule download_sra:
+            output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}.sra")
+            log: "{outdir}/{sample}/logs/{srr_acc}__download_sra.log"
+            shell: "(prefetch {wildcards.srr_acc} --output-file {output}) &> {log}"
+
+
+    if paired_end:
+        if sample_type == "public":
+            # TODO: fastq merging only works with public samples at the moment. This should also work with local samples.
+            rule sra_to_fastq_pe:
+                input:
+                    "{outdir}/tmp/sras/{sample}/{srr_acc}.sra"
+                output:
+                    temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.sra_1.fastq"),
+                    temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.sra_2.fastq")
+                threads: cores
+                log: "{outdir}/{sample}/logs/{srr_acc}__sra_to_fastq_pe.log"
+                shell:
+                    "(fasterq-dump -e {threads} --split-files -O" \
+                    + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ {input}) &> {log}"
+
+        rule merge_fastq_pe_experiment:
+            input:
+                R1=merge_input_experiment_1,
+                R2=merge_input_experiment_2
+            output:
+                R1=temp("{outdir}/tmp/fastqs_dup/{sample}_experiment_R1.fastq"),
+                R2=temp("{outdir}/tmp/fastqs_dup/{sample}_experiment_R2.fastq")
+            log: "{outdir}/logs/{sample}/merge_fastq_pe_experiment.log"
+            shell: """
+                ( cat {input.R1} > {output.R1}
+                cat {input.R2} > {output.R2} ) &> {log}
+            """
+
+        if controls != "None":
+            rule merge_fastq_pe_control:
+                input:
+                    R1=merge_input_control_1,
+                    R2=merge_input_control_2
+                output:
+                    R1=temp("{outdir}/tmp/fastqs_dup/{sample}_control_R1.fastq"),
+                    R2=temp("{outdir}/tmp/fastqs_dup/{sample}_control_R2.fastq")
+                log: "{outdir}/logs/{sample}/merge_fastq_pe_control.log"
+                shell: """
+                    ( cat {input.R1} > {output.R1}
+                    cat {input.R2} > {output.R2} ) &> {log}
+                """
+
+        if not no_dedupe:
+            rule clumpify_pe:
+                input:
+                    R1="{outdir}/tmp/fastqs_dup/{sample}_{exp_type}_R1.fastq",
+                    R2="{outdir}/tmp/fastqs_dup/{sample}_{exp_type}_R2.fastq"
+                output:
+                    R1=temp("{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R1.fastq"),
+                    R2=temp("{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R2.fastq")
+                params: ""
+                threads: cores
+                log: "{outdir}/logs/{sample}/{exp_type}__clumpify_pe.log"
+                shell:
+                    "(clumpify.sh t={threads} {params} in1={input.R1}" \
+                    + " in2={input.R2} out1={output.R1} out2={output.R2} dedupe) &> {log}"
+
+        if not no_fastp:
+            rule fastp_pe:
+                input:
+                    sample=["{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R1.fastq",
+                            "{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R2.fastq"]
+                output:
+                    trimmed=["{outdir}/fastqs/{sample}_{exp_type}_R1.fastq",
+                             "{outdir}/fastqs/{sample}_{exp_type}_R2.fastq"],
+                    html="{outdir}/QC/fastq/{sample}.{exp_type}.html",
+                    json="{outdir}/QC/fastq/{sample}.{exp_type}.json"
+                log: "{outdir}/logs/{sample}/{exp_type}__fastp_pe.log"
+                params:
+                    extra=""
+                threads: cores
+                wrapper:
+                    "0.63.0/bio/fastp"
+
+    else:
+        if sample_type == "public":
+            rule sra_to_fastq_se:
+                input: "{outdir}/tmp/sras/{sample}/{srr_acc}.sra"
+                output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.sra.fastq")
+                threads: cores
+                log: "{outdir}/logs/{sample}/{srr_acc}__sra_to_fastq_se.log"
+                shell:
+                    "(fasterq-dump -e {threads} --split-files -O" \
+                    + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ {input}) &> {log}"
+
+        rule merge_fastq_se_experiment:
+            input: merge_input_experiment
+            output: temp("{outdir}/tmp/fastqs_dup/{sample}_experiment.fastq")
+            log: "{outdir}/logs/{sample}/merge_fastq_se_experiment.log"
+            shell: "(cat {input} > {output}) &> {log}"
+
+        if controls != "None":
+            rule merge_fastq_se_control:
+                input: merge_input_control
+                output: temp("{outdir}/tmp/fastqs_dup/{sample}_control.fastq")
+                log: "{outdir}/logs/{sample}/merge_fastq_se_control.log"
+                shell: "(cat {input} > {output}) &> {log}"
+
+        if not no_dedupe:
+            rule clumpify_se:
+                input: "{outdir}/tmp/fastqs_dup/{sample}_{exp_type}.fastq"
+                output: temp("{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}.fastq")
+                params: ""
+                threads: cores
+                log: "{outdir}/logs/{sample}/{exp_type}__clumpify_se.log"
+                shell: "(clumpify.sh t={threads} {params} in={input} out={output} dedupe) &> {log}"
+
+        if not no_fastp:
+            rule fastp_se:
+                input:
+                     sample=["{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}.fastq"]
+                output:
+                    trimmed="{outdir}/fastqs/{sample}_{exp_type}.fastq",
+                    html="{outdir}/QC/fastq/{sample}.{exp_type}.html",
+                    json="{outdir}/QC/fastq/{sample}.{exp_type}.json"
+                log: "{outdir}/logs/{sample}/{exp_type}__fastp_se.log"
+                params:
+                    extra=""
+                threads: cores
+                wrapper:
+                    "0.63.0/bio/fastp"
+
+    rule download_fasta:
         output:
-            temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.sra_1.fastq"),
-            temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.sra_2.fastq")
-        threads: cores
-        log: "{outdir}/{sample}/logs/{srr_acc}__sra_to_fastq_pe.log"
-        shell:
-            "(fasterq-dump -e {threads} --split-files -O" \
-            + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ {input}) &> {log}"
-
-    rule merge_fastq_pe_experiment:
-        input:
-            R1=merge_input_experiment_1,
-            R2=merge_input_experiment_2
-        output:
-            R1=temp("{outdir}/tmp/fastqs_dup/{sample}_experiment_R1.fastq"),
-            R2=temp("{outdir}/tmp/fastqs_dup/{sample}_experiment_R2.fastq")
-        log: "{outdir}/logs/{sample}/merge_fastq_pe_experiment.log"
+            genome_home_dir + "/{genome}/{genome}.fa"
+        params:
+              prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
+              check=outdir + "/logs/" + sample_name + "/{genome}__download_fasta.log"
         shell: """
-            ( cat {input.R1} > {output.R1}
-            cat {input.R2} > {output.R2} ) &> {log}
+            (mkdir -p {params.prefix}
+            wget -O {output}.gz ftp://hgdownload.soe.ucsc.edu/goldenPath/{wildcards.genome}/bigZips/{wildcards.genome}.fa.gz
+            gunzip {output}.gz && echo "Indexing BAM at {params.prefix} ... This may take some time ...") &> {params.check}
         """
 
-    rule merge_fastq_pe_control:
+    rule bwa_index:
         input:
-            R1=merge_input_control_1,
-            R2=merge_input_control_2
+            genome_home_dir + "/{genome}/{genome}.fa"
         output:
-            R1=temp("{outdir}/tmp/fastqs_dup/{sample}_control_R1.fastq"),
-            R2=temp("{outdir}/tmp/fastqs_dup/{sample}_control_R2.fastq")
-        log: "{outdir}/logs/{sample}/merge_fastq_pe_control.log"
+             genome_home_dir + "/{genome}/bwa_index/{genome}.amb",
+             genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
+             genome_home_dir + "/{genome}/bwa_index/{genome}.bwt",
+             genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
+             genome_home_dir + "/{genome}/bwa_index/{genome}.sa",
+        params:
+            prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
+        log:
+            genome_home_dir + "/{genome}/bwa_index/{genome}_bwa_index.log"
+        wrapper:
+            "0.63.0/bio/bwa/index"
+
+    if paired_end:
+        bwa_reads=["{outdir}/fastqs/{sample}_{exp_type}_R1.fastq", "{outdir}/fastqs/{sample}_{exp_type}_R2.fastq"]
+    else:
+        bwa_reads=["{outdir}/fastqs/{sample}_{exp_type}.fastq"]
+
+    rule bwa_mem:
+        input:
+            bwa_index_done=genome_home_dir + "/{genome}/bwa_index/{genome}.amb",
+            reads=bwa_reads
+        output:
+            bam="{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
+        log: "{outdir}/logs/{sample}/{genome}_{exp_type}__bwa_mem.log"
+        params:
+            index=genome_home_dir + "/{genome}/bwa_index/{genome}",
+            bwa_extra=r"-R '@RG\tID:{sample}_{exp_type}\tSM:{sample}_{exp_type}'",
+            picard_extra="",
+            samtools_sort_extra=""
+        threads: cores
         shell: """
-            ( cat {input.R1} > {output.R1}
-            cat {input.R2} > {output.R2} ) &> {log}
-        """
-
-    rule clumpify_pe:
-        input:
-            R1="{outdir}/tmp/fastqs_dup/{sample}_{exp_type}_R1.fastq",
-            R2="{outdir}/tmp/fastqs_dup/{sample}_{exp_type}_R2.fastq"
-        output:
-            R1=temp("{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R1.fastq"),
-            R2=temp("{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R2.fastq")
-        params: ""
-        threads: cores
-        log: "{outdir}/logs/{sample}/{exp_type}__clumpify_pe.log"
-        shell:
-            "(clumpify.sh t={threads} {params} in1={input.R1}" \
-            + " in2={input.R2} out1={output.R1} out2={output.R2} dedupe) &> {log}"
-
-    rule fastp_pe:
-        input:
-            sample=["{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R1.fastq",
-                    "{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R2.fastq"]
-        output:
-            trimmed=["{outdir}/fastqs/{sample}_{exp_type}_R1.fastq",
-                     "{outdir}/fastqs/{sample}_{exp_type}_R2.fastq"],
-            html="{outdir}/QC/fastq/{sample}.{exp_type}.html",
-            json="{outdir}/QC/fastq/{sample}.{exp_type}.json"
-        log: "{outdir}/logs/{sample}/{exp_type}__fastp_pe.log"
-        params:
-            extra=""
-        threads: cores
-        wrapper:
-            "0.63.0/bio/fastp"
-
-else:
-
-    rule sra_to_fastq_se:
-        input: "{outdir}/tmp/sras/{sample}/{srr_acc}.sra"
-        output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.sra.fastq")
-        threads: cores
-        log: "{outdir}/logs/{sample}/{srr_acc}__sra_to_fastq_se.log"
-        shell:
-            "(fasterq-dump -e {threads} --split-files -O" \
-            + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ {input}) &> {log}"
-
-    rule merge_fastq_se_experiment:
-        input: merge_input_experiment
-        output: temp("{outdir}/tmp/fastqs_dup/{sample}_experiment.fastq")
-        log: "{outdir}/logs/{sample}/merge_fastq_se_experiment.log"
-        shell: "(cat {input} > {output}) &> {log}"
-
-    rule merge_fastq_se_control:
-        input: merge_input_control
-        output: temp("{outdir}/tmp/fastqs_dup/{sample}_control.fastq")
-        log: "{outdir}/logs/{sample}/merge_fastq_se_control.log"
-        shell: "(cat {input} > {output}) &> {log}"
-
-    rule clumpify_se:
-        input: "{outdir}/tmp/fastqs_dup/{sample}_{exp_type}.fastq"
-        output: temp("{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}.fastq")
-        params: ""
-        threads: cores
-        log: "{outdir}/logs/{sample}/{exp_type}__clumpify_se.log"
-        shell: "(clumpify.sh t={threads} {params} in={input} out={output} dedupe) &> {log}"
-
-    rule fastp_se:
-        input:
-             sample=["{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}.fastq"]
-        output:
-            trimmed="{outdir}/fastqs/{sample}_{exp_type}.fastq",
-            html="{outdir}/QC/fastq/{sample}.{exp_type}.html",
-            json="{outdir}/QC/fastq/{sample}.{exp_type}.json"
-        log: "{outdir}/logs/{sample}/{exp_type}__fastp_se.log"
-        params:
-            extra=""
-        threads: cores
-        wrapper:
-            "0.63.0/bio/fastp"
-
-rule download_fasta:
-    output:
-        genome_home_dir + "/{genome}/{genome}.fa"
-    params:
-          prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
-          check=outdir + "/logs/" + sample_name + "/{genome}__download_fasta.log"
-    shell: """
-        (wget -O {output}.gz ftp://hgdownload.soe.ucsc.edu/goldenPath/{wildcards.genome}/bigZips/{wildcards.genome}.fa.gz
-        gunzip {output}.gz && echo "Indexing BAM at {params.prefix} ... This may take some time ...") &> {params.check}
-    """
-
-rule bwa_index:
-    input:
-        genome_home_dir + "/{genome}/{genome}.fa"
-    output:
-         genome_home_dir + "/{genome}/bwa_index/{genome}.amb",
-         genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-         genome_home_dir + "/{genome}/bwa_index/{genome}.bwt",
-         genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
-         genome_home_dir + "/{genome}/bwa_index/{genome}.sa",
-    params:
-        prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
-    log:
-        genome_home_dir + "/{genome}/bwa_index/{genome}_bwa_index.log"
-    wrapper:
-        "0.63.0/bio/bwa/index"
-
-if paired_end:
-    bwa_reads=["{outdir}/fastqs/{sample}_{exp_type}_R1.fastq", "{outdir}/fastqs/{sample}_{exp_type}_R2.fastq"]
-else:
-    bwa_reads=["{outdir}/fastqs/{sample}_{exp_type}.fastq"]
-
-rule bwa_mem:
-    input:
-        bwa_index_done=genome_home_dir + "/{genome}/bwa_index/{genome}.amb",
-        reads=bwa_reads
-    output:
-        bam="{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
-    log: "{outdir}/logs/{sample}/{genome}_{exp_type}__bwa_mem.log"
-    params:
-        index=genome_home_dir + "/{genome}/bwa_index/{genome}",
-        bwa_extra=r"-R '@RG\tID:{sample}_{exp_type}\tSM:{sample}_{exp_type}'",
-        picard_extra="",
-        samtools_sort_extra=""
-    threads: cores
-    shell: """
-        (bwa mem -t {threads} {params.bwa_extra} {params.index} {input.reads} | \
-        samtools view -b -@ {threads} - | \
-        samtools sort {params.samtools_sort_extra} -@ {threads} -o {output.bam} -) &> {log}
-     """
+            (bwa mem -t {threads} {params.bwa_extra} {params.index} {input.reads} | \
+            samtools view -b -@ {threads} - | \
+            samtools sort {params.samtools_sort_extra} -@ {threads} -o {output.bam} -) &> {log}
+         """
 
 rule index_bam:
     input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
@@ -321,7 +354,7 @@ else:
     epic_info="{outdir}/info/{sample}.{genome}.experiment_predictd.txt"
     treat_file_epic="{outdir}/bams/{sample}.{genome}.experiment.bam"
 
-if controls is not None:
+if controls != "None":
     control_file_macs2="{outdir}/bams/{sample}.{genome}.control.bam"
     macs2_command="(macs2 callpeak -t {input.treatment} -c {input.control}" \
                   + " {params} --outdir {wildcards.outdir}/peaks_macs_unstranded/ " \

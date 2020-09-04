@@ -16,6 +16,9 @@ setClass("RSeq_variables",
            ip_type = "character",
            read_length = "numeric",
            paired_end = "logical",
+           no_fastp = "logical",
+           no_dedupe = "logical",
+           sample_type = "character",
            strand_specific = "logical"
          ))
 
