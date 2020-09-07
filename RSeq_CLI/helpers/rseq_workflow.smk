@@ -52,7 +52,7 @@ else:
     if controls == "None":
         merge_input_control = None
     else:
-        merge_input_control_1 = controls
+        merge_input_control = controls
 
 
 
