@@ -434,6 +434,11 @@ arg <- commandArgs(trailingOnly=TRUE)
 #  "experiment" = c("RSeq_CLI/tests/qDRIP_R1.fastq+RSeq_CLI/tests/qDRIP_R2.fastq")
 #)
 #write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test2.csv")
+#sampleSheet <- data.frame(
+#  "experiment" = c("RSeq_CLI/tests/qDRIP_R1.fastq+RSeq_CLI/tests/qDRIP_R2.fastq"),
+#  "control" = c("RSeq_CLI/tests/qDRIP_ctr_R1.fastq+RSeq_CLI/tests/qDRIP_ctr_R2.fastq")
+#)
+#write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test3.csv")
 #arg <- c("~/Bishop.lab/Projects/RSeq/RSeq_CLI/helpers",
 #          "DRIP", "RSeq_CLI/tests/RSeq_out",
 #          "hg38", "~/.RSeq_genomes", 98, FALSE, FALSE,
