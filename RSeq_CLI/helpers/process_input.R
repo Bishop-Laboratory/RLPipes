@@ -206,7 +206,6 @@ processInput <- function(mode = NULL,
   ## Process public samples ##
   if (any(samples$file_type == "public")) {
     samples_public <- samples[samples$file_type == "public",]
-
     # Get info for controls first
     public_ctr_accessions <- samples_public$control[! is.na(samples_public$control)]
     ctr_studies <- grep(public_ctr_accessions, pattern = "^GSE[0-9]+$|^SRP[0-9]+$|^PRJNA[0-9]+$")
@@ -234,7 +233,9 @@ processInput <- function(mode = NULL,
 
     # Get info for experimental samples
     samples_public <- samples_public[! is.na(samples_public$experiment),]
+
     sra_info_exp <- get_public_run_info(samples_public$experiment)
+
     # -- collate
     public_sample_list <- list()
     for (i in 1:length(samples_public$experiment)) {
@@ -248,6 +249,7 @@ processInput <- function(mode = NULL,
                             by.x = "experiment", by.y = "accessions_original", all = TRUE)
       # -- Fix EXP info
       sra_info_new <- sra_info_new[,c(-1)]
+
       colnames(sra_info_new)[which(colnames(sra_info_new) == "experiment_final")] <- "experiment"
 
       # TODO: make sure that user-specified genome is correct
@@ -263,6 +265,7 @@ processInput <- function(mode = NULL,
         sra_info_new$genome <- sra_info_new$genome.x
       }
 
+
       if (all(is.na(sra_info_new$sample_name.x))) {
         sra_info_new$sample_name <- sra_info_new$sample_name.y
       }
@@ -271,19 +274,13 @@ processInput <- function(mode = NULL,
       sra_info_new$sample_name <- ifelse(is.na(sra_info_new$sample_name.x),
                                          as.character(sra_info_new$sample_name.y),
                                          as.character(sra_info_new$sample_name.x))
-      # -- condition
-      sra_info_new$condition <- ifelse(is.na(sra_info_new$condition.x),
-                                       as.character(sra_info_new$condition.y),
-                                       as.character(sra_info_new$condition.x))
-      # -- outname
-      sra_info_new$out_name <- ifelse(is.na(sra_info_new$out_name.x),
-                                      as.character(sra_info_new$out_name.y),
-                                      as.character(sra_info_new$out_name.x))
+
       # -- paired end
       sra_info_new$paired_end <- sra_info_new$paired_end.y
 
       # -- read length
       sra_info_new$read_length <- sra_info_new$read_length.y
+
 
       # -- final ordering
       keepInd <- which(colnames(sra_info_new) %in% colnames(samples_public))
@@ -368,8 +365,8 @@ processInput <- function(mode = NULL,
 
     # Others
     vars_now@cores <- as.integer(samples_now$cores)
-    vars_now@experiments <- samples_now$experiment
-    vars_now@controls <- ifelse(is.na(samples_now$control), "None", samples_now$control)
+    vars_now@experiments <- as.character(samples_now$experiment)
+    vars_now@controls <- as.character(ifelse(is.na(samples_now$control), "None", samples_now$control))
     vars_now@sample_name <- samples_now$sample_name
     vars_now@out_dir <- samples_now$outdir
     vars_now@paired_end <- samples_now$paired_end
@@ -403,8 +400,6 @@ processInput <- function(mode = NULL,
 
 # Parse shell args
 arg <- commandArgs(trailingOnly=TRUE)
-
-
 
 # Source helpers
 source(file.path(arg[1], "utils.R"))

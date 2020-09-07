@@ -51,6 +51,36 @@ sampleSheet <- data.frame(
 )
 write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test8.csv")
 
+# SE fastq (local + with control)
+# TODO: This will produce an error if the filename contains .hg38.experiment.bam
+sampleSheet <- data.frame(
+  "experiment" = "RSeq_CLI/tests/qDRIP.bam",
+  "control" = "RSeq_CLI/tests/qDRIP_ctr.bam"
+)
+write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test8.csv")
 
 
+## Public
+# SE fastq (without control)
+sampleSheet <- data.frame(
+  "experiment" = "SRR2019278"
+)
+write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test9.csv")
+# SE fastq (with control)
+sampleSheet <- data.frame(
+  "experiment" = "SRR2019278",
+  "control" = "SRR2019281"
+)
+write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test10.csv")
+# PE fastq (without control)
+sampleSheet <- data.frame(
+  "experiment" = "SRR10916579"
+)
+write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test11.csv")
+# SE fastq (local + with control)
+sampleSheet <- data.frame(
+  "experiment" = "SRR10916579",
+  "control" = "SRR10916580"
+)
+write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test12.csv")
 

@@ -121,11 +121,12 @@ get_available_genomes <- function() {
 # Helper function for querying public data accession, convert to SRA, and return run table
 get_public_run_info <- function(accessions) {
 
-   ### Bug testing ##
+   #### Bug testing ##
    #accessions <- c("SRX2481503", "SRX2481504", "GSE134101", "SRP150774", "GSE127329", "SRS1466492")
    #accessions <- c("SRX2918366", "SRX2918367", "GSM3936516", "SRX5129664")
    #accessions <- c("SRX2918366", "SRX2918367", "GSM3936517", "GSM3936517", "GSM3936517", "SRX5129664", "GSM2550995")
-   ##################
+   #accessions <- c("SRR2019278")
+   ###################
 
   accessions <- unique(accessions)
 
@@ -239,7 +240,7 @@ get_public_run_info <- function(accessions) {
     SRX <- exp_now$EXPERIMENT$IDENTIFIERS$PRIMARY_ID
     SRRs <- unlist(exp_now$RUN_SET, use.names = FALSE)
     SRRs <- unique(SRRs[grep(SRRs, pattern = "^SRR[0-9]+$")])
-    new_exp_name <- paste0(SRX, "+", paste0(SRRs, collapse = ","))
+    new_exp_name <- paste0(SRRs, collapse = ",")
     # TODO: see if there's some way to get condition info from SRA
     condition <- exp_now$STUDY$IDENTIFIERS$PRIMARY_ID
     out_name <- exp_now$SAMPLE$TITLE

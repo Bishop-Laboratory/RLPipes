@@ -23,36 +23,45 @@ output_fastq_experiment_1 = expand("{outdir}/fastqs/{sample_name}_experiment_R1.
                  sample_name=sample_name, outdir=outdir)
 output_fastq_experiment_2 = expand("{outdir}/fastqs/{sample_name}_experiment_R2.fastq",
                  sample_name=sample_name, outdir=outdir)
-if sample_type != "fastq":
-    merge_input_experiment_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
-                               sample_name=sample_name,
-                               srr_acc=experiments, outdir=outdir)
-    merge_input_experiment_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
-                               sample_name=sample_name,
-                               srr_acc=experiments, outdir=outdir)
-    merge_input_control_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
-                           sample_name=sample_name,
-                           srr_acc=controls, outdir=outdir)
-    merge_input_control_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
+if paired_end:
+    if sample_type == "public":
+        merge_input_experiment_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
+                                   sample_name=sample_name,
+                                   srr_acc=experiments, outdir=outdir)
+        merge_input_experiment_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
+                                   sample_name=sample_name,
+                                   srr_acc=experiments, outdir=outdir)
+        merge_input_control_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
                                sample_name=sample_name,
                                srr_acc=controls, outdir=outdir)
-elif paired_end:
-    # Fastq files are supplied, and they are paired end
-    merge_input_experiment_1 = experiments.split("+")[0]
-    merge_input_experiment_2 = experiments.split("+")[1]
-    if controls == "None":
-        merge_input_control_1 = None
-        merge_input_control_2 = None
-    else:
-        merge_input_control_1 = controls.split("+")[0]
-        merge_input_control_2 = controls.split("+")[1]
+        merge_input_control_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
+                                   sample_name=sample_name,
+                                   srr_acc=controls, outdir=outdir)
+    elif sample_type == "fastq":
+        # Fastq files are supplied, and they are paired end
+        merge_input_experiment_1 = experiments.split("+")[0]
+        merge_input_experiment_2 = experiments.split("+")[1]
+        if controls == "None":
+            merge_input_control_1 = None
+            merge_input_control_2 = None
+        else:
+            merge_input_control_1 = controls.split("+")[0]
+            merge_input_control_2 = controls.split("+")[1]
 else:
-    # Fastq files are supplied, and they are single end
-    merge_input_experiment = experiments
-    if controls == "None":
-        merge_input_control = None
+    if sample_type == "public":
+        merge_input_experiment = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra.fastq",
+                                   sample_name=sample_name,
+                                   srr_acc=experiments, outdir=outdir)
+        merge_input_control = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra.fastq",
+                               sample_name=sample_name,
+                               srr_acc=controls, outdir=outdir)
     else:
-        merge_input_control = controls
+        # Fastq files are supplied, and they are single end
+        merge_input_experiment = experiments
+        if controls == "None":
+            merge_input_control = None
+        else:
+            merge_input_control = controls
 
 
 output_fastq_control_1 = expand("{outdir}/fastqs/{sample_name}_control_R1.fastq",
@@ -114,9 +123,8 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
     if sample_type == "public":
         rule download_sra:
             output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}.sra")
-            log: "{outdir}/{sample}/logs/{srr_acc}__download_sra.log"
+            log: "{outdir}/logs/{sample}_{srr_acc}__download_sra.log"
             shell: "(prefetch {wildcards.srr_acc} --output-file {output}) &> {log}"
-
 
     if paired_end:
         if sample_type == "public":
