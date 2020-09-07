@@ -90,9 +90,12 @@ else:
                          sample=sample_name, outdir=outdir)
                    ]
 
-bam_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam",
-                        sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment",])
-
+if controls != "None":
+    bam_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam",
+                            sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment","control"])
+else:
+    bam_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam",
+                            sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment",])
 
 # TODO: Set the TMPDIR
 
@@ -293,12 +296,20 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
 if sample_type != "bigWig" and sample_type != "bedGraph":
 
     if sample_type == "bam":
-        rule copy_bam:
+        rule copy_bam_exp:
             input: experiments
-            output: bam_output
+            output: bam_output[0]
             shell: """
                 cp {input} {output}
             """
+
+        if controls != "None":
+            rule copy_bam_ctr:
+                input: controls
+                output: bam_output[1]
+                shell: """
+                    cp {input} {output}
+                """
 
     rule index_bam:
         input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"

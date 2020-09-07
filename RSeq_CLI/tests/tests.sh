@@ -14,9 +14,21 @@ RSeq -m DRIP -s RSeq_CLI/tests/sampleSheet_test4.csv -g hg38 -o RSeq_CLI/tests/R
 
 ## Starting from BAM
 
-# Mismatched bam file
+# SE DRIP
+RSeq -m DRIP -s RSeq_CLI/tests/sampleSheet_test5.csv -g hg38 -o RSeq_CLI/tests/RSeq_out5 -t 96
 
-## Test SRA files
+# SE DRIP + control
+RSeq -m DRIP -s RSeq_CLI/tests/sampleSheet_test6.csv -g hg38 -o RSeq_CLI/tests/RSeq_out6 -t 96
+
+# PE stranded DRIP
+RSeq -m DRIP -s RSeq_CLI/tests/sampleSheet_test7.csv -g hg38 -o RSeq_CLI/tests/RSeq_out7 -t 96
+
+# PE stranded DRIP + control
+RSeq -m DRIP -s RSeq_CLI/tests/sampleSheet_test8.csv -g hg38 -o RSeq_CLI/tests/RSeq_out8 -t 96
+
+
+
+## Test public data
 
 
 ## RChIP with fastq files
