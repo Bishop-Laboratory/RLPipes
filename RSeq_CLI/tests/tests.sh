@@ -1,16 +1,30 @@
 #!/bin/bash
 
-# Test basic functionality with DRIP-Seq fastq files
+## Test local fastq files
 
-# Test SRA files
 
-# Starting from BAM
+RSeq -m DRIP -s RSeq_CLI/tests/sampleSheet_test1.csv -g hg38 -o RSeq_CLI/tests/RSeq_out1 -t 96
 
-# RChIP with fastq files
+RSeq -m qDRIP -s RSeq_CLI/tests/sampleSheet_test2.csv -g hg38 -o RSeq_CLI/tests/RSeq_out2 -t 96
 
-# Starting from bigWigs
+RSeq -m qDRIP -s RSeq_CLI/tests/sampleSheet_test3.csv -g hg38 -o RSeq_CLI/tests/RSeq_out3 -t 96
+
+RSeq -m DRIP -s RSeq_CLI/tests/sampleSheet_test4.csv -g hg38 -o RSeq_CLI/tests/RSeq_out4 -t 96
+
+
+## Starting from BAM
 
 # Mismatched bam file
 
-# Mismatched bigWig
+## Test SRA files
+
+
+## RChIP with fastq files
+
+
+## Starting from bigWigs
+
+
+
+## Mismatched bigWig
 

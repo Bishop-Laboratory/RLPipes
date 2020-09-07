@@ -168,26 +168,6 @@ processInput <- function(mode = NULL,
   # bams
   bamInd <- which(samples$file_type == "bam")
   if (length(bamInd)) {
-
-    # -- Check bam files against assembly entered
-    genome_check <- unlist(lapply(bamInd, function(ind) {
-      check_bam_assembly(samples$experiment[ind], samples$genome[ind])
-    }))
-    if (any(! genome_check) & ! convert_bams) {
-      msg <- paste0("Specified assembly (", samples$genome[bamInd], ") does not match bam file header (",
-                    samples$experiment[bamInd][! genome_check], ").",
-                    " Select 'convert bams = TRUE' to re-align reads to ",
-                    samples$genome[bamInd][! genome_check], ".\n")
-      stop(msg)
-    } else if (any(! genome_check)) {
-      msg <- paste0("Specified assembly (", samples$genome[bamInd][! genome_check],
-                    ") does not match bam file header (",
-                    samples$experiment[bamInd][! genome_check], ").",
-                    " Converting and re-aligning reads to ",
-                    samples$genome[bamInd][! genome_check], ".\n")
-      warning(msg, immediate. = TRUE)
-    }
-
     # -- Get the read lengths
     samples$read_length[bamInd] <- unlist(lapply(bamInd, function(ind) {
       get_bam_read_length(samples$experiment[ind])

@@ -9,6 +9,9 @@ R-package/RSeq.Rproj
 R-package/run_vars.json
 RSeq_out*
 *.fastq
+*.bam
+*.bw
+*.bedGraph
 venv/
 
 

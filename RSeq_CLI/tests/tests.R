@@ -1,4 +1,6 @@
 ## Test sample-sheets
+
+## Fastqs
 # SE fastq (local)
 sampleSheet <- data.frame(
   "experiment" = c("RSeq_CLI/tests/NT2_DRIP_head.fastq")
@@ -21,6 +23,21 @@ sampleSheet <- data.frame(
   "control" = c("RSeq_CLI/tests/TC32_DRIP_ctr_head.fastq")
 )
 write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test4.csv")
+
+## Bams
+# SE fastq (local + without control)
+sampleSheet <- data.frame(
+  "experiment" = c("RSeq_CLI/tests/NT2_DRIP_head.hg38.experiment.bam")
+)
+write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test5.csv")
+# SE fastq (local + with control)
+sampleSheet <- data.frame(
+  "experiment" = c("RSeq_CLI/tests/TC32_DRIP_head.fastq"),
+  "control" = c("RSeq_CLI/tests/TC32_DRIP_ctr_head.fastq")
+)
+write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test4.csv")
+
+
 
 
 
