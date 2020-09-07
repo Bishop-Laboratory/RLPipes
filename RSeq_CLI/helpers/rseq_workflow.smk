@@ -128,6 +128,7 @@ if sample_type != "bam":
                     "(fasterq-dump -e {threads} --split-files -O" \
                     + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ {input}) &> {log}"
 
+
         rule merge_fastq_pe_experiment:
             input:
                 R1=merge_input_experiment_1,
@@ -380,7 +381,6 @@ else:
     epic2_command_lt="(frag_med=$(cat {input.info} | grep -o 'predicted fragment length is [0-9]* bps' | cut -d ' ' -f 5) &&" \
         + " wget {params.wget_in} -O {params.wget_out} && " + epic2_command + " --fragment-size ${{frag_med%.*}}) &> {log}"
 
-
 rule macs2_callpeak_unstranded:
     input:
         treatment=treat_file_macs2,
@@ -390,6 +390,7 @@ rule macs2_callpeak_unstranded:
     params: params_macs2
     log: "{outdir}/logs/{sample}/{genome}__macs2_callpeak_unstranded.log"
     shell: macs2_command
+
 
 rule bampe_to_bedpe:
     # adapted from https://github.com/biocore-ntnu/epic2/issues/24
@@ -409,6 +410,7 @@ rule bampe_to_bedpe:
         awk '{{if($2 >= 1 && $8 >= 30) print}}' /dev/stdin > {output}) &> {log}
     """
 
+
 rule epic2_callpeak_unstranded:
     input:
          treatment=treat_file_epic,
@@ -425,6 +427,7 @@ rule epic2_callpeak_unstranded:
         wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
     log: "{outdir}/logs/{sample}/{genome}__epic2_callpeak_unstranded.log"
     shell: epic2_command_lt
+
 
 # Calculate this for all reads
 rule deeptools_coverage_unstranded:
@@ -447,7 +450,7 @@ if strand_specific:
     experiment_minus = "{outdir}/bams_stranded/{sample}.{genome}.experiment.m.bam"
     index = ["{outdir}/bams_stranded/{sample}.{genome}.experiment.p.bam.bai",
              "{outdir}/bams_stranded/{sample}.{genome}.experiment.m.bam.bai"]
-    if controls is not None:
+    if controls != "None":
         control_plus = "{outdir}/bams_stranded/{sample}.{genome}.control.p.bam"
         control_minus = "{outdir}/bams_stranded/{sample}.{genome}.control.m.bam"
         index.extend(["{outdir}/bams_stranded/{sample}.{genome}.control.p.bam.bai",

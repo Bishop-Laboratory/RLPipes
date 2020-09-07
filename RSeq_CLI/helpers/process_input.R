@@ -430,6 +430,10 @@ arg <- commandArgs(trailingOnly=TRUE)
 #  "experiment" = c("RSeq_CLI/tests/NT2_DRIP_head.fastq")
 #)
 #write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test1.csv")
+#sampleSheet <- data.frame(
+#  "experiment" = c("RSeq_CLI/tests/qDRIP_R1.fastq+RSeq_CLI/tests/qDRIP_R2.fastq")
+#)
+#write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test2.csv")
 #arg <- c("~/Bishop.lab/Projects/RSeq/RSeq_CLI/helpers",
 #          "DRIP", "RSeq_CLI/tests/RSeq_out",
 #          "hg38", "~/.RSeq_genomes", 98, FALSE, FALSE,
