@@ -37,8 +37,19 @@ sampleSheet <- data.frame(
   "control" = c("RSeq_CLI/tests/TC32_DRIP_ctr_head.bam")
 )
 write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test6.csv")
-
-
+# PE fastq (local)
+# TODO: This will produce an error if the filename contains .hg38.experiment.bam
+sampleSheet <- data.frame(
+  "experiment" = c("RSeq_CLI/tests/qDRIP.bam")
+)
+write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test7.csv")
+# SE fastq (local + with control)
+# TODO: This will produce an error if the filename contains .hg38.experiment.bam
+sampleSheet <- data.frame(
+  "experiment" = c("RSeq_CLI/tests/qDRIP.bam"),
+  "control" = c("RSeq_CLI/tests/qDRIP_ctr.bam")
+)
+write.csv(sampleSheet, "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/sampleSheet_test8.csv")
 
 
 
