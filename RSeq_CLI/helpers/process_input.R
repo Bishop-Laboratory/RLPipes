@@ -5,35 +5,57 @@ processInput <- function(mode = NULL,
                          cores = NULL,
                          no_dedupe = FALSE,
                          no_fastp = FALSE,
-                         samples = NULL) {
+                         samples = NULL,
+                         available_genomes,
+                         chrom_sizes_list) {
 
 
-  ### For bug testing ##
-  #mode = arg[-1][1]
-  #outdir = arg[-1][2]
-  #genome = arg[-1][3]
-  #genome_home_dir = arg[-1][4]
-  #cores = arg[-1][5]
-  #samples <- arg[-1][6]
-  ## #####################
+   ### For bug testing ##
+   #mode = ""
+   #outdir = "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_out"
+   #genome = ""
+   #genome_home_dir = "/home/UTHSCSA/millerh1/.RSeq_genomes"
+   #cores = "1"
+   #no_dedupe <- NA
+   #no_fastp <- NA
+   #samples <- "RSeq_CLI/tests/manifest_for_RSeq_testing_11092020.csv"
+   ## #####################
+
+  # Fix CLI inputs
+  if (mode == "") {
+    mode <- NULL
+  }
+
+  if (genome == "") {
+    genome <- NULL
+  }
+
+  if (is.na(no_dedupe)) {
+    no_dedupe <- FALSE
+  }
+
+  if (is.na(no_fastp)) {
+    no_fastp <- FALSE
+  }
+
 
   # Additional data
   # TODO: add support for bigWig and bedGraph
   read_align_pattern <- "\\.bam$|\\.f[ast]*q$"
-  public_pattern <- paste0("^SR[RAXSP][0-9]+$|^GS[EM][0-9]+$|^PRJNA[0-9]+$|^SAMN[0-9]+$")
+  public_pattern <- paste0("^[ES]R[RAXSP][0-9]+$|^GS[EM][0-9]+$|^PRJNA[0-9]+$|^SAMN[0-9]+$")
   R1_pattern <- "[\\._]+[rR]*1\\.f[ast]*q$"
   R2_pattern <- "[\\._]+[rR]*2\\.f[ast]*q$"
   fq_end_pattern <- paste0(R1_pattern, "|", R2_pattern, "|[\\._]+[rR]*\\*.f[ast]*q$|\\.f[ast]*q$")
 
   mode_df <- data.frame(
-  mode = c("DRIP", "ssDRIP", "qDRIP",
-           "sDRIP", "S1-DRIP", "bisDRIP",
-           "SMRF", "RDIP", "DRIPc",
-           "R-ChIP", "RR-ChIP", "DRIVE",
-           "MapR", "RNH-CnR"),
-  strand_specific = c(FALSE, rep(TRUE, 3), FALSE, rep(TRUE, 6), rep(FALSE, 3)),
-  ip_type = c(rep("S9.6", 9), rep("RNaseH1", 5)),
-  moeity = c(rep("DNA", 7), rep("RNA", 7)), stringsAsFactors = FALSE
+    mode = c("DRIP", "ssDRIP", "qDRIP",
+             "sDRIP", "S1-DRIP", "bisDRIP",
+             "SMRF", "RDIP", "DRIPc",
+             "R-ChIP", "RR-ChIP", "DRIVE",
+             "MapR", "RNH-CnR"),
+    strand_specific = c(FALSE, rep(TRUE, 3), FALSE, rep(TRUE, 6), rep(FALSE, 3)),
+    ip_type = c(rep("S9.6", 9), rep("RNaseH1", 5)),
+    moeity = c(rep("DNA", 7), rep("RNA", 7)), stringsAsFactors = FALSE
   )
   modes <- c(mode_df$mode, "custom")
 
@@ -85,6 +107,12 @@ processInput <- function(mode = NULL,
     }
   }
 
+  # Unique
+  samples <- unique(samples)
+
+  # Remove erroneous rows (not for production)
+  samples <- samples[! samples$experiment %in% samples$control, ]
+
   # Fix genome home dir if using tilde
   genome_home_dir <- gsub(genome_home_dir, pattern = "~", replacement = path.expand("~"))
 
@@ -111,7 +139,7 @@ processInput <- function(mode = NULL,
   if (! "strand_specific" %in% colnames(samples)) {samples$strand_specific <- NA}
   if (! "moeity" %in% colnames(samples)) {samples$moeity <- NA}
   if (! "ip_type" %in% colnames(samples)) {samples$ip_type <- NA}
-  for (i in 1:length(samples$experiment)) {
+  for (i in seq(samples$experiment)) {
     mode_now <- samples$mode[i]
     if(is.na(samples$strand_specific[i])) {samples$strand_specific[i] <- mode_df$strand_specific[mode_df$mode == mode_now]}
     if(is.na(samples$moeity[i])) {samples$moeity[i] <- mode_df$moeity[mode_df$mode == mode_now]}
@@ -221,12 +249,13 @@ processInput <- function(mode = NULL,
 
     # -- add back to public samples frame
     new_ctr_vec <- c()
-    for (orig_ctr in samples_public$control) {
+    for (i in seq(samples_public$control)) {
+      orig_ctr <- samples_public$control[i]
       if (is.na(orig_ctr)) {
         new_ctr_vec <- c(new_ctr_vec, NA)
       } else {
         new_ctr_vec <- c(new_ctr_vec, as.character(
-          sra_info_ctr$experiment[sra_info_ctr$accessions_original == orig_ctr]))
+          as.character(sra_info_ctr$experiment[which(sra_info_ctr$accessions_original == orig_ctr)])))
       }
     }
     samples_public$control <- new_ctr_vec
@@ -238,7 +267,7 @@ processInput <- function(mode = NULL,
 
     # -- collate
     public_sample_list <- list()
-    for (i in 1:length(samples_public$experiment)) {
+    for (i in seq(samples_public$experiment)) {
       #sample <- samples_public$experiment[3]
       sample <- samples_public$experiment[i]
       samples_public_now <- samples_public[samples_public$experiment == sample,]
@@ -280,7 +309,6 @@ processInput <- function(mode = NULL,
 
       # -- read length
       sra_info_new$read_length <- sra_info_new$read_length.y
-
 
       # -- final ordering
       keepInd <- which(colnames(sra_info_new) %in% colnames(samples_public))
@@ -393,6 +421,8 @@ processInput <- function(mode = NULL,
   dir.create(outdir, showWarnings = FALSE)
   output_json <- file.path(outdir, "rseqVars.json")
   jsonlite::write_json(vars_list, path = output_json)
+  output_csv <- file.path(outdir, "rseqVars.csv")
+  write.csv(samples, file = output_csv)
 
   return(output_json)
 
@@ -415,7 +445,9 @@ result <- processInput(mode = arg[2],
                        cores = arg[6],
                        no_dedupe = as.logical(arg[7]),
                        no_fastp = as.logical(arg[8]),
-                       samples = arg[9])
+                       samples = arg[9],
+                       available_genomes,
+                       chrom_sizes_list)
 cat(result)
 
 

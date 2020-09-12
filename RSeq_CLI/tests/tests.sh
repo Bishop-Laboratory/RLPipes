@@ -26,8 +26,6 @@ RSeq -m DRIP -s RSeq_CLI/tests/sampleSheet_test7.csv -g hg38 -o RSeq_CLI/tests/R
 # PE stranded DRIP + control
 RSeq -m DRIP -s RSeq_CLI/tests/sampleSheet_test8.csv -g hg38 -o RSeq_CLI/tests/RSeq_out8 -t 96
 
-
-
 ## Test public data
 
 

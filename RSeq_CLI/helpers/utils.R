@@ -77,72 +77,34 @@ get_fastq_read_length <- function(fastq_file) {
   return(mean(lens))
 }
 
-
-#' Get available genomes
-#' Helper function to return data frame with info on available genomes from UCSC.
-get_available_genomes <- function() {
-
-  # from http://rstudio-pubs-static.s3.amazonaws.com/562103_092b7264f392482e827440cf1521363c.html
-  api_genome <- restfulr::RestUri("http://api.genome.ucsc.edu/list")
-  response <- restfulr::read(api_genome$ucscGenomes)
-  available_genomes <- do.call(rbind.data.frame, response$ucscGenomes)
-  available_genomes <- cbind(rownames(available_genomes), available_genomes)
-  colnames(available_genomes)[1] <- "UCSC_orgID"
-  # Check to see if genome predictions are available
-  resList <- list()
-  for (i in 1:length(available_genomes$UCSC_orgID)) {
-    genome_now <- available_genomes$UCSC_orgID[i]
-    # print(i)
-    resList[[i]] <- tryCatch(! httr::http_error(paste0("ftp://hgdownload.soe.ucsc.edu/goldenPath/",
-                                                       genome_now, "/bigZips/genes/README.txt")),
-                             error = function(e) {
-                               if (class(e) == "simpleError") {
-                                 FALSE
-                               } else {
-                                 stop(e)
-                               }})
-
-  }
-
-  available_genomes$genes_available <- unlist(resList)
-  available_genomes
-  available_genomes <- data.frame(lapply(available_genomes, as.character), stringsAsFactors=FALSE)
-  available_genomes$taxId <- as.numeric(available_genomes$taxId)
-  available_genomes$genes_available <- as.logical(available_genomes$genes_available)
-  years <- gsub(available_genomes$description, pattern = ".+ (20[0-9][0-9])[ /].+", replacement = "\\1")
-  available_genomes$year <- as.numeric(years)
-  # # For internal use
-  # usethis::use_data(available_genomes, overwrite = TRUE)
-  return(available_genomes)
-}
-
-
-
 # Helper function for querying public data accession, convert to SRA, and return run table
 get_public_run_info <- function(accessions) {
 
-   #### Bug testing ##
-   #accessions <- c("SRX2481503", "SRX2481504", "GSE134101", "SRP150774", "GSE127329", "SRS1466492")
-   #accessions <- c("SRX2918366", "SRX2918367", "GSM3936516", "SRX5129664")
-   #accessions <- c("SRX2918366", "SRX2918367", "GSM3936517", "GSM3936517", "GSM3936517", "SRX5129664", "GSM2550995")
-   #accessions <- c("SRR2019278")
-   ###################
+  #### Bug testing ##
+  #accessions <- c("SRX2481503", "SRX2481504", "GSE134101", "SRP150774", "GSE127329", "SRS1466492")
+  #accessions <- c("SRX2918366", "SRX2918367", "GSM3936516", "SRX5129664")
+  #accessions <- c("SRX2918366", "SRX2918367", "GSM3936517", "GSM3936517", "GSM3936517", "SRX5129664", "GSM2550995")
+  #accessions <- c("SRR2019278")
+  # accessions <- public_ctr_accessions
+  # accessions <- samples_public$experiment
+  #accessions <- public_ctr_accessions
+  ###################
 
   accessions <- unique(accessions)
 
   # Convert GEO series to BioProject accessions
   acc_gse <- accessions[grep(accessions, pattern = "^GSE[0-9]+$")]
   if (length(acc_gse)) {
-    fail = TRUE
+    fail <- TRUE
     while (fail) {
       esearch_gse <- reutils::esearch(acc_gse, db = "gds")
       if (length(as.character(esearch_gse$errors$error))) {
         if (as.character(esearch_gse$errors$error) == "HTTP error: Status 429; Too Many Requests") {
-          fail = TRUE
+          fail <- TRUE
           Sys.sleep(1)
         }
       } else {
-        fail = FALSE
+        fail <- FALSE
       }
     }
 
@@ -150,16 +112,16 @@ get_public_run_info <- function(accessions) {
     if (length(esearch_gse$errors$errmsg)) {
       stop(paste0(paste0(esearch_gse$errors$errmsg, collapse = ", ")), " not found")
     }
-    fail = TRUE
+    fail <- TRUE
     while (fail) {
       content_bp <- reutils::efetch(esearch_gse)
       if (length(as.character(content_bp$errors$error))) {
         if (as.character(content_bp$errors$error) == "HTTP error: Status 429; Too Many Requests") {
-          fail = TRUE
+          fail <- TRUE
           Sys.sleep(1)
         }
       } else {
-        fail = FALSE
+        fail <- FALSE
         content_bp <- content_bp$content
       }
     }
@@ -177,114 +139,122 @@ get_public_run_info <- function(accessions) {
                         "accessions_cleaned" = accessions, stringsAsFactors = FALSE)
   }
 
-
-  # Query all accessions in SRA
-  fail = TRUE
-  while (fail) {
-    Sys.sleep(.5)
-    esearch_sra <- reutils::esearch(accessions, db = "sra")
-    if (length(as.character(esearch_sra$errors$error))) {
-      if (as.character(esearch_sra$errors$error) == "HTTP error: Status 429; Too Many Requests") {
-        fail = TRUE
-        Sys.sleep(1)
+  # Build chunks of 100 accessions
+  acc_list <- split(accessions, ceiling(seq_along(accessions)/100))
+  res_list_full <- lapply(acc_list, function (accnow) {
+    # Query all accessions in SRA
+    fail <- TRUE
+    while (fail) {
+      Sys.sleep(.5)
+      esearch_sra <- reutils::esearch(accnow, db = "sra")
+      if (length(as.character(esearch_sra$errors$error))) {
+        if (as.character(esearch_sra$errors$error) == "HTTP error: Status 429; Too Many Requests") {
+          fail <- TRUE
+          Sys.sleep(1)
+        }
+      } else {
+        fail <- FALSE
       }
-    } else {
-      fail = FALSE
     }
-  }
-  if (length(esearch_sra$errors$errmsg)) {
-    stop(paste0(paste0(esearch_sra$errors$errmsg, collapse = ", ")), " not found")
-  }
-  fail = TRUE
-  while (fail) {
-    Sys.sleep(.5)
-    content_sra <- reutils::efetch(esearch_sra)
-    if (length(as.character(content_sra$errors$error))) {
-      if (as.character(content_sra$errors$error) == "HTTP error: Status 429; Too Many Requests") {
-        fail = TRUE
-        Sys.sleep(1)
+    if (length(esearch_sra$errors$errmsg)) {
+      stop(paste0(paste0(esearch_sra$errors$errmsg, collapse = ", ")), " not found")
+    }
+    fail <- TRUE
+    while (fail) {
+      Sys.sleep(.5)
+      content_sra <- reutils::efetch(esearch_sra)
+      if (length(as.character(content_sra$errors$error))) {
+        if (as.character(content_sra$errors$error) == "HTTP error: Status 429; Too Many Requests") {
+          fail <- TRUE
+          Sys.sleep(1)
+        }
+      } else {
+        fail <- FALSE
+        content_sra <- content_sra$content
       }
-    } else {
-      fail = FALSE
-      content_sra <- content_sra$content
     }
-  }
 
-  result <- XML::xmlToList(XML::xmlParse(content_sra))
+    result <- XML::xmlToList(XML::xmlParse(content_sra))
 
-  # Need to map back to original entries -- very annoying...
-  # TODO: Figure out a better way to do this without user error issues
-  fltr <- reutils::make_flattener()
-  acc_matchs <- lapply(result, function(res_now) {
-    flt_res <- unlist(fltr(res_now))
-    acc_match <- accessions[which(accessions %in% flt_res)]
-    names(acc_match) <- res_now$EXPERIMENT$IDENTIFIERS$PRIMARY_ID
-    if (length(acc_match) > 1) {
-      stop("Multiple provided accessions (",paste0(acc_match, collapse = ", "),
-           ") mapped to identical SRA entries: ",
-           res_now$EXPERIMENT$IDENTIFIERS$PRIMARY_ID, ". This interferes with assigning",
-           " parameters for experimental conditions. Please remove these duplcates.")
-    }
-    return(acc_match)
+    # Need to map back to original entries -- very annoying...
+    # TODO: Figure out a better way to do this without user error issues
+    fltr <- reutils::make_flattener()
+    acc_matchs <- lapply(result, function(res_now) {
+      flt_res <- unlist(fltr(res_now))
+      acc_match <- accnow[which(accnow %in% flt_res)]
+      names(acc_match) <- res_now$EXPERIMENT$IDENTIFIERS$PRIMARY_ID
+      if (length(acc_match) > 1) {
+        stop("Multiple provided accessions (",paste0(acc_match, collapse = ", "),
+             ") mapped to identical SRA entries: ",
+             res_now$EXPERIMENT$IDENTIFIERS$PRIMARY_ID, ". This interferes with assigning",
+             " parameters for experimental conditions. Please remove these duplcates.")
+      }
+      return(acc_match)
+    })
+    acc_matchs <- unlist(acc_matchs, use.names = TRUE)
+    names(acc_matchs) <- gsub(names(acc_matchs), pattern = "EXPERIMENT_PACKAGE\\.", replacement = "")
+
+    map_2 <- data.frame("accessions_cleaned" = acc_matchs,
+                        "sra_experiment" = names(acc_matchs), stringsAsFactors = FALSE)
+    map_merge <- merge(x = map_1, y = map_2, by = "accessions_cleaned", all = TRUE)
+
+    # Unpack experiment list
+    resList <- lapply(result, FUN = function(exp_now) {
+      # exp_now <- result[[19]]
+
+      SRX <- exp_now$EXPERIMENT$IDENTIFIERS$PRIMARY_ID
+      SRRs <- unlist(exp_now$RUN_SET, use.names = FALSE)
+      SRRs <- unique(SRRs[grep(SRRs, pattern = "^[SE]RR[0-9]+$")])
+      new_exp_name <- paste0(SRRs, collapse = ",")
+      # TODO: see if there's some way to get condition info from SRA
+      condition <- exp_now$STUDY$IDENTIFIERS$PRIMARY_ID
+      out_name <- exp_now$SAMPLE$TITLE
+      if (is.null(out_name)) {
+        out_name <- "UNKNOWN"
+      }
+      sample_name <- paste0(SRX, "_", clean_str(out_name))
+      sample_tx <- exp_now$SAMPLE$SAMPLE_NAME$TAXON_ID
+      possible_genomes <- available_genomes[available_genomes$taxId == sample_tx,]
+      lib_type <- names(exp_now$EXPERIMENT$DESIGN$LIBRARY_DESCRIPTOR$LIBRARY_LAYOUT)
+      if ("PAIRED" %in% lib_type) {
+        paired_end <- TRUE
+      } else {
+        paired_end <- FALSE
+      }
+      if (! length(possible_genomes$UCSC_orgID)) {
+        stop("No UCSC genome assembly available for sample ", SRX, " with taxonomy ID: ", sample_tx)
+      }
+      genomes_available <- possible_genomes[which(possible_genomes$genes_available),]
+      if (! length(genomes_available$UCSC_orgID)) {
+        warning("No UCSC genome annotations available for sample ", SRX, " with taxonomy ID: ", sample_tx,
+                ". Will not run steps which require annotations.")
+        genome <- possible_genomes$UCSC_orgID[which.max(possible_genomes$year)]
+      } else {
+        genome <- genomes_available$UCSC_orgID[which.max(genomes_available$year)]
+      }
+      read_length <- as.numeric(exp_now$RUN_SET$RUN$Statistics$Read["average"])
+      res_now <- data.frame(
+        sra_experiment = SRX,
+        experiment = new_exp_name,
+        genome = genome,
+        condition = condition,
+        paired_end = paired_end,
+        sample_name = sample_name,
+        out_name = out_name,
+        read_length = read_length
+      )
+
+      return(res_now)
+    })
+
+    res_df <- data.table::rbindlist(resList)
+    map_final <- merge(x = map_merge, y = res_df, by = "sra_experiment", all = TRUE)
   })
-  acc_matchs <- unlist(acc_matchs, use.names = TRUE)
-  names(acc_matchs) <- gsub(names(acc_matchs), pattern = "EXPERIMENT_PACKAGE\\.", replacement = "")
 
-  map_2 <- data.frame("accessions_cleaned" = acc_matchs,
-                      "sra_experiment" = names(acc_matchs), stringsAsFactors = FALSE)
-  map_merge <- merge(x = map_1, y = map_2, by = "accessions_cleaned", all = TRUE)
+  res_df_full <- data.table::rbindlist(res_list_full)
+  res_df_full <- res_df_full[! is.na(res_df_full$experiment)]
 
-  # Unpack experiment list
-  resList <- lapply(result, FUN = function(exp_now) {
-    # exp_now <- result[[30]]
-    SRX <- exp_now$EXPERIMENT$IDENTIFIERS$PRIMARY_ID
-    SRRs <- unlist(exp_now$RUN_SET, use.names = FALSE)
-    SRRs <- unique(SRRs[grep(SRRs, pattern = "^SRR[0-9]+$")])
-    new_exp_name <- paste0(SRRs, collapse = ",")
-    # TODO: see if there's some way to get condition info from SRA
-    condition <- exp_now$STUDY$IDENTIFIERS$PRIMARY_ID
-    out_name <- exp_now$SAMPLE$TITLE
-    sample_name <- paste0(SRX, "_", clean_str(out_name))
-    sample_tx <- exp_now$SAMPLE$SAMPLE_NAME$TAXON_ID
-    possible_genomes <- available_genomes[available_genomes$taxId == sample_tx,]
-    lib_type <- names(exp_now$EXPERIMENT$DESIGN$LIBRARY_DESCRIPTOR$LIBRARY_LAYOUT)
-    if ("PAIRED" %in% lib_type) {
-      paired_end <- TRUE
-    } else {
-      paired_end <- FALSE
-    }
-    if (! length(possible_genomes$UCSC_orgID)) {
-      stop("No UCSC genome assembly available for sample ", SRX, " with taxonomy ID: ", sample_tx)
-    }
-    genomes_available <- possible_genomes[which(possible_genomes$genes_available),]
-    if (! length(genomes_available$UCSC_orgID)) {
-      warning("No UCSC genome annotations available for sample ", SRX, " with taxonomy ID: ", sample_tx,
-              ". Will not run steps which require annotations.")
-      genes_available <- FALSE
-      genome <- possible_genomes$UCSC_orgID[which.max(possible_genomes$year)]
-    } else {
-      genes_available <- TRUE
-      genome <- genomes_available$UCSC_orgID[which.max(genomes_available$year)]
-    }
-    read_length <- as.numeric(exp_now$RUN_SET$RUN$Statistics$Read["average"])
-    res_now <- data.frame(
-      sra_experiment = SRX,
-      experiment = new_exp_name,
-      genome = genome,
-      condition = condition,
-      paired_end = paired_end,
-      sample_name = sample_name,
-      out_name = out_name,
-      read_length = read_length
-    )
-
-    return(res_now)
-  })
-
-  res_df <- data.table::rbindlist(resList)
-  map_final <- merge(x = map_merge, y = res_df, by = "sra_experiment", all = TRUE)
-
-  return(map_final)
+  return(res_df_full)
 }
 
 
@@ -307,10 +277,9 @@ clean_str <- function(str) {
 
 # Get genome sizes using unique-kmers.py script from khmer
 get_genome_sizes <- function() {
-  available_genomes <- available_genomes
 
   genome_size_list <- list()
-  for (i in 1:length(available_genomes$UCSC_orgID)) {
+  for (i in seq(available_genomes$UCSC_orgID)) {
     genome_now <- available_genomes$UCSC_orgID[i]
     print(genome_now)
     fasta_file <- paste0("ftp://hgdownload.soe.ucsc.edu/goldenPath/",
@@ -334,7 +303,7 @@ get_genome_sizes <- function() {
     }
 
     lengths <- c(36, 50, 75, 100, 125, 150, 200, 250, 300)
-    sizes <- c()
+    sizes <- character(length = length(lengths))
     for (length_now in lengths) {
       cmd <- paste0("unique-kmers.py -k ", length_now, " -R ",
                     out_file, "_", length_now, ".txt ", out_file)
@@ -396,7 +365,7 @@ get_chrom_sizes <- function() {
   # Check to see if genome predictions are available
   chrom_sizes_list <- list()
   full_len_list <- list()
-  for (i in 1:length(available_genomes$UCSC_orgID)) {
+  for (i in seq(available_genomes$UCSC_orgID)) {
     genome_now <- available_genomes$UCSC_orgID[i]
     print(as.character(genome_now))
 
@@ -421,6 +390,39 @@ get_chrom_sizes <- function() {
   save(full_len_list, file = "full_len_list.rda")
   return(chrom_sizes_list)
 }
+
+#' Get gold standard genes
+#' Helper function to get the gold standard genes in all different species
+get_gs_genes <- function() {
+
+  hg19gs <- import("RSeq_CLI/helpers/data/correlation_genes_100kb.bed")
+
+  require(rtracklayer)
+
+  # hg38
+  genome_now <- "Hg38"
+  tmp <- tempfile()
+  tmpgz <- paste0(tmp, ".gz")
+  download.file(url = paste0("ftp://hgdownload.soe.ucsc.edu/goldenPath/hg19/liftOver/hg19To", genome_now, ".over.chain.gz"),
+                destfile = tmpgz)
+  R.utils::gunzip(tmpgz)
+  chain <- import.chain(tmp)
+  hg38gs <- unique(unlist(liftOver(chain = chain, x = hg19gs)))
+
+  gs_list <- list("hg19" = hg19gs,
+       "hg38" = hg38gs)
+  save(gs_list, file = "RSeq_CLI/helpers/data/gs_list.rda")
+
+}
+
+
+
+
+
+
+
+
+
 
 
 

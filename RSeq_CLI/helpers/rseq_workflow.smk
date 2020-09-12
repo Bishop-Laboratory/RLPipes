@@ -15,9 +15,14 @@ sample_type=config['sample_type'][0]
 no_dedupe=config['no_dedupe'][0]
 no_fastp=config['no_fastp'][0]
 sample_name=config['sample_name'][0]
+# TODO: Should there be an option to specify whether or not to separate output folders based on sample_name?
 outdir=config['out_dir'][0]
-experiments=config['experiments'][0]
+outdir=config['out_dir'][0] + "/" + sample_name
+experiments=config['experiments'][0].split(",")
 controls=config['controls'][0]
+if controls != "None":
+    controls=controls.split(",")
+
 # Set expected output and inputs for merging of technical replicates (assumes public samples)
 output_fastq_experiment_1 = expand("{outdir}/fastqs/{sample_name}_experiment_R1.fastq",
                  sample_name=sample_name, outdir=outdir)
@@ -102,8 +107,12 @@ else:
 if controls != "None":
     bam_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam",
                             sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment","control"])
+    bam_index_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam.bai",
+                            sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment","control"])
 else:
     bam_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam",
+                            sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment",])
+    bam_index_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam.bai",
                             sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment",])
 
 # TODO: Set the TMPDIR
@@ -116,7 +125,8 @@ rule output:
     input:
         peak_output,
         coverage_output,
-        bam_output
+        bam_output,
+        bam_index_output
 
 
 if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph":
@@ -136,7 +146,7 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
                     temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.sra_1.fastq"),
                     temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.sra_2.fastq")
                 threads: cores
-                log: "{outdir}/{sample}/logs/{srr_acc}__sra_to_fastq_pe.log"
+                log: "{outdir}/logs/{sample}_{srr_acc}__sra_to_fastq_pe.log"
                 shell:
                     "(fasterq-dump -e {threads} --split-files -O" \
                     + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ {input}) &> {log}"
@@ -149,7 +159,7 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
             output:
                 R1=temp("{outdir}/tmp/fastqs_dup/{sample}_experiment_R1.fastq"),
                 R2=temp("{outdir}/tmp/fastqs_dup/{sample}_experiment_R2.fastq")
-            log: "{outdir}/logs/{sample}/merge_fastq_pe_experiment.log"
+            log: "{outdir}/logs/{sample}_merge_fastq_pe_experiment.log"
             shell: """
                 ( cat {input.R1} > {output.R1}
                 cat {input.R2} > {output.R2} ) &> {log}
@@ -163,7 +173,7 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
                 output:
                     R1=temp("{outdir}/tmp/fastqs_dup/{sample}_control_R1.fastq"),
                     R2=temp("{outdir}/tmp/fastqs_dup/{sample}_control_R2.fastq")
-                log: "{outdir}/logs/{sample}/merge_fastq_pe_control.log"
+                log: "{outdir}/logs/{sample}_merge_fastq_pe_control.log"
                 shell: """
                     ( cat {input.R1} > {output.R1}
                     cat {input.R2} > {output.R2} ) &> {log}
@@ -179,10 +189,10 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
                     R2=temp("{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R2.fastq")
                 params: ""
                 threads: cores
-                log: "{outdir}/logs/{sample}/{exp_type}__clumpify_pe.log"
+                log: "{outdir}/logs/{sample}_{exp_type}__clumpify_pe.log"
                 shell:
                     "(clumpify.sh t={threads} {params} in1={input.R1}" \
-                    + " in2={input.R2} out1={output.R1} out2={output.R2} dedupe) &> {log}"
+                    + " in2={input.R2} out1={output.R1} out2={output.R2}) &> {log}"
 
         if not no_fastp:
             rule fastp_pe:
@@ -190,11 +200,11 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
                     sample=["{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R1.fastq",
                             "{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R2.fastq"]
                 output:
-                    trimmed=["{outdir}/fastqs/{sample}_{exp_type}_R1.fastq",
-                             "{outdir}/fastqs/{sample}_{exp_type}_R2.fastq"],
+                    trimmed=[temp("{outdir}/fastqs/{sample}_{exp_type}_R1.fastq"),
+                             temp("{outdir}/fastqs/{sample}_{exp_type}_R2.fastq")],
                     html="{outdir}/QC/fastq/{sample}.{exp_type}.html",
                     json="{outdir}/QC/fastq/{sample}.{exp_type}.json"
-                log: "{outdir}/logs/{sample}/{exp_type}__fastp_pe.log"
+                log: "{outdir}/logs/{sample}_{exp_type}__fastp_pe.log"
                 params:
                     extra=""
                 threads: cores
@@ -207,7 +217,7 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
                 input: "{outdir}/tmp/sras/{sample}/{srr_acc}.sra"
                 output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.sra.fastq")
                 threads: cores
-                log: "{outdir}/logs/{sample}/{srr_acc}__sra_to_fastq_se.log"
+                log: "{outdir}/logs/{sample}_{srr_acc}__sra_to_fastq_se.log"
                 shell:
                     "(fasterq-dump -e {threads} --split-files -O" \
                     + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ {input}) &> {log}"
@@ -215,14 +225,14 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
         rule merge_fastq_se_experiment:
             input: merge_input_experiment
             output: temp("{outdir}/tmp/fastqs_dup/{sample}_experiment.fastq")
-            log: "{outdir}/logs/{sample}/merge_fastq_se_experiment.log"
+            log: "{outdir}/logs/{sample}_merge_fastq_se_experiment.log"
             shell: "(cat {input} > {output}) &> {log}"
 
         if controls != "None":
             rule merge_fastq_se_control:
                 input: merge_input_control
                 output: temp("{outdir}/tmp/fastqs_dup/{sample}_control.fastq")
-                log: "{outdir}/logs/{sample}/merge_fastq_se_control.log"
+                log: "{outdir}/logs/{sample}_merge_fastq_se_control.log"
                 shell: "(cat {input} > {output}) &> {log}"
 
         if not no_dedupe:
@@ -231,18 +241,18 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
                 output: temp("{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}.fastq")
                 params: ""
                 threads: cores
-                log: "{outdir}/logs/{sample}/{exp_type}__clumpify_se.log"
-                shell: "(clumpify.sh t={threads} {params} in={input} out={output} dedupe) &> {log}"
+                log: "{outdir}/logs/{sample}_{exp_type}__clumpify_se.log"
+                shell: "(clumpify.sh t={threads} {params} in={input} out={output}) &> {log}"
 
         if not no_fastp:
             rule fastp_se:
                 input:
                      sample=["{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}.fastq"]
                 output:
-                    trimmed="{outdir}/fastqs/{sample}_{exp_type}.fastq",
+                    trimmed=temp("{outdir}/fastqs/{sample}_{exp_type}.fastq"),
                     html="{outdir}/QC/fastq/{sample}.{exp_type}.html",
                     json="{outdir}/QC/fastq/{sample}.{exp_type}.json"
-                log: "{outdir}/logs/{sample}/{exp_type}__fastp_se.log"
+                log: "{outdir}/logs/{sample}_{exp_type}__fastp_se.log"
                 params:
                     extra=""
                 threads: cores
@@ -254,7 +264,7 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
             genome_home_dir + "/{genome}/{genome}.fa"
         params:
               prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
-              check=outdir + "/logs/" + sample_name + "/{genome}__download_fasta.log"
+              check=outdir + "/logs/" + sample_name + "_{genome}__download_fasta.log"
         shell: """
             (mkdir -p {params.prefix}
             wget -O {output}.gz ftp://hgdownload.soe.ucsc.edu/goldenPath/{wildcards.genome}/bigZips/{wildcards.genome}.fa.gz
@@ -288,17 +298,19 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
             reads=bwa_reads
         output:
             bam="{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
-        log: "{outdir}/logs/{sample}/{genome}_{exp_type}__bwa_mem.log"
+        log: "{outdir}/logs/{sample}_{genome}_{exp_type}__bwa_mem.log"
         params:
             index=genome_home_dir + "/{genome}/bwa_index/{genome}",
             bwa_extra=r"-R '@RG\tID:{sample}_{exp_type}\tSM:{sample}_{exp_type}'",
-            picard_extra="",
-            samtools_sort_extra=""
+            samtools_sort_extra="-O BAM"
         threads: cores
         shell: """
             (bwa mem -t {threads} {params.bwa_extra} {params.index} {input.reads} | \
-            samtools view -b -@ {threads} - | \
-            samtools sort {params.samtools_sort_extra} -@ {threads} -o {output.bam} -) &> {log}
+            samtools view -q 10 -b -@ {threads} - | \
+            samtools collate -O -@ {threads} - - | \
+            samtools fixmate -m - - | \
+            samtools sort {params.samtools_sort_extra} -@ {threads} - | \
+            samtools markdup -s -@ {threads} - {output.bam}) &> {log}
          """
 
 if sample_type != "bigWig" and sample_type != "bedGraph":
@@ -323,7 +335,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
         input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
         output: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam.bai"
         threads: cores
-        log: "{outdir}/logs/{sample}/{genome}_{exp_type}__index_bam.log"
+        log: "{outdir}/logs/{sample}_{genome}_{exp_type}__index_bam.log"
         shell: """
             (samtools index -@ {threads} {input}) &> {log}
         """
@@ -336,7 +348,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                 plus="{outdir}/bams_stranded/{sample}.{genome}.{exp_type}.p.bam",
                 minus="{outdir}/bams_stranded/{sample}.{genome}.{exp_type}.m.bam"
             threads: cores
-            log: "{outdir}/logs/{sample}/{genome}_{exp_type}__split_strands_pe.log"
+            log: "{outdir}/logs/{sample}_{genome}_{exp_type}__split_strands_pe.log"
             shell: """
                 # Adapted from https://deeptools.readthedocs.io/en/develop/content/tools/bamCoverage.html
                 (mkdir {wildcards.outdir}/bams_tmp) &> /dev/null || true
@@ -356,7 +368,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                 plus="{outdir}/bams_stranded/{sample}.{genome}.{exp_type}.p.bam",
                 minus="{outdir}/bams_stranded/{sample}.{genome}.{exp_type}.m.bam"
             threads: cores
-            log: "{outdir}/logs/{sample}/{genome}_{exp_type}__split_strands_se.log"
+            log: "{outdir}/logs/{sample}_{genome}_{exp_type}__split_strands_se.log"
             shell: """
                 # Adapted from https://deeptools.readthedocs.io/en/develop/content/tools/bamCoverage.html
                 (mkdir {wildcards.outdir}/bams_tmp) &> /dev/null || true
@@ -371,7 +383,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                 input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
                 output: "{outdir}/info/{sample}.{genome}.{exp_type}_predictd.txt"
                 params: "-g " + str(effective_genome_size) + " --outdir " + outdir + "/info"
-                log: "{outdir}/logs/{sample}/{genome}_{exp_type}__macs2_predictd.log"
+                log: "{outdir}/logs/{sample}_{genome}_{exp_type}__macs2_predictd.log"
                 shell: "(macs2 predictd -i {input} --outdir {wildcards.outdir}/tmp &> {output}) &> {log}"
 
     # Set up arguments for peak callers
@@ -420,7 +432,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
         output:
             "{outdir}/peaks_macs_unstranded/{sample}_{genome}_peaks.broadPeak",
         params: params_macs2
-        log: "{outdir}/logs/{sample}/{genome}__macs2_callpeak_unstranded.log"
+        log: "{outdir}/logs/{sample}_{genome}__macs2_callpeak_unstranded.log"
         shell: macs2_command
 
 
@@ -435,7 +447,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
             samtools_sort_extra="-n",
             bedtools_bamtobed_extra="-bedpe"
         threads: cores
-        log: "{outdir}/logs/{sample}/{genome}_{exp_type}__bampe_to_bedpe.log"
+        log: "{outdir}/logs/{sample}_{genome}_{exp_type}__bampe_to_bedpe.log"
         shell: """
             (samtools sort {params.samtools_sort_extra} -@ {threads} -o /dev/stdout {input} | \
             (bedtools bamtobed -i /dev/stdin {params.bedtools_bamtobed_extra} > /dev/stdout) 2> /dev/null | \
@@ -457,7 +469,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
             wget_in="ftp://hgdownload.soe.ucsc.edu/goldenPath/" + genome +\
                  "/bigZips/" + genome + ".chrom.sizes",
             wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
-        log: "{outdir}/logs/{sample}/{genome}__epic2_callpeak_unstranded.log"
+        log: "{outdir}/logs/{sample}_{genome}__epic2_callpeak_unstranded.log"
         shell: epic2_command_lt
 
 
@@ -468,10 +480,10 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                 index="{outdir}/bams/{sample}.{genome}.experiment.bam.bai"
             output: "{outdir}/coverage_unstranded/{sample}.{genome}.bw"
             threads: cores
-            log: "{outdir}/logs/{sample}/{genome}__deeptools_coverage_unstranded.log"
+            log: "{outdir}/logs/{sample}_{genome}__deeptools_coverage_unstranded.log"
             params:
                 extra="--ignoreForNormalization chrX chrY chrM --ignoreDuplicates --minMappingQuality" \
-                      + " 30 --binSize 20 --effectiveGenomeSize " + str(effective_genome_size)
+                      + " 30 --binSize 10 --effectiveGenomeSize " + str(effective_genome_size)
             shell: """
                 (bamCoverage -b {input.bam} -p {threads} {params.extra} -o {output}) &> {log}
             """
@@ -519,10 +531,10 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                     plus="{outdir}/coverage_stranded/{sample}.{genome}.p.bw",
                     minus="{outdir}/coverage_stranded/{sample}.{genome}.m.bw"
                 threads: cores
-                log: "{outdir}/logs/{sample}/{genome}__deeptools_coverage_stranded.log"
+                log: "{outdir}/logs/{sample}_{genome}__deeptools_coverage_stranded.log"
                 params:
                     extra="--ignoreForNormalization chrX chrY chrM --ignoreDuplicates --minMappingQuality" \
-                          + " 30 --binSize 20 --effectiveGenomeSize " + str(effective_genome_size)
+                          + " 30 --binSize 10 --effectiveGenomeSize " + str(effective_genome_size)
                 shell: """
                     (bamCoverage -b {input.bam} -p {threads} {params.extra} --filterRNAstrand forward -o {output.plus}
                     bamCoverage -b {input.bam} -p {threads} {params.extra} --filterRNAstrand reverse -o {output.minus}) &> {log}
@@ -538,7 +550,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                     info="{outdir}/info/{sample}.{genome}.experiment.frag_lengths.txt",
                     plot="{outdir}/info/{sample}.{genome}.experiment.frag_lengths.png"
                 params: "--samplesLabel " + sample_name
-                log: "{outdir}/logs/{sample}/{genome}__deeptools_get_pe_fragment_sizes.log"
+                log: "{outdir}/logs/{sample}_{genome}__deeptools_get_pe_fragment_sizes.log"
                 threads: cores
                 shell: "(bamPEFragmentSize --bamfiles {input.bam} --histogram {output.plot} --table {output.info} -p {threads}) &> {log}"
 
@@ -558,7 +570,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                     wget_in="ftp://hgdownload.soe.ucsc.edu/goldenPath/" + genome +\
                          "/bigZips/" + genome + ".chrom.sizes",
                     wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
-                log: "{outdir}/logs/{sample}/{genome}__epic_callpeaks_pe_stranded.log"
+                log: "{outdir}/logs/{sample}_{genome}__epic_callpeaks_pe_stranded.log"
                 shell: "(frag_med=$(head -n 2 {input.info} | tail -n 1 | awk '{{print $6}}')" \
                        + " && wget {params.wget_in} -O {params.wget_out} && " + epic2_ss_command + ") &> {log}"
 
@@ -574,7 +586,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                     minus="{outdir}/peaks_macs_stranded/{sample}_{genome}_minus_peaks.xls"
                 params:
                     callpeak="--broad-cutoff .01 -q .01 --broad -g " + str(effective_genome_size)
-                log: "{outdir}/logs/{sample}/{genome}__macs2_callpeaks_pe_stranded.log"
+                log: "{outdir}/logs/{sample}_{genome}__macs2_callpeaks_pe_stranded.log"
                 shell: "(frag_med=$(head -n 2 {input.info} | tail -n 1 | awk '{{print $6}}') && " \
                         + macs2_ss_command + ") &> {log}"
 
@@ -595,7 +607,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                     wget_in="ftp://hgdownload.soe.ucsc.edu/goldenPath/" + genome +\
                          "/bigZips/" + genome + ".chrom.sizes",
                     wget_out="{outdir}/tmp/" + genome + ".chrom.sizes"
-                log: "{outdir}/logs/{sample}/{genome}__epic_callpeaks_se_stranded.log"
+                log: "{outdir}/logs/{sample}_{genome}__epic_callpeaks_se_stranded.log"
                 shell: "(frag_med=$(cat {input.info} | grep -o 'predicted fragment length is [0-9]* bps' | cut -d ' ' -f 5)" \
                        + " && wget {params.wget_in} -O {params.wget_out} && " + epic2_ss_command + ") &> {log}"
 
@@ -612,7 +624,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                     minus="{outdir}/peaks_macs_stranded/{sample}_{genome}_minus_peaks.xls"
                 params:
                     callpeak="--broad-cutoff .01 -q .01 --broad -g " + str(effective_genome_size)
-                log: "{outdir}/logs/{sample}/{genome}__macs2_callpeaks_se_stranded.log"
+                log: "{outdir}/logs/{sample}_{genome}__macs2_callpeaks_se_stranded.log"
                 shell: "(frag_med=$(cat {input.info} | grep -o 'predicted fragment length is [0-9]* bps' | cut -d ' ' -f 5)" \
                        + " && " + macs2_ss_command + ") &> {log}"
 

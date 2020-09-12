@@ -5,6 +5,7 @@ import io
 import os
 import pathlib
 from contextlib import redirect_stdout
+import tempfile
 
 
 def make_snakes(config_file, run_path, snake_path, dryrun=False, dag=False, force=False, notemp=False):
@@ -24,7 +25,7 @@ def make_snakes(config_file, run_path, snake_path, dryrun=False, dag=False, forc
 
         cores = config['cores'][0]
 
-        pathlib.Path(run_path).mkdir(parents=True, exist_ok=True)
+        pathlib.Path(run_path + "/dags/").mkdir(parents=True, exist_ok=True)
 
         if dag:
             out = io.StringIO()
@@ -33,7 +34,7 @@ def make_snakes(config_file, run_path, snake_path, dryrun=False, dag=False, forc
                               config=config, cores=cores, forceall=force, notemp=notemp)
                 out = out.getvalue()
 
-                out_file = run_path + '/dag.gv'
+                out_file = run_path + '/dags/' + sample_name + '.dag.gv'
 
                 if os.path.exists(out_file):
                     os.remove(out_file)
@@ -41,8 +42,9 @@ def make_snakes(config_file, run_path, snake_path, dryrun=False, dag=False, forc
                 with open(out_file, 'a') as stdout_log:
                     stdout_log.writelines(out)
 
-                out_svg = run_path + '/dag.gv.png'
+                out_svg = run_path + '/dags/' + sample_name + '.dag.png'
                 os.system('cat ' + out_file + ' | dot -Tpng -o ' + out_svg)
+                os.remove(out_file)
         else:
             print(force)
             snk.snakemake(snake_path, dryrun=dryrun, printdag=dag, printreason=True,
