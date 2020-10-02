@@ -88,6 +88,7 @@ get_public_run_info <- function(accessions) {
   # accessions <- public_ctr_accessions
   # accessions <- samples_public$experiment
   #accessions <- public_ctr_accessions
+  # accessions <- "SRR3504393"
   ###################
 
   accessions <- unique(accessions)
@@ -200,7 +201,7 @@ get_public_run_info <- function(accessions) {
 
     # Unpack experiment list
     resList <- lapply(result, FUN = function(exp_now) {
-      # exp_now <- result[[19]]
+      # exp_now <- result[[1]]
 
       SRX <- exp_now$EXPERIMENT$IDENTIFIERS$PRIMARY_ID
       SRRs <- unlist(exp_now$RUN_SET, use.names = FALSE)
@@ -215,6 +216,10 @@ get_public_run_info <- function(accessions) {
       sample_name <- paste0(SRX, "_", clean_str(out_name))
       sample_tx <- exp_now$SAMPLE$SAMPLE_NAME$TAXON_ID
       possible_genomes <- available_genomes[available_genomes$taxId == sample_tx,]
+      if (sample_tx %in% c("4932", "559292")) {
+        # Special processing for yeast genome... which is incorrectly identified
+        possible_genomes <- available_genomes[available_genomes$taxId %in% c("4932", "559292"),]
+      }
       lib_type <- names(exp_now$EXPERIMENT$DESIGN$LIBRARY_DESCRIPTOR$LIBRARY_LAYOUT)
       if ("PAIRED" %in% lib_type) {
         paired_end <- TRUE

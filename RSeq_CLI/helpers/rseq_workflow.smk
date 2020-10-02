@@ -30,16 +30,16 @@ output_fastq_experiment_2 = expand("{outdir}/fastqs/{sample_name}_experiment_R2.
                  sample_name=sample_name, outdir=outdir)
 if paired_end:
     if sample_type == "public":
-        merge_input_experiment_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
+        merge_input_experiment_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}_1.fastq",
                                    sample_name=sample_name,
                                    srr_acc=experiments, outdir=outdir)
-        merge_input_experiment_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
+        merge_input_experiment_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}_2.fastq",
                                    sample_name=sample_name,
                                    srr_acc=experiments, outdir=outdir)
-        merge_input_control_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_1.fastq",
+        merge_input_control_1 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}_1.fastq",
                                sample_name=sample_name,
                                srr_acc=controls, outdir=outdir)
-        merge_input_control_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra_2.fastq",
+        merge_input_control_2 = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}_2.fastq",
                                    sample_name=sample_name,
                                    srr_acc=controls, outdir=outdir)
     elif sample_type == "fastq":
@@ -54,10 +54,10 @@ if paired_end:
             merge_input_control_2 = controls.split("+")[1]
 else:
     if sample_type == "public":
-        merge_input_experiment = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra.fastq",
+        merge_input_experiment = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}_1.fastq",
                                    sample_name=sample_name,
                                    srr_acc=experiments, outdir=outdir)
-        merge_input_control = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}.sra.fastq",
+        merge_input_control = expand("{outdir}/tmp/fastqs_raw/{sample_name}/{srr_acc}_1.fastq",
                                sample_name=sample_name,
                                srr_acc=controls, outdir=outdir)
     else:
@@ -132,6 +132,7 @@ rule output:
 if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph":
     if sample_type == "public":
         rule download_sra:
+            threads:cores,
             output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}.sra")
             log: "{outdir}/logs/{sample}_{srr_acc}__download_sra.log"
             shell: "(prefetch {wildcards.srr_acc} --output-file {output}) &> {log}"
@@ -143,14 +144,13 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
                 input:
                     "{outdir}/tmp/sras/{sample}/{srr_acc}.sra"
                 output:
-                    temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.sra_1.fastq"),
-                    temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.sra_2.fastq")
+                    temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}_1.fastq"),
+                    temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}_2.fastq")
                 threads: cores
                 log: "{outdir}/logs/{sample}_{srr_acc}__sra_to_fastq_pe.log"
                 shell:
-                    "(fasterq-dump -e {threads} --split-files -O" \
-                    + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ {input}) &> {log}"
-
+                    "(parallel-fastq-dump -t {threads} --split-files -O" \
+                    + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ -s {input}) &> {log}"
 
         rule merge_fastq_pe_experiment:
             input:
@@ -179,26 +179,11 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
                     cat {input.R2} > {output.R2} ) &> {log}
                 """
 
-        if not no_dedupe:
-            rule clumpify_pe:
-                input:
-                    R1="{outdir}/tmp/fastqs_dup/{sample}_{exp_type}_R1.fastq",
-                    R2="{outdir}/tmp/fastqs_dup/{sample}_{exp_type}_R2.fastq"
-                output:
-                    R1=temp("{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R1.fastq"),
-                    R2=temp("{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R2.fastq")
-                params: ""
-                threads: cores
-                log: "{outdir}/logs/{sample}_{exp_type}__clumpify_pe.log"
-                shell:
-                    "(clumpify.sh t={threads} {params} in1={input.R1}" \
-                    + " in2={input.R2} out1={output.R1} out2={output.R2}) &> {log}"
-
         if not no_fastp:
             rule fastp_pe:
                 input:
-                    sample=["{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R1.fastq",
-                            "{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}_R2.fastq"]
+                    sample=["{outdir}/tmp/fastqs_dup/{sample}_{exp_type}_R1.fastq",
+                            "{outdir}/tmp/fastqs_dup/{sample}_{exp_type}_R2.fastq"]
                 output:
                     trimmed=[temp("{outdir}/fastqs/{sample}_{exp_type}_R1.fastq"),
                              temp("{outdir}/fastqs/{sample}_{exp_type}_R2.fastq")],
@@ -215,12 +200,12 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
         if sample_type == "public":
             rule sra_to_fastq_se:
                 input: "{outdir}/tmp/sras/{sample}/{srr_acc}.sra"
-                output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.sra.fastq")
+                output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}_1.fastq")
                 threads: cores
                 log: "{outdir}/logs/{sample}_{srr_acc}__sra_to_fastq_se.log"
                 shell:
-                    "(fasterq-dump -e {threads} --split-files -O" \
-                    + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ {input}) &> {log}"
+                    "(parallel-fastq-dump -t {threads} --split-files -O" \
+                    + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ -s {input}) &> {log}"
 
         rule merge_fastq_se_experiment:
             input: merge_input_experiment
@@ -235,19 +220,10 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
                 log: "{outdir}/logs/{sample}_merge_fastq_se_control.log"
                 shell: "(cat {input} > {output}) &> {log}"
 
-        if not no_dedupe:
-            rule clumpify_se:
-                input: "{outdir}/tmp/fastqs_dup/{sample}_{exp_type}.fastq"
-                output: temp("{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}.fastq")
-                params: ""
-                threads: cores
-                log: "{outdir}/logs/{sample}_{exp_type}__clumpify_se.log"
-                shell: "(clumpify.sh t={threads} {params} in={input} out={output}) &> {log}"
-
         if not no_fastp:
             rule fastp_se:
                 input:
-                     sample=["{outdir}/tmp/fastqs_dedup/{sample}_{exp_type}.fastq"]
+                     sample=["{outdir}/tmp/fastqs_dup/{sample}_{exp_type}.fastq"]
                 output:
                     trimmed=temp("{outdir}/fastqs/{sample}_{exp_type}.fastq"),
                     html="{outdir}/QC/fastq/{sample}.{exp_type}.html",
@@ -378,13 +354,19 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                 samtools index -@ {threads} {output.minus}) &> {log}
             """
 
-
     rule macs2_predictd:
-                input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
-                output: "{outdir}/info/{sample}.{genome}.{exp_type}_predictd.txt"
-                params: "-g " + str(effective_genome_size) + " --outdir " + outdir + "/info"
-                log: "{outdir}/logs/{sample}_{genome}_{exp_type}__macs2_predictd.log"
-                shell: "(macs2 predictd -i {input} --outdir {wildcards.outdir}/tmp &> {output}) &> {log}"
+        input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
+        output: "{outdir}/info/{sample}.{genome}.{exp_type}_predictd.txt"
+        params: "-g " + str(effective_genome_size) + " --outdir " + outdir + "/info"
+        log: "{outdir}/logs/{sample}_{genome}_{exp_type}__macs2_predictd.log"
+        shell: """
+        (echo {params} && macs2 predictd -i {input} --outdir {wildcards.outdir}/tmp &> {output} && \
+        if grep -q "Can't find enough pairs of symmetric peaks to build model!" {output}; \
+        then echo "Failed due to predictd! Will now attempt to rerun with broaded MFOLD. See the message below:\n" && cat {output}; fi && \
+        macs2 predictd -m 1 100 -i {input} --outdir {wildcards.outdir}/tmp &> {output} && \
+        if grep -q "Can't find enough pairs of symmetric peaks to build model!" {output}; \
+        then echo "Failed due to predictd again! See the message below:\n" && cat {output} && exit 1; fi) &> {log}
+        """
 
     # Set up arguments for peak callers
     treat_file_macs2="{outdir}/bams/{sample}.{genome}.experiment.bam"
@@ -449,7 +431,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
         threads: cores
         log: "{outdir}/logs/{sample}_{genome}_{exp_type}__bampe_to_bedpe.log"
         shell: """
-            (samtools sort {params.samtools_sort_extra} -@ {threads} -o /dev/stdout {input} | \
+            (samtools sort {params.samtools_sort_extra} -@ {threads} {input} | \
             (bedtools bamtobed -i /dev/stdin {params.bedtools_bamtobed_extra} > /dev/stdout) 2> /dev/null | \
             awk '{{if($2 >= 1 && $8 >= 30) print}}' /dev/stdin > {output}) &> {log}
         """
