@@ -1,2 +1,3 @@
-"","experiment"
-"1","RSeq_CLI/tests/NT2_DRIP_head.hg38.experiment.bam"
+,experiment
+1,RSeq_CLI/tests/NT2_DRIP_head.hg38.experiment.bam
+2,SRR2019278

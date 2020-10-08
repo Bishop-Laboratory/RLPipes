@@ -5,14 +5,16 @@ helpersDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/helpers
 # Usage info
 usage() {
   echo
-  echo "################################################################################################################"
-  echo "                            ____  _____                        ________    ____             "
-  echo "                           / __ \/ ___/___  ____ _            / ____/ /   /  _/             "
-  echo "                          / /_/ /\__ \/ _ \/ __  /  ______   / /   / /    / /               "
-  echo "                         / _, _/___/ /  __/ /_/ /  /_____/  / /___/ /____/ /                "
-  echo "                        /_/ |_|/____/\___/\__, /            \____/_____/___/                "
-  echo "                                            /_/                                             "
-  echo "################################################################################################################"
+  echo "#############################################################################################"
+  echo "                                                                                   "
+  echo "                   ____  _____                        ________    ____             "
+  echo "                  / __ \/ ___/___  ______            / ____/ /   /  _/             "
+  echo "                 / /_/ /\__ \/ _ \/ __  /  ______   / /   / /    / /               "
+  echo "                / _, _/___/ /  __/ /_/ /  /_____/  / /___/ /____/ /                "
+  echo "               /_/ |_|/____/\___/\__  /            \____/_____/___/                "
+  echo "                                   /_/                                             "
+  echo "                                                                                   "
+  echo "#############################################################################################"
   echo
   echo "RSeq [-m mode] [-s sampleSheet] [-o outputDir] [-g genomeDir] [-t threads] "
   echo
@@ -20,7 +22,6 @@ usage() {
   echo
   echo "  -m|--mode              mode      Choose analysis mode ('DRIP', 'RChIP', etc.) See full list in detailed usage."
   echo "  -s|--sampleSheet       file      CSV file describing samples. See details."
-#  echo "  -i|--inputDir          dir       Directory containing fastq/bam files. Not required for SRA samples."
   echo "  -o|--outputDir         dir       Project directory. [default = 'RSeq_out/']"
   echo "  -g|--genomeDir         dir       Genome directory. [default = '~/.RSeq_genomes']"
   echo "  -t|--threads           int       Specify number of threads. [default = 1]"
@@ -75,6 +76,12 @@ usageDetail() {
   echo "################################################################################################################"
 }
 
+# Check for usage
+if [[ "$#" -eq 0 ]] ; then
+    usage
+    exit 0
+fi
+
 # Argparse
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -103,7 +110,6 @@ while [ "$#" -gt 0 ]; do
     *) handle_argument "$1"; shift 1;;
   esac
 done
-
 
 ### Set default variables ###
 threads=${threads:=1}
@@ -153,6 +159,10 @@ else
   python "$helpersDir"/run_workflow.py "$inputJSON" "$outputDir" "$helpersDir"/rseq_workflow.smk False True False "$keepTmp"
   python "$helpersDir"/run_workflow.py "$inputJSON" "$outputDir" "$helpersDir"/rseq_workflow.smk False False False "$keepTmp"
 fi
+
+
+
+
 
 
 

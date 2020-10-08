@@ -3,6 +3,8 @@
 ########################################################################################################################
 
 # Config vars
+helpers_dir=config['helpers_dir'][0]
+mode=config['mode'][0]
 paired_end=config['paired_end'][0]
 strand_specific=config['strand_specific'][0]
 genome=config['genome'][0]
@@ -104,6 +106,13 @@ else:
                          sample=sample_name, outdir=outdir)
                    ]
 
+if genome == "hg38":
+    correlation_output = expand("{outdir}/QC/{sample}.{genome}.correlation.{file_ends}", genome=genome,
+                                sample=sample_name, outdir=outdir, file_ends=["png", "html", "rda"])
+
+else:
+    correlation_output = peak_output
+
 if controls != "None":
     bam_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam",
                             sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment","control"])
@@ -120,13 +129,13 @@ else:
 ########################################################################################################################
 ##############################################   Main pipeline    ######################################################
 ########################################################################################################################
-
 rule output:
     input:
         peak_output,
         coverage_output,
         bam_output,
-        bam_index_output
+        bam_index_output,
+        correlation_output
 
 
 if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph":
@@ -262,6 +271,7 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
             genome_home_dir + "/{genome}/bwa_index/{genome}_bwa_index.log"
         wrapper:
             "0.63.0/bio/bwa/index"
+
 
     if paired_end:
         bwa_reads=["{outdir}/fastqs/{sample}_{exp_type}_R1.fastq", "{outdir}/fastqs/{sample}_{exp_type}_R2.fastq"]
@@ -612,6 +622,34 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
 
 
 ## TODO: Correlation module goes here
+rule get_bin_scores:
+    input: "{outdir}/coverage_unstranded/{sample}.{genome}.bw",
+    params:
+        helpers_dir = helpers_dir
+    output:
+        npz=temp("{outdir}/QC/{sample}.{genome}.gold_standard_bin_scores.npz"),
+        tab="{outdir}/QC/{sample}.{genome}.gold_standard_bin_scores.tab"
+    threads: cores
+    shell:
+        """
+        multiBigwigSummary BED-file --BED {params.helpers_dir}/data/correlation_genes_100kb.{wildcards.genome}.1kbwindow.bed \
+        -o {output.npz} -b {input} --outRawCounts {output.tab} -p {threads}
+        """
+
+
+rule correlation_analysis:
+    input: "{outdir}/QC/{sample}.{genome}.gold_standard_bin_scores.tab"
+    output:
+        image="{outdir}/QC/{sample}.{genome}.correlation.png",
+        data="{outdir}/QC/{sample}.{genome}.correlation.rda",
+        html="{outdir}/QC/{sample}.{genome}.correlation.html"
+    params:
+        helpers_dir = helpers_dir,
+        mode = mode
+    shell:
+         """
+         Rscript {params.helpers_dir}/correlation_test.R {input} {wildcards.sample} {params.mode} {params.helpers_dir}
+         """
 
 
 

@@ -2,7 +2,9 @@
 #' @export
 setClass("RSeq_variables",
          slots = list(
+           helpers_dir = "character",
            sample_name = "character",
+           original_acc = "character",
            out_dir = "character",
            mode = "character",
            genome_home_dir = "character",
@@ -92,6 +94,7 @@ get_public_run_info <- function(accessions) {
   ###################
 
   accessions <- unique(accessions)
+  badMsg <- c("HTTP error: Status 429; Too Many Requests", "HTTP error: Status 500; Internal Server Error")
 
   # Convert GEO series to BioProject accessions
   acc_gse <- accessions[grep(accessions, pattern = "^GSE[0-9]+$")]
@@ -100,7 +103,7 @@ get_public_run_info <- function(accessions) {
     while (fail) {
       esearch_gse <- reutils::esearch(acc_gse, db = "gds")
       if (length(as.character(esearch_gse$errors$error))) {
-        if (as.character(esearch_gse$errors$error) == "HTTP error: Status 429; Too Many Requests") {
+        if (as.character(esearch_gse$errors$error) %in% badMsg) {
           fail <- TRUE
           Sys.sleep(1)
         }
@@ -117,7 +120,7 @@ get_public_run_info <- function(accessions) {
     while (fail) {
       content_bp <- reutils::efetch(esearch_gse)
       if (length(as.character(content_bp$errors$error))) {
-        if (as.character(content_bp$errors$error) == "HTTP error: Status 429; Too Many Requests") {
+        if (as.character(content_bp$errors$error) %in% badMsg) {
           fail <- TRUE
           Sys.sleep(1)
         }
@@ -140,16 +143,18 @@ get_public_run_info <- function(accessions) {
                         "accessions_cleaned" = accessions, stringsAsFactors = FALSE)
   }
 
-  # Build chunks of 100 accessions
-  acc_list <- split(accessions, ceiling(seq_along(accessions)/100))
+  # Build chunks of 50 accessions
+  acc_list <- split(accessions, ceiling(seq_along(accessions)/50))
   res_list_full <- lapply(acc_list, function (accnow) {
+    #accnow <- acc_list[[1]]
+
     # Query all accessions in SRA
     fail <- TRUE
     while (fail) {
       Sys.sleep(.5)
       esearch_sra <- reutils::esearch(accnow, db = "sra")
       if (length(as.character(esearch_sra$errors$error))) {
-        if (as.character(esearch_sra$errors$error) == "HTTP error: Status 429; Too Many Requests") {
+        if (as.character(esearch_sra$errors$error) %in% badMsg) {
           fail <- TRUE
           Sys.sleep(1)
         }
@@ -165,7 +170,7 @@ get_public_run_info <- function(accessions) {
       Sys.sleep(.5)
       content_sra <- reutils::efetch(esearch_sra)
       if (length(as.character(content_sra$errors$error))) {
-        if (as.character(content_sra$errors$error) == "HTTP error: Status 429; Too Many Requests") {
+        if (as.character(content_sra$errors$error) %in% badMsg) {
           fail <- TRUE
           Sys.sleep(1)
         }

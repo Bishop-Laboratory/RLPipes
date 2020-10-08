@@ -1,0 +1,39 @@
+---
+title: "RSeq Report"
+output: html_document
+params:
+  data_file: "helloworld.png"
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 2200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+data_file <- params$data_file
+# data_file <- "../../RSeq_CLI/tests/RSeq_out16/SRX113812_Ntera2_DNA/QC/SRX113812_Ntera2_DNA.hg38.QC.report.rda"
+load(data_file)
+```
+
+## Correlation Analysis
+
+```{r fig.width=16.5, fig.height=12.5}
+hp <- heatmaply::heatmaply_cor(x = corMat, col_side_colors = annoNow,
+                               k_row = NA, k_col =  NA, fontsize_row = 7, 
+                               fontsize_col = 7)
+hp
+```
+
+
+
+
+
+

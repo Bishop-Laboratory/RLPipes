@@ -1,4 +1,7 @@
-processInput <- function(mode = NULL,
+options(warn=-1) # Prevent warnings
+
+processInput <- function(helpers_dir,
+                         mode = NULL,
                          outdir = "RSeq_out/",
                          genome = NULL,
                          genome_home_dir = file.path(path.expand("~"), ".RSeq_genomes"),
@@ -6,20 +9,24 @@ processInput <- function(mode = NULL,
                          no_dedupe = FALSE,
                          no_fastp = FALSE,
                          samples = NULL,
-                         available_genomes,
-                         chrom_sizes_list) {
+                         available_genomes) {
 
 
-   ### For bug testing ##
-   #mode = ""
-   #outdir = "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_out"
-   #genome = ""
-   #genome_home_dir = "/home/UTHSCSA/millerh1/.RSeq_genomes"
-   #cores = "1"
-   #no_dedupe <- NA
-   #no_fastp <- NA
-   #samples <- "RSeq_CLI/tests/manifest_for_RSeq_testing_11092020.csv"
-   ## #####################
+  ### For bug testing ##
+  #mode = ""
+  #outdir = "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_out"
+  #genome = ""
+  #genome_home_dir = "/home/UTHSCSA/millerh1/.RSeq_genomes"
+  #cores = "1"
+  #no_dedupe <- NA
+  #no_fastp <- NA
+  #samples <- "RSeq_CLI/tests/manifest_for_RSeq_testing_11092020.csv"
+  #samples <- "RSeq_CLI/tests/sampleSheet_test5.csv"
+  #mode = "DRIP"
+  #genome = "hg38"
+  #source("RSeq_CLI/helpers/utils.R")
+  #load("RSeq_CLI/helpers/data/available_genomes.rda")
+  ### #####################
 
   # Fix CLI inputs
   if (mode == "") {
@@ -111,7 +118,7 @@ processInput <- function(mode = NULL,
   samples <- unique(samples)
 
   # Remove erroneous rows (not for production)
-  samples <- samples[! samples$experiment %in% samples$control, ]
+  samples <- samples[! samples$experiment %in% samples$control, , drop = FALSE]
 
   # Fix genome home dir if using tilde
   genome_home_dir <- gsub(genome_home_dir, pattern = "~", replacement = path.expand("~"))
@@ -233,6 +240,11 @@ processInput <- function(mode = NULL,
 
   ## Process public samples ##
   if (any(samples$file_type == "public")) {
+
+    # Need to standardize with output of public sample search
+    samples$experiment_orig <- NA
+    samples$control_orig <- NA
+
     samples_public <- samples[samples$file_type == "public",]
     # Get info for controls first
     public_ctr_accessions <- samples_public$control[! is.na(samples_public$control)]
@@ -249,6 +261,7 @@ processInput <- function(mode = NULL,
 
     # -- add back to public samples frame
     new_ctr_vec <- c()
+    orig_ctr_vec <- samples_public$control
     for (i in seq(samples_public$control)) {
       orig_ctr <- samples_public$control[i]
       if (is.na(orig_ctr)) {
@@ -259,6 +272,9 @@ processInput <- function(mode = NULL,
       }
     }
     samples_public$control <- new_ctr_vec
+    samples_public$control_orig <- orig_ctr_vec
+
+
 
     # Get info for experimental samples
     samples_public <- samples_public[! is.na(samples_public$experiment),]
@@ -277,8 +293,8 @@ processInput <- function(mode = NULL,
                                 y = as.data.frame(sra_info_now),
                             by.x = "experiment", by.y = "accessions_original", all = TRUE)
       # -- Fix EXP info
-      sra_info_new <- sra_info_new[,c(-1)]
-
+      sra_info_new <- sra_info_new[, ! colnames(sra_info_new) %in% c("experiment_orig")]
+      colnames(sra_info_new)[1] <- "experiment_orig"
       colnames(sra_info_new)[which(colnames(sra_info_new) == "experiment_final")] <- "experiment"
 
       # TODO: make sure that user-specified genome is correct
@@ -406,6 +422,7 @@ processInput <- function(mode = NULL,
     vars_now@moeity <- samples_now$moeity
     vars_now@ip_type <- samples_now$ip_type
     vars_now@no_dedupe <- no_dedupe
+    vars_now@helpers_dir <- helpers_dir
     vars_now@no_fastp <- no_fastp
     vars_now@sample_type <- samples_now$file_type
     vars_now@sample_name <- samples_now$sample_name
@@ -435,10 +452,10 @@ arg <- commandArgs(trailingOnly=TRUE)
 source(file.path(arg[1], "utils.R"))
 # Load required data objects
 load(file.path(arg[1], "data", "available_genomes.rda"))
-load(file.path(arg[1], "data", "chrom_sizes_list.rda"))
 
 # Get output JSON
-result <- processInput(mode = arg[2],
+result <- processInput(helpers_dir = arg[1],
+                       mode = arg[2],
                        outdir = arg[3],
                        genome = arg[4],
                        genome_home_dir = arg[5],
@@ -446,8 +463,7 @@ result <- processInput(mode = arg[2],
                        no_dedupe = as.logical(arg[7]),
                        no_fastp = as.logical(arg[8]),
                        samples = arg[9],
-                       available_genomes,
-                       chrom_sizes_list)
+                       available_genomes)
 cat(result)
 
 
