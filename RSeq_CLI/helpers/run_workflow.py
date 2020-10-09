@@ -5,19 +5,15 @@ import io
 import os
 import pathlib
 from contextlib import redirect_stdout
-import tempfile
 
 
 def make_snakes(config_file, run_path, snake_path, dryrun=False, dag=False, force=False, notemp=False):
 
-    if dryrun:
-        print("Dry run")
-    elif dag:
-        print("Dag run")
-
     configs = json.load(open(config_file))
-
     for sample_name, config in configs.items():
+
+        if sample_name in ['dryrun', 'keepTmp', 'dag', 'force']:
+            continue
 
         if not dryrun and not dag:
             # Unlock any previous runs TODO: this should be removed probably... We need unique dirs for multiple runs!
@@ -46,15 +42,17 @@ def make_snakes(config_file, run_path, snake_path, dryrun=False, dag=False, forc
                 os.system('cat ' + out_file + ' | dot -Tpng -o ' + out_svg)
                 os.remove(out_file)
         else:
-            print(force)
             snk.snakemake(snake_path, dryrun=dryrun, printdag=dag, printreason=True,
                           config=config, cores=cores, forceall=force, notemp=notemp)
 
-    print("OUT OF SNAKE")
-
 
 if __name__ == "__main__":
-    print(sys.argv)
-    make_snakes(config_file=sys.argv[1], run_path=sys.argv[2], snake_path=sys.argv[3],
-                dryrun=(sys.argv[4] == 'True'), dag=(sys.argv[5] == 'True'),
-                force=(sys.argv[6] == 'True'), notemp=(sys.argv[7] == '--keepTmp'))
+
+    configs = json.load(open(sys.argv[1]))
+    notemp = (not configs['keepTmp'][0])
+    dryrun = configs['dryrun'][0]
+    dag = configs['dag'][0]
+    force = configs['force'][0]
+
+    make_snakes(config_file=sys.argv[1], run_path=os.path.dirname(sys.argv[1]), snake_path=sys.argv[2],
+                dryrun=dryrun, dag=dag, force=force, notemp=notemp)

@@ -9,42 +9,27 @@ processInput <- function(helpers_dir,
                          no_dedupe = FALSE,
                          no_fastp = FALSE,
                          samples = NULL,
+                         keepTmp = FALSE,
+                         dryRun = FALSE,
+                         dag = FALSE,
+                         force = FALSE,
                          available_genomes) {
 
 
-  ### For bug testing ##
-  #mode = ""
-  #outdir = "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_out"
-  #genome = ""
-  #genome_home_dir = "/home/UTHSCSA/millerh1/.RSeq_genomes"
-  #cores = "1"
-  #no_dedupe <- NA
-  #no_fastp <- NA
-  #samples <- "RSeq_CLI/tests/manifest_for_RSeq_testing_11092020.csv"
-  #samples <- "RSeq_CLI/tests/sampleSheet_test5.csv"
-  #mode = "DRIP"
-  #genome = "hg38"
-  #source("RSeq_CLI/helpers/utils.R")
-  #load("RSeq_CLI/helpers/data/available_genomes.rda")
-  ### #####################
-
-  # Fix CLI inputs
-  if (mode == "") {
-    mode <- NULL
-  }
-
-  if (genome == "") {
-    genome <- NULL
-  }
-
-  if (is.na(no_dedupe)) {
-    no_dedupe <- FALSE
-  }
-
-  if (is.na(no_fastp)) {
-    no_fastp <- FALSE
-  }
-
+  # ### For bug testing ##
+  # mode = NULL
+  # outdir = "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_out"
+  # genome = NULL
+  # genome_home_dir = "/home/UTHSCSA/millerh1/.RSeq_genomes"
+  # cores = NULL
+  # no_dedupe <- FALSE
+  # no_fastp <- FALSE
+  # # samples <- "RSeq_CLI/tests/manifest_for_RSeq_testing_11092020.csv"
+  # # samples <- "RSeq_CLI/tests/sampleSheet_test5.csv"
+  # samples <- samples
+  # source("RSeq_CLI/helpers/utils.R")
+  # load("RSeq_CLI/helpers/data/available_genomes.rda")
+  # ### #####################
 
   # Additional data
   # TODO: add support for bigWig and bedGraph
@@ -117,9 +102,10 @@ processInput <- function(helpers_dir,
   # Unique
   samples <- unique(samples)
 
-  # Remove erroneous rows (not for production)
-  samples <- samples[! samples$experiment %in% samples$control, , drop = FALSE]
-
+  # Remove erroneous rows where control is in the experiment spot
+  # TODO: remove for production
+  if (! is.null(samples$control)) {samples <- samples[! samples$experiment %in% samples$control, , drop = FALSE]}
+  
   # Fix genome home dir if using tilde
   genome_home_dir <- gsub(genome_home_dir, pattern = "~", replacement = path.expand("~"))
 
@@ -205,6 +191,7 @@ processInput <- function(helpers_dir,
   if (length(bamInd)) {
     # -- Get the read lengths
     samples$read_length[bamInd] <- unlist(lapply(bamInd, function(ind) {
+      if (! file.exists(samples$experiment[ind])) {stop("Could not find bam file ", samples$experiment[ind])}
       get_bam_read_length(samples$experiment[ind])
   }))
 
@@ -223,7 +210,9 @@ processInput <- function(helpers_dir,
     fqNow <- samples$experiment[ind]
     plus_bool <- grepl(fqNow[1], pattern = "\\.f[ast]*q(\\+)")
     if (plus_bool) {
-      fastq_1 <- gsub(fqNow, pattern = "(.+\\.f[ast]*q)\\+.+", replacement = "\\1")
+      fastq_1 <- gsub(fqNow, pattern = "(.+\\.f[ast]*q)\\+(.+\\.f[ast]*q)", replacement = "\\1")
+      fastq_2 <- gsub(fqNow, pattern = "(.+\\.f[ast]*q)\\+(.+\\.f[ast]*q)", replacement = "\\2")
+      if (! file.exists(fastq_1) | ! file.exists(fastq_2)) {stop("Could not find fastq files ", fastq_1, " ", fastq_2)}
       if (is.na(samples$sample_name)) {
         samples$sample_name[ind] <- gsub(basename(fastq_1),
                                        pattern = fq_end_pattern, replacement = "")
@@ -233,6 +222,7 @@ processInput <- function(helpers_dir,
     } else {
       samples$sample_name[ind] <- gsub(basename(samples$experiment[ind]),
                                        pattern = fq_end_pattern, replacement = "")
+      if (! file.exists(samples$experiment[ind])) {stop("Could not find fastq file ", samples$experiment[ind])}
       samples$read_length[ind] <- get_fastq_read_length(samples$experiment[ind])
       samples$paired_end[ind] <- FALSE
     }
@@ -435,10 +425,16 @@ processInput <- function(helpers_dir,
   names(vars_list) <- samples$sample_name
 
   # Generate the JSON output
-  dir.create(outdir, showWarnings = FALSE)
-  output_json <- file.path(outdir, "rseqVars.json")
+  samples$outdir <- samples$outdir[1]
+  dir.create(samples$outdir, showWarnings = FALSE)
+  output_json <- file.path(samples$outdir, "rseqVars.json")
+  output_json <- gsub(output_json, pattern = "//", replacement = "/")
+  vars_list[["dryrun"]] <- dryRun
+  vars_list[["dag"]] <- dag
+  vars_list[["keepTmp"]] <- keepTmp
+  vars_list[["force"]] <- force
   jsonlite::write_json(vars_list, path = output_json)
-  output_csv <- file.path(outdir, "rseqVars.csv")
+  output_csv <- file.path(samples$outdir, "rseqVars.csv")
   write.csv(samples, file = output_csv)
 
   return(output_json)
@@ -446,24 +442,171 @@ processInput <- function(helpers_dir,
 }
 
 # Parse shell args
-arg <- commandArgs(trailingOnly=TRUE)
+args <- commandArgs(trailingOnly=TRUE)
+
+# # print(args)
+# args <- c("--experiment", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/qDRIP_R1.fastq",
+#           "-c", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/qDRIP_ctr_R1.fastq",
+#          "-g", "mm10", "-n", "my_experiment", "-o", "RSeq_out/", "-t", "20", "--noDedupe", "-m", "DRIP",
+#          "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/helpers")
+# args <- c("-e1", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/qDRIP_R1.fastq",
+#           "-2", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/qDRIP_R2.fastq",
+#           "-c1", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/qDRIP_ctr_R1.fastq",
+#           "-c2", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/qDRIP_ctr_R1.fastq",
+#           "-m", "qDRIP", "-s", "RSeq_CLI/tests/manifest_for_RSeq_testing_09092020_small.csv",
+#           "-g", "hg38", "-n", "my_experiment", "-o", "RSeq_out/", "-t", "20",
+#           "--dryRun", "--keepTmp",
+#           "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/helpers")
+
+argument_possibles <- data.frame(
+  short = c("e", "e1", "e2", "c", "c1", "c2", "m", "g", "n", "s", "o", "G", "t", "v", "h", NA, NA, NA, NA, NA, NA),
+  long = c("experiment", "experiment_R1", "experiment_R2", "control", "control_R1", "control_R2",
+           "mode", "genome", "name", "sampleSheet", "outputDir",
+            "genomeDir", "threads", "version", "help", "dryRun", "noFastp", "force", "noDedupe", "keepTmp", "dag"),
+  type = c(rep("valued", 13), rep("valueless", 8)), stringsAsFactors = FALSE
+)
+
+# Loop for parsing command line shell arguments
+collect_list <- list()
+name <- NULL
+unrecognized_arguments <- c()
+errors <- c()
+for (i in 1:(length(args))) {
+  arg <- args[i]
+  if (substr(arg, 1, 1) == "-" || grepl(arg, pattern = "RSeq_CLI/helpers")) {
+    # CASE: it is a flag -- colect following
+
+    # Collect from collector if name isn't in NULL state (collector will be full)
+    if (! is.null(name) && length(type) > 0 && ! type == "valueless") {
+      collect_list[[name]] <- collector
+    }
+    if (grepl(arg, pattern = "RSeq_CLI/helpers")) {break}
+    collector <- c()  # re-init collector
+
+    # Get the flag text (could be short-form or long-form flag)
+    nameRaw <- gsub(arg, pattern = "^[-]{1,2}", replacement = "")
+
+    # Get the long-form name if not already provided
+    name <- argument_possibles$long[which(argument_possibles$short == nameRaw)]
+    if (! length(name)) {
+      name <- nameRaw
+    }
+
+    # Get the argument type
+    type <- argument_possibles$type[which(argument_possibles$short == name)]
+    if (! length(type)) {
+      type <- argument_possibles$type[which(argument_possibles$long == name)]
+      if (! length(type)) {
+        unrecognized_arguments <- c(unrecognized_arguments, arg)
+        next
+      }
+    }
+    # Collect valueless arguments as logical
+    if (type == "valueless") {
+      collect_list[[name]] <- TRUE
+    }
+    next
+  } else {
+    collector <- c(collector, arg)
+  }
+}
+
+if (length(unrecognized_arguments)) {
+  errors <- c(errors, paste0("Unrecognized argument(s): '",paste0(unrecognized_arguments, collapse = "', '"), "'."))
+}
+
+
+# Exit for usage and version info
+if (! is.null(collect_list$help)) {cat("usage"); quit(status = 0, save = "no")}
+if (! is.null(collect_list$version)) {cat("version"); quit(status = 0, save = "no")}
+
+# Compile experiment and control 
+experiment <- collect_list$experiment
+experiment_R1 <- collect_list$experiment_R1
+experiment_R2 <- collect_list$experiment_R2
+control <- collect_list$control
+control_R1 <- collect_list$control_R1
+control_R2 <- collect_list$control_R2
+
+# Set experiment values
+if (! is.null(experiment_R1)) {
+  if (! is.null(experiment_R2)) {
+    experiment <- paste0(experiment_R1, "+", experiment_R2)
+  } else {
+    errors <- c(errors, "Fastq Experiment R1 provided, but not R2!")
+  }
+}
+
+# Set control values
+if (! is.null(control_R1)) {
+  if (! is.null(control_R2)) {
+    control <- paste0(control_R1, "+", control_R2)
+  } else {
+    errors <- c(errors, "Fastq control R1 provided, but not R2!")
+  }
+}
+
+
+# Other variables
+mode <- collect_list$mode
+outdir <- collect_list$outputDir
+genome <- collect_list$genome
+genome_home_dir <- collect_list$genome_home_dir
+samples <- collect_list$sampleSheet
+cores <- collect_list$threads
+helpers_dir <- args[length(args)]
+
+# Read in samples if they exist
+if (! is.null(samples)) {samples <- read.csv(samples)}
+
+# Collect errors
+if (is.null(experiment) && is.null(samples$experiment)) {errors <- c(errors, "No experiment or sampleSheet specified!"); experiment <- NA}
+if (is.null(mode) && is.null(samples$mode)) {errors <- c(errors, "No mode specified!"); mode <- NA}
+
+# Set defaults
+if (is.null(outdir)) {outdir <- "RSeq_out/"}
+if (is.null(genome_home_dir)) {genome_home_dir <- file.path(path.expand("~"), ".RSeq_genomes")}
+if (is.null(cores)) {cores <- 1} else {cores <- as.numeric(cores)}
+
+# Compile sampleSheet
+if (is.null(samples)) {samples <- data.frame(experiment, mode)}
+if (is.null(samples$outdir)) {samples$outdir <- outdir}
+if (is.null(samples$cores)) {samples$cores <- cores}
+if (is.null(samples$genome_home_dir)) {samples$genome_home_dir <- genome_home_dir}
+
+
+# Check for control and genome
+if (is.null(samples$control) && ! is.null(control)) {
+  if (length(control) != length(samples$experiment)) {
+    errors <- c(errors, "Number of experiment samples is different from the number of controls!")
+  } else {
+    samples$control <- control
+  }
+}
+if (! is.null(genome)) {samples$genome <- genome}
+
+# Handle any errors and return to shell
+if (length(errors) > 0) {
+  cat(paste0("ERROR(s):\n - ", paste0(errors, collapse = " \n - ")))
+  quit(status = 1, save = "no")
+}
+
 
 # Source helpers
-source(file.path(arg[1], "utils.R"))
+source(file.path(helpers_dir, "utils.R"))
 # Load required data objects
-load(file.path(arg[1], "data", "available_genomes.rda"))
+load(file.path(helpers_dir, "data", "available_genomes.rda"))
 
-# Get output JSON
-result <- processInput(helpers_dir = arg[1],
-                       mode = arg[2],
-                       outdir = arg[3],
-                       genome = arg[4],
-                       genome_home_dir = arg[5],
-                       cores = arg[6],
-                       no_dedupe = as.logical(arg[7]),
-                       no_fastp = as.logical(arg[8]),
-                       samples = arg[9],
-                       available_genomes)
+if (! "keepTmp" %in% names(collect_list)) {keepTmp <- FALSE} else {keepTmp <- collect_list$keepTmp}
+if (! "dryRun" %in% names(collect_list)) {dryRun <- FALSE} else {dryRun <- collect_list$dryRun}
+if (! "dag" %in% names(collect_list)) {dag <- FALSE} else {dag <- collect_list$dag}
+if (! "force" %in% names(collect_list)) {force <- FALSE} else {force <- collect_list$force}
+
+
+# # Get output JSON
+result <- processInput(samples = samples, keepTmp = keepTmp, dryRun = dryRun,
+                       helpers_dir = helpers_dir, force = force, dag = dag,
+                       available_genomes = available_genomes)
 cat(result)
 
 

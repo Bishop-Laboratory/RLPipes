@@ -20,10 +20,12 @@ sample_name=config['sample_name'][0]
 # TODO: Should there be an option to specify whether or not to separate output folders based on sample_name?
 outdir=config['out_dir'][0]
 outdir=config['out_dir'][0] + "/" + sample_name
-experiments=config['experiments'][0].split(",")
+outdir=outdir.replace("//", "/")
+experiments=config['experiments'][0].split(",")[0]
 controls=config['controls'][0]
 if controls != "None":
-    controls=controls.split(",")
+    controls=controls.split(",")[0]
+
 
 # Set expected output and inputs for merging of technical replicates (assumes public samples)
 output_fastq_experiment_1 = expand("{outdir}/fastqs/{sample_name}_experiment_R1.fastq",
