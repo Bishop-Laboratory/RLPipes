@@ -27,6 +27,10 @@ usage() {
   echo "  -t|--threads           int           Specify number of threads. [default = 1]"
   echo "  -v|--version                         Display version info"
   echo "  -h|--help                            Display detailed usage"
+  echo "  --dryRun                             Dry run of analysis pipeline."
+  echo "  --keepTmp                            Keep all temporary files during workflow."
+  echo "  --dag                                Generate workflow DAGs pictures."
+  echo "  --force                              Force the entire workflow to re-run."
   echo
   echo "Examples (see detailed usage for more):"
   echo
@@ -38,48 +42,12 @@ usage() {
 }
 
 usageDetail() {
-  usage
-  echo
-  echo "################################################################################################################"
-  echo "############################################ USAGE DETAILS #####################################################"
-  echo "################################################################################################################"
-  echo "sampleSheet:"
-  echo
-  echo "This is a required argument for RSeq. It is a CSV file containing the following columns:"
-  echo
-  echo "  --dryRun                             Perform a dry-run of the RSeq pipeline to ensure there are no errors."
-  echo "  --noFastp                            Do not use fastp to perform adapter trimming, filtering, and fastq QC."
-  echo "  --noDedupe                           Do not use clumpify.sh to perform read deduplication."
-  echo "  --keepTmp                            Do not delete intermediate files once processing is finished."
-  echo "experiment "
-  echo
-  echo "    GEO or SRA accession(s) of experimental samples to download and analyze and/or names of local "
-  echo "    fastq or bam file(s). For local files, if no sample_names are provided, file prefixes will be    "
-  echo "    treated as sample_names. For local files, mate pairs should be indicated as file_one.R1.fastq+file_two.R2.fastq"
-  echo
-  echo "control "
-  echo
-  echo "    control Same as experiment but for control/input samples."
-  echo
-  echo "sample_name "
-  echo
-  echo "    Name for identifying this sample. Will default to the file basename (for fastq/bam files)"
-  echo "    or SRA sample name (for public data) if not given."
-  echo
-  echo "genome "
-  echo
-  echo "    The desired genome for the provided sample in UCSC format (hg38, mm10, etc). For SRA/GEO accessions, the latest"
-  echo "    genome assembly for the sample species will be automatically determined if no genome is supplied."
-  echo
-  echo "3. 'species': with 'human' or 'mouse' as entries"
-  echo "'Run': the name of each sequencing file. e.g. 'ATMsiRNA' is the Run for 'ATMsiRNA_1.fastq'"
-  echo "If there are technical replicates, they will be merged using the 'Run' and 'Experiment' columns. For example:"
-  echo
-  echo "'Run': 'APBX2.1', 'APBX2.2', 'APBX2.3'; 'Experiment': 'APBX2', 'APBX2', 'APBX2'"
-  echo "Fastq files are merged 'APBX2.1_1.fastq' + 'APBX2.2_1.fastq' + 'APBX2.3_1.fastq' -> 'APBX2_1.fastq'"
-  echo
-  echo "################################################################################################################"
-  echo "################################################################################################################"
+  # From: https://stackoverflow.com/questions/7314044/use-bash-to-read-line-by-line-and-keep-space
+  IFS=''
+  while read lines; do
+    echo "$lines"
+  done < "$helpersDir"/usage_details.txt
+
 }
 
 version() {
@@ -114,6 +82,8 @@ fi
 # Run the pipeline!
 python "$helpersDir"/run_workflow.py "$inputJSON" "$helpersDir"/rseq_workflow.smk
 
-
-
-
+echo
+echo "RSeq run finished!"
+echo date +"%T"
+echo
+exit 0
