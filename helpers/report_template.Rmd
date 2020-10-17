@@ -1,0 +1,124 @@
+---
+title: "RSeq Report"
+output: 
+  html_document:
+    code_folding: hide
+    theme: flatly
+    highlight: textmate
+params:
+  corr_data: "not here"
+  anno_data: "not here"
+  rlfs_data: "helloworld3.png"
+  rlcons_data: "helloworld4.png"
+  bam_stats: "helloworld5.png"
+  read_qc_data: "not here"
+  configlist: "not here"
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+library(knitr)
+library(kableExtra)
+library(pheatmap)
+library(ggpubr)
+library(RColorBrewer)
+library(grid)
+library(plotly)
+show_anno <- ifelse(tibble::is_tibble(anno_data), TRUE, FALSE)
+show_corr <- ifelse(is.list(corr_data), TRUE, FALSE)
+sample_name <- configlist$sample_name
+mode <- configlist$mode
+current_time <- date()
+pe <- configlist$paired_end
+strand <- configlist$strand_specific
+moiety <- configlist$moeity
+ip_type <- configlist$ip_type
+```
+
+<br>
+
+Sample name: <strong>`r sample_name`</strong>
+
+Sample type: <strong>`r paste0(mode, "-Seq")`</strong>
+
+Time finished: <strong>`r current_time`</strong>
+
+***
+
+```{r child='annotation_template.Rmd', eval=show_anno}
+```
+
+
+```{r child='correlation_template.Rmd', eval=show_corr}
+```
+
+
+### Read quality
+
+From `fastp` report:
+
+```{r}
+before_filter <- unlist(read_qc_data$summary$before_filtering)
+after_filter <- unlist(read_qc_data$summary$after_filtering)
+namestable <- gsub(names(after_filter), pattern = "_", replacement = " ")
+namestable <- stringr::str_to_title(namestable)
+namestable <- gsub(namestable, pattern = "Gc", replacement = "GC")
+namestable[1:4] <- paste0(namestable[1:4], " (millions)")
+read_qc <- tibble(
+  "attribute" = namestable,
+  "Before filtering" = before_filter,
+  "After filtering" = after_filter
+) %>% 
+  mutate_at(.vars = c("Before filtering", "After filtering"), function(x) {
+    ifelse(x > 1000000, x / 1000000, x)
+  }) %>% tibble::column_to_rownames(var = "attribute") 
+reads_before <- read_qc$`Before filtering`[1]
+reads_after <- read_qc$`After filtering`[1]
+percent_passing <- round(100*(reads_after/reads_before), digits = 1)
+read_qc_color <- ifelse(percent_passing > 90, "green", ifelse(percent_passing > 80, "orange", "red"))
+kable(read_qc) %>%
+  kable_styling(full_width = FALSE, position = "left", bootstrap_options = "striped")
+```
+
+Percent reads passing filter: <strong style="color: `r read_qc_color`">`r percent_passing`</strong>
+
+***
+
+### Mapping quality
+
+```{r}
+total_reads <- bam_stats$total_reads / 1e6
+reads_aligned <- bam_stats$reads_aligned / 1e6
+duplicate_reads <- bam_stats$duplicate_reads / 1e6
+pct_aligned <- round(100*(reads_aligned/total_reads), digits = 2)
+pct_align_color <- ifelse(pct_aligned > 80, "green", ifelse(pct_aligned > 60, "orange", "red"))
+pct_duplicated <- round(100*(duplicate_reads/total_reads), digits = 2)
+pct_duplicated_color <- ifelse(pct_duplicated < 35, "green", ifelse(pct_aligned < 50, "orange", "red"))
+genome <- configlist$genome
+```
+
+Reads were aligned to **`r genome`** with `bwa mem`. 
+
+Total reads (millions): **`r total_reads`**
+
+Aligned reads (millions): **`r reads_aligned`**
+
+Percent of reads aligned: <strong style="color: `r pct_align_color`">`r pct_aligned`</strong>
+
+Duplicated reads (millions): **`r duplicate_reads`**
+
+Percent of reads duplicated: <strong style="color: `r pct_duplicated_color`">`r pct_duplicated`</strong>
+
+
+
+&nbsp;
+<hr />
+<p style="text-align: center;">RSeq (c) 2020, <a href="https://gccri.bishop-lab.uthscsa.edu/"  target="_blank">Bishop Lab</a>, UT Health San Antonio</p>
+<p style="text-align: center;">RSeq maintainer: <span style="color: #808080;"><em>millerh1@uthscsa.edu</em></span></p>
+
+&nbsp;
+
+
+
+
+
+

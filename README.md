@@ -1,28 +1,57 @@
-# RSeq
-A biologist-friendly best-practices R-loop mapping pipeline 
+# RSeq CLI
 
-## Quick Start
-RSeq can be initialized through `R`, command line, or in a user-friendly web interface. 
+RSeq CLI is a command-line interface to the RSeq best-practices R-looping mapping pipeline. 
 
-### Installation
-It is also highly recommended to install RSeq through `conda`:
-``` 
-conda install -c bioconda rseq
+## Quickstart
+
+RSeq CLI can be installed using conda:
+
+```bazaar
+conda install -c bioconda rseq-cli
 ```
-This will install the command line tool, web launcher, and `R` package at once.
-It will also install `snakemake` and all other non-`R` dependencies.
 
-### Using RSeq through a web interface
-RSeq can be run as a web application using `R-Shiny.` To run this, type:
-```
-rseq launch
-```
-This will launch the web interface which is used for configuring and monitoring 
-the RSeq pipeline. By default, the web interface will be instructed to listen for 
-traffic on port `6644` coming from `localhost`. It can be accessed by navigating in a 
-browser to `localhost:6644`. 
+To run the RSeq pipeline you will need R-loop mapping data in either `fastq`,
+`bam`, `bigWig`, or `bedGraph` format. You may also use public data accessions 
+with RSeq, from SRA, GEO, or BioProject (e.g., `SRX8908682`, `GSM4714836`, etc).
 
-However, it is not very convenient to interact this way with RSeq if running it on a 
-remote server as this would require opening a browser on the remote machine and forwarding
-the graphic interface through `X11`. Instead, users can specify 
+To run the basic RSeq workflow:
+
+```
+RSeq -m DRIP -s sampleSheet.csv -o RSeq_out/ -g ~/.RSeq_genomes -t 98
+```
+
+This will run the full RSeq pipeline to:
+1. Deduplicate and condense the fastq files
+2. Map the reads to the genome.
+3. Call R-loop peaks and signal tracks
+4. Calculate the quality score of the resulting maps.
+5. Return an analysis report in HTML format. 
+
+\* Upon first use, RSeq genomes will not be available and may take some time to be generated. 
+
+## Usage
+
+```
+RSeq [-m mode] [-s sampleSheet] [-o outputDir] [-g genomeDir] [-t threads] 
+
+General options:
+
+  -m|--mode              mode      Choose analysis mode ('DRIP', 'RChIP', etc.) See full list in detailed usage.
+  -s|--sampleSheet       file      CSV file describing samples. See details.
+  -i|--inputDir          dir       Directory containing fastq/bam files. Not required for SRA samples.
+  -o|--outputDir         dir       Project directory. [default = 'RSeq_out/']
+  -g|--genomeDir         dir       Genome directory. [default = '~/.RSeq_genomes']
+  -t|--threads           int       Specify number of threads. [default = 1]
+  --noFastp                        Do not use fastp to perform adapter trimming, filtering, and fastq QC.
+  --noDedupe                       Do not use clumpify.sh to perform read deduplication.
+  --keepTmp                        Do not delete intermediate files once processing is finished.
+  --returnBamsOnly                 Returns only bams, coverage tracks, and normalized signal tracks.
+  --noMerge                        Do not attempt to merge technical replicates from SRA.
+  --help                           Display detailed usage
+
+```
+
+### Details
+
+
 

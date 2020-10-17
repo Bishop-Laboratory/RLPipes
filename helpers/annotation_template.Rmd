@@ -1,0 +1,71 @@
+### Genome feature enrichment
+
+R-loop broad peaks were called with `macs2` and then compared with genomic features using `assignGenomeAnnotation` from `homer`. 
+
+
+```{r fig.height=4, fig.width=10}
+anno_cats <- data.frame(
+  "Annotation" = c('Intergenic', 'Simple_repeat', 'Satellite', 'Promoter', 'pseudo', 'Intron', 'TTS', 'LINE', 'LTR', 'SINE', 'DNA', 'CpG-Island', 'ncRNA', 'Low_complexity', 'Exon', 'snRNA', 'Retroposon', '5UTR', '3UTR', 'srpRNA', 'rRNA', 'tRNA', 'RC', 'scRNA', 'miRNA', 'RNA', 'snoRNA'),
+  "annotate_type" = c("gene", "rep", "rep", "gene", "RNA", "gene", "gene", 
+             "rep", "rep", "rep", "rep", "gene", "RNA", "rep",
+             "gene", "RNA", "rep", "gene", "gene", "RNA", "rep",
+             "RNA", "RNA", "RNA", "RNA", "RNA", "RNA"), stringsAsFactors = FALSE
+)
+
+
+anno_data_plt <- anno_data %>%
+  inner_join(y = anno_cats, by = "Annotation")
+
+minplt <- min(anno_data_plt$`Log2 Ratio (obs/exp)`) * 1.05
+maxplt <- max(anno_data_plt$`Log2 Ratio (obs/exp)`) * 1.05
+
+# TODO: Add average to this with SEM
+plt1 <- anno_data_plt %>%
+  filter(annotate_type == "gene") %>%
+  ggplot(mapping = aes(x = factor(Annotation, levels = c("CpG-Island",
+                                                         "Promoter",
+                                                         "5UTR",
+                                                         "Exon",
+                                                         "Intron",
+                                                         "3UTR",
+                                                         "TTS",
+                                                         "Intergenic")), y = `Log2 Ratio (obs/exp)`)) +
+  geom_col(fill = "firebrick") +
+  ylab("Log2 Enrichment (obs/exp)") +
+  xlab(NULL) +
+  labs(title = "Genomic Features") +
+  theme_bw() +
+  rotate_x_text(45) +
+  ylim(minplt, maxplt)
+
+plt2 <- anno_data_plt %>%
+  filter(annotate_type == "RNA") %>%
+  ggplot(mapping = aes(x = Annotation, y = `Log2 Ratio (obs/exp)`)) +
+  geom_col(fill = "goldenrod") +
+  ylab(NULL) +
+  xlab("Annotation") +
+  labs(title = "ncRNAs") +
+  theme_bw() + 
+  rotate_x_text(45) +
+  ylim(minplt, maxplt)
+
+plt3 <- anno_data_plt %>%
+  filter(annotate_type == "rep") %>%
+  ggplot(mapping = aes(x = Annotation, y = `Log2 Ratio (obs/exp)`)) +
+  geom_col(fill = "forestgreen") +
+  ylab(NULL) +
+  xlab(NULL) +
+  labs(title = "Repetitive Elements") +
+  theme_bw() +
+  rotate_x_text(45) +
+  ylim(minplt, maxplt)
+
+gt1 <- ggplotGrob(plt1)
+gt2 <- ggplotGrob(plt2)
+gt3 <- ggplotGrob(plt3)
+grid.newpage()
+grid.draw(cbind(gt1, gt2, gt3, size = "last"))
+```
+
+
+***
