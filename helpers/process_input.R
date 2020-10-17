@@ -470,7 +470,10 @@ args <- commandArgs(trailingOnly=TRUE)
 #           "-g", "hg38", "-n", "my_experiment", "-o", "RSeq_out/", "-t", "20",
 #           "--dryRun", "--keepTmp",
 #           "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/helpers")
+# args <- c("-e", "whatevs" , "-c",
+#            "--dag","-t","/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/helpers")
 
+# Dataframe of mappings between possible arguments and whether they have a value or not
 argument_possibles <- data.frame(
   short = c("e", "e1", "e2", "c", "c1", "c2", "m", "g", "n", "s", "o", "G", "t", "r", "v", "h",
             NA, NA, NA, NA, NA, NA, NA),
@@ -488,14 +491,19 @@ unrecognized_arguments <- c()
 errors <- c()
 for (i in 1:(length(args))) {
   arg <- args[i]
-  if (substr(arg, 1, 1) == "-" || grepl(arg, pattern = "RSeq_CLI/helpers")) {
-    # CASE: it is a flag -- colect following
+  if (substr(arg, 1, 1) == "-" || grepl(arg, pattern = "RSeq/helpers")) {
+    # CASE: it is a flag -- collect following
 
     # Collect from collector if name isn't in NULL state (collector will be full)
-    if (! is.null(name) && length(type) > 0 && ! type == "valueless") {
+    if (! is.null(name) && length(type) > 0 && type != "valueless") {
+      if (is.null(collector)) {  
+        # if collector is null, this means a valued flag was given but no value supplied
+        errors <- c(errors,  paste0("'", args[i-1], "' was invoked but no value was supplied!"))
+        break
+      }
       collect_list[[name]] <- collector
     }
-    if (grepl(arg, pattern = "RSeq_CLI/helpers")) {break}
+    if (grepl(arg, pattern = "RSeq/helpers")) {break}
     collector <- c()  # re-init collector
 
     # Get the flag text (could be short-form or long-form flag)
@@ -564,7 +572,6 @@ if (is.null(rseqVars)) {
     }
   }
   
-  
   # Other variables
   mode <- collect_list$mode
   outdir <- collect_list$outputDir
@@ -628,7 +635,12 @@ if (is.null(rseqVars)) {
                          available_genomes = available_genomes)
 } else {
   if (! file.exists(rseqVars)) {
-    stop("Cannot locate the user-supplied rseqVars file: ", rseqVars)
+    errors <- c(errors, paste0("Cannot locate the user-supplied rseqVars file: ", rseqVars))
+  }
+  # Handle any errors and return to shell
+  if (length(errors) > 0) {
+    cat(paste0("ERROR(s):\n - ", paste0(errors, collapse = " \n - ")))
+    quit(status = 1, save = "no")
   }
   rseqVarList <- jsonlite::read_json(rseqVars, simplifyVector = TRUE)
   if (! "keepTmp" %in% names(collect_list)) {keepTmp <- FALSE} else {keepTmp <- collect_list$keepTmp}
@@ -648,7 +660,6 @@ if (is.null(rseqVars)) {
       rseqVarList[[xnow]]$cores <- cores
     }
   }
-  rseqVarList[["cores"]] <- cores
   od <- rseqVarList[[1]]$out_dir
   rseqVarList[["dryrun"]]
   result <- file.path(od, "rseqVars.json")

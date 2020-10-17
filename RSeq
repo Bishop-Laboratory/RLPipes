@@ -66,6 +66,8 @@ fi
 
 # Argparse & pre-process
 echo
+echo "Parsing input..."
+echo
 inputJSON=$(Rscript "$helpersDir"/process_input.R "$@" "$helpersDir")
 
 # Check if version or usage

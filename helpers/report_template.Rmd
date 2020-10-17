@@ -6,13 +6,13 @@ output:
     theme: flatly
     highlight: textmate
 params:
-  corr_data: "not here"
-  anno_data: "not here"
-  rlfs_data: "helloworld3.png"
-  rlcons_data: "helloworld4.png"
-  bam_stats: "helloworld5.png"
-  read_qc_data: "not here"
-  configlist: "not here"
+  corr_data: "placeholder"
+  anno_data: "placeholder"
+  rlfs_data: "placeholder"
+  rlcons_data: "placeholder"
+  bam_stats: "placeholder"
+  read_qc_data: "placeholder"
+  configlist: "placeholder"
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
@@ -29,6 +29,7 @@ sample_name <- configlist$sample_name
 mode <- configlist$mode
 current_time <- date()
 pe <- configlist$paired_end
+genome <- configlist$genome
 strand <- configlist$strand_specific
 moiety <- configlist$moeity
 ip_type <- configlist$ip_type
@@ -39,6 +40,8 @@ ip_type <- configlist$ip_type
 Sample name: <strong>`r sample_name`</strong>
 
 Sample type: <strong>`r paste0(mode, "-Seq")`</strong>
+
+Genome: <strong>`r genome`</strong>
 
 Time finished: <strong>`r current_time`</strong>
 

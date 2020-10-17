@@ -3,24 +3,24 @@ import json
 import sys
 import io
 import os
+import time
 import pathlib
 from contextlib import redirect_stdout
-
 
 def make_snakes(config_file, run_path, snake_path, dryrun=False, dag=False, force=False, notemp=False, reason=False):
 
     configs = json.load(open(config_file))
     for sample_name, config in configs.items():
-
-        if sample_name in ['dryrun', 'keepTmp', 'dag', 'force', 'reason']:
+        if sample_name in ['dryrun', 'keepTmp', 'dag', 'force', 'reason', 'cores']:
             continue
+
+        print("\nCurrent sample: '" + sample_name + "'\n")
+        time.sleep(.5)
 
         if not dryrun and not dag:
             # Unlock any previous runs TODO: this should be removed probably... We need unique dirs for multiple runs!
             snk.snakemake(snake_path, unlock=True, dryrun=dryrun, config=config, forceall=force,
                           printreason=reason, notemp=notemp)
-
-        cores = config['cores'][0]
 
         pathlib.Path(run_path + "/dags/").mkdir(parents=True, exist_ok=True)
 
@@ -28,7 +28,7 @@ def make_snakes(config_file, run_path, snake_path, dryrun=False, dag=False, forc
             out = io.StringIO()
             with redirect_stdout(out):
                 snk.snakemake(snake_path, dryrun=dryrun, printdag=dag, printreason=reason,
-                              config=config, cores=cores, forceall=force, notemp=notemp)
+                              config=config, forceall=force, notemp=notemp)
                 out = out.getvalue()
 
                 out_file = run_path + '/dags/' + sample_name + '.dag.gv'
@@ -44,7 +44,7 @@ def make_snakes(config_file, run_path, snake_path, dryrun=False, dag=False, forc
                 os.remove(out_file)
         else:
             snk.snakemake(snake_path, dryrun=dryrun, printdag=dag, printreason=reason,
-                          config=config, cores=cores, forceall=force, notemp=notemp)
+                          config=config, forceall=force, notemp=notemp)
 
 
 if __name__ == "__main__":

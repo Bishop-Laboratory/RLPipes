@@ -3,11 +3,9 @@
 prepare_report <- function(input, sample_name, configs) {
   
   # ## Bug testing ##
-  # input <- c(
-  #   "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/RSeq_out16/SRX113812_Ntera2_DNA/SRX113812_Ntera2_DNA.final_report.tmp.json"
-  # )
-  # sample_name <- "SRX113812_Ntera2_DNA"
-  # configs <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/RSeq_out16/rseqVars.json"
+  # input <- c("/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/tests/RSeq_out16/SRX4776650_MapR_U87T_ActD_rep2/SRX4776650_MapR_U87T_ActD_rep2.final_report.tmp.json")
+  # sample_name <- "SRX4776650_MapR_U87T_ActD_rep2"
+  # configs <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/tests/RSeq_out16/rseqVars.json"
   # ###########
   
   js <- jsonlite::read_json(input, simplifyVector = TRUE)
@@ -35,6 +33,9 @@ prepare_report <- function(input, sample_name, configs) {
   if (grepl(js$anno_output[1], pattern = "\\.feature_overlaps\\.txt")) {
     anno_data <- suppressMessages(read_tsv(js$anno_output[1])) %>%
       filter(! grepl(Annotation, pattern = "\\?"))
+    if(! nrow(anno_data)) {
+      anno_data <- NA
+    }
   } else {
     anno_data <- NA
   }

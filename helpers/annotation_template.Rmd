@@ -63,8 +63,15 @@ plt3 <- anno_data_plt %>%
 gt1 <- ggplotGrob(plt1)
 gt2 <- ggplotGrob(plt2)
 gt3 <- ggplotGrob(plt3)
+if (length(plt2$data$Annotation) && length(plt3$data$Annotation)) {
+  plts <- cbind(gt1, gt2, gt3, size = "last")
+} else if (length(plt2$data$Annotation)) {
+  plts <- cbind(gt1, gt2, size = "last")
+} else {
+  plts <- gt1
+}
 grid.newpage()
-grid.draw(cbind(gt1, gt2, gt3, size = "last"))
+grid.draw(plts)
 ```
 
 

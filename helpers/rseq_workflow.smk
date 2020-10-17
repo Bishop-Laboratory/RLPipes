@@ -309,27 +309,13 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
         output:
             gene_anno=genome_home_dir + "/{genome}/homer_anno.txt"
         params:
-            out_dir=genome_home_dir + "/{genome}/homer_anno"
+            out_dir=genome_home_dir + "/{genome}/homer_anno",
+            check=outdir + "/logs/" + sample_name + "_{genome}__download_homer_anno.log"
         shell: """
-            wget -O {params.out_dir}.zip http://homer.ucsd.edu/homer/data/genomes/{wildcards.genome}.v6.4.zip
+            (wget -O {params.out_dir}.zip http://homer.ucsd.edu/homer/data/genomes/{wildcards.genome}.v6.4.zip
             unzip -d {params.out_dir} {params.out_dir}.zip
             mv {params.out_dir}/data/genomes/{wildcards.genome}/{wildcards.genome}.full.annotation {output}
-            rm -rf {params.out_dir} && rm -rf {params.out_dir}.zip
-        """
-
-    rule run_QmRLFS_finder:
-        # Packaged with RSeq from: https://github.com/piroonj/QmRLFS-finder (Oct 12 2020)
-        input: genome_home_dir + "/{genome}/{genome}.fa"
-        output:
-            table=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.txt",
-            bed=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.bed"
-        params:
-            helpers_dir=helpers_dir,
-            genome_home_dir=genome_home_dir
-        shell: """
-        python {params.helpers_dir}/external/QmRLFS-finder.py -i {input} \
-        -o {params.genome_home_dir}/{wildcards.genome}/rloop_predictions/RLFS.{wildcards.genome}
-        awk '{{OFS="\t";print($1,$4,$14,$3,0,$21)}}' {output.table} > {output.bed}'
+            rm -rf {params.out_dir} && rm -rf {params.out_dir}.zip) &> {params.check}
         """
 
     rule bwa_index:
@@ -379,7 +365,8 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
         input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
         output: "{outdir}/info/{sample}.{genome}.{exp_type}.bam_stats.txt"
         threads: cores
-        shell: "samtools flagstat -@ {threads} {input} > {output}"
+        log: "{outdir}/logs/{sample}_{genome}_{exp_type}__bam_stats.log"
+        shell: "(samtools flagstat -@ {threads} {input} > {output}) &> {log}"
 
 if sample_type != "bigWig" and sample_type != "bedGraph":
 
@@ -712,10 +699,11 @@ rule get_correlation_bin_scores:
         npz=temp("{outdir}/QC/{sample}.{genome}.gold_standard_bin_scores.npz"),
         tab="{outdir}/QC/{sample}.{genome}.gold_standard_bin_scores.tab"
     threads: cores
+    log: "{outdir}/logs/{sample}_{genome}__get_correlation_bin_scores.log"
     shell:
         """
-        multiBigwigSummary BED-file --BED {params.helpers_dir}/data/correlation_genes_100kb.{wildcards.genome}.1kbwindow.bed \
-        -o {output.npz} -b {input} --outRawCounts {output.tab} -p {threads}
+        (multiBigwigSummary BED-file --BED {params.helpers_dir}/data/correlation_genes_100kb.{wildcards.genome}.1kbwindow.bed \
+        -o {output.npz} -b {input} --outRawCounts {output.tab} -p {threads}) &> {log}
         """
 
 
@@ -727,21 +715,23 @@ rule correlation_analysis:
     params:
         helpers_dir = helpers_dir,
         mode = mode
+    log: "{outdir}/logs/{sample}_{genome}__correlation_analysis.log"
     shell:
          """
-         Rscript {params.helpers_dir}/correlation_test.R {input} {wildcards.sample} {params.mode} {params.helpers_dir}
+         (Rscript {params.helpers_dir}/correlation_test.R {input} {wildcards.sample} {params.mode} {params.helpers_dir}) &> {log}
          """
 
 
-rule get_genome_annotations:
+rule assign_genome_annotations:
     # Calculates the percentage of called peaks overlapping with repeat regions
     input:
         gene_anno=genome_home_dir + "/{genome}/homer_anno.txt",
         peaks_macs2="{outdir}/peaks_macs_unstranded/{sample}_{genome}_peaks.broadPeak"
     output:
         stats_out="{outdir}/QC/{sample}_{genome}.feature_overlaps.txt"
+    log: "{outdir}/logs/{sample}_{genome}__assign_genome_annotations.log"
     shell: """
-        assignGenomeAnnotation {input.peaks_macs2} {input.gene_anno} > {output.stats_out}
+        (assignGenomeAnnotation {input.peaks_macs2} {input.gene_anno} > {output.stats_out}) &> {log}
     """
 
 
@@ -753,15 +743,29 @@ rule prepare_report:
         sample_name=sample_name,
         configs=outdirorig + "rseqVars.json",
         final_report_dict_file=final_report_dict_file[0]
+    log: "{outdir}/logs/{sample}_{genome}__prepare_report.log"
     shell:
      """
-     echo {output}
+     (echo {output}
      Rscript {params.helpers_dir}/prepare_report.R {params.final_report_dict_file} {params.sample_name} {params.configs}
-     rm {params.final_report_dict_file}
+     rm {params.final_report_dict_file}) &> {log}
      """
 
 
-
+rule run_QmRLFS_finder:
+    # Packaged with RSeq from: https://github.com/piroonj/QmRLFS-finder (Oct 12 2020)
+    input: genome_home_dir + "/{genome}/{genome}.fa"
+    output:
+        table=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.txt",
+        bed=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.bed"
+    params:
+        helpers_dir=helpers_dir,
+        genome_home_dir=genome_home_dir
+    shell: """
+    python {params.helpers_dir}/external/QmRLFS-finder.py -i {input} \
+    -o {params.genome_home_dir}/{wildcards.genome}/rloop_predictions/RLFS.{wildcards.genome}
+    awk '{{OFS="\t";print($1,$4,$14,$3,0,$21)}}' {output.table} > {output.bed}'
+    """
 
 
 
