@@ -7,6 +7,7 @@ import time
 import pathlib
 from contextlib import redirect_stdout
 
+
 def make_snakes(config_file, run_path, snake_path, dryrun=False, dag=False, force=False, notemp=False, reason=False):
 
     configs = json.load(open(config_file))
@@ -15,40 +16,43 @@ def make_snakes(config_file, run_path, snake_path, dryrun=False, dag=False, forc
             continue
 
         print("\nCurrent sample: '" + sample_name + "'\n")
-        time.sleep(.5)
+        if len(config.keys()) < 20:
+            time.sleep(.5)
 
         if not dryrun and not dag:
-            # Unlock any previous runs TODO: this should be removed probably... We need unique dirs for multiple runs!
+            # Unlock any previous runs? TODO: this should be removed probably... We need unique dirs for multiple runs!
+            cores = int(config['cores'][0])
             snk.snakemake(snake_path, unlock=True, dryrun=dryrun, config=config, forceall=force,
-                          printreason=reason, notemp=notemp)
+                          printreason=reason, notemp=notemp, cores=cores)
+            snk.snakemake(snake_path, unlock=False, dryrun=dryrun, config=config, forceall=force,
+                          printreason=reason, notemp=notemp, cores=cores)
+        else:
+            pathlib.Path(run_path + "/dags/").mkdir(parents=True, exist_ok=True)
 
-        pathlib.Path(run_path + "/dags/").mkdir(parents=True, exist_ok=True)
+            if dag:
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    snk.snakemake(snake_path, dryrun=dryrun, printdag=dag, printreason=reason,
+                                  config=config, forceall=force, notemp=notemp)
+                    out = out.getvalue()
 
-        if dag:
-            out = io.StringIO()
-            with redirect_stdout(out):
+                    out_file = run_path + '/dags/' + sample_name + '.dag.gv'
+
+                    if os.path.exists(out_file):
+                        os.remove(out_file)
+
+                    with open(out_file, 'a') as stdout_log:
+                        stdout_log.writelines(out)
+
+                    out_svg = run_path + '/dags/' + sample_name + '.dag.png'
+                    os.system('cat ' + out_file + ' | dot -Tpng -o ' + out_svg)
+                    os.remove(out_file)
+            else:
                 snk.snakemake(snake_path, dryrun=dryrun, printdag=dag, printreason=reason,
                               config=config, forceall=force, notemp=notemp)
-                out = out.getvalue()
-
-                out_file = run_path + '/dags/' + sample_name + '.dag.gv'
-
-                if os.path.exists(out_file):
-                    os.remove(out_file)
-
-                with open(out_file, 'a') as stdout_log:
-                    stdout_log.writelines(out)
-
-                out_svg = run_path + '/dags/' + sample_name + '.dag.png'
-                os.system('cat ' + out_file + ' | dot -Tpng -o ' + out_svg)
-                os.remove(out_file)
-        else:
-            snk.snakemake(snake_path, dryrun=dryrun, printdag=dag, printreason=reason,
-                          config=config, forceall=force, notemp=notemp)
 
 
 if __name__ == "__main__":
-
     configs = json.load(open(sys.argv[1]))
     notemp = (not configs['keepTmp'][0])
     dryrun = configs['dryrun'][0]

@@ -3,6 +3,7 @@
 ########################################################################################################################
 
 import json
+import os
 
 # Config vars
 helpers_dir=config['helpers_dir'][0]
@@ -15,7 +16,7 @@ genome_home_dir=config['genome_home_dir'][0]
 effective_genome_size=config['effective_genome_size'][0]
 full_genome_length=config['full_genome_length'][0]
 effective_genome_fraction = effective_genome_size/full_genome_length
-cores=config['cores'][0]
+cores=int(config['cores'][0])
 sample_type=config['sample_type'][0]
 no_dedupe=config['no_dedupe'][0]
 no_fastp=config['no_fastp'][0]
@@ -113,14 +114,20 @@ else:
 if genome == "hg38":
     correlation_output = expand("{outdir}/QC/{sample}.{genome}.correlation.{file_ends}", genome=genome,
                                 sample=sample_name, outdir=outdir, file_ends=["png", "rda"])
+    rlfs_output = expand("{outdir}/QC/{sample}_{genome}.rlfs_enrichment.rda", genome=genome,
+                                sample=sample_name, outdir=outdir)
 else:
     correlation_output = peak_output
+    rlfs_output = peak_output
 
 if homer_anno_available:
     anno_output = expand("{outdir}/QC/{sample}_{genome}.feature_overlaps.txt", genome=genome,
                                 sample=sample_name, outdir=outdir)
+    # rlfs_output = expand("{outdir}/QC/{sample}_{genome}.rlfs_enrichment.rda", genome=genome,
+    #                             sample=sample_name, outdir=outdir)
 else:
     anno_output = peak_output
+    # rlfs_output = peak_output
 
 if controls != "None":
     bam_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam",
@@ -139,7 +146,6 @@ else:
 
 
 # TODO: Put something real here
-rlfs_output=peak_output
 rlcons_output=peak_output
 
 # Input for final report
@@ -159,14 +165,14 @@ final_report_dict = {
     "rlcons_output": rlcons_output,
     "bam_stats_output": bam_stats_output
 }
-import os
+
 os.makedirs(outdir, exist_ok=True)
 final_report_dict_file = expand("{outdir}/{sample}.final_report.tmp.json", outdir=outdir, sample=sample_name)
 with open(final_report_dict_file[0], "w") as write_file:
     json.dump(final_report_dict, write_file)
 
-final_report_output = expand("{outdir}/{sample}_{genome}.QC_report.html", genome=genome,
-                                sample=sample_name, outdir=outdir)
+final_report_output = expand("{outdir}/{sample}_{genome}.QC_report.{ext}", genome=genome,
+                                sample=sample_name, outdir=outdir, ext=['html', 'rda'])
 
 
 
@@ -737,7 +743,9 @@ rule assign_genome_annotations:
 
 rule prepare_report:
     input: final_report_input
-    output: "{outdir}/{sample}_{genome}.QC_report.html"
+    output:
+        html="{outdir}/{sample}_{genome}.QC_report.html",
+        rda="{outdir}/{sample}_{genome}.QC_report.rda"
     params:
         helpers_dir=helpers_dir,
         sample_name=sample_name,
@@ -767,6 +775,19 @@ rule run_QmRLFS_finder:
     awk '{{OFS="\t";print($1,$4,$14,$3,0,$21)}}' {output.table} > {output.bed}'
     """
 
+
+rule rlfs_enrichment:
+    input:
+         peaks="{outdir}/peaks_macs_unstranded/{sample}_{genome}_peaks.broadPeak",
+         rlfs=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.bed"
+    output: "{outdir}/QC/{sample}_{genome}.rlfs_enrichment.rda"
+    params:
+        helpers_dir=helpers_dir
+    threads: cores
+    log: "{outdir}/logs/{sample}_{genome}__rlfs_enrichment.log"
+    shell: """
+     (Rscript {params.helpers_dir}/rlfs_perm_test.R {threads} {wildcards.genome} {input.peaks} {input.rlfs} {output}) &> {log}
+     """
 
 
 

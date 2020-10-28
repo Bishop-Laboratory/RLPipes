@@ -457,7 +457,10 @@ processInput <- function(helpers_dir,
 # Parse shell args
 args <- commandArgs(trailingOnly=TRUE)
 
-# # print(args)
+# print(args)
+# args <- c("-r", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/rseqVars.json", 
+#           '-o', "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/",
+#           '-t', '80', '--dag', "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/helpers")
 # args <- c("--experiment", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/qDRIP_R1.fastq",
 #           "-c", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/qDRIP_ctr_R1.fastq",
 #          "-g", "mm10", "-n", "my_experiment", "-o", "RSeq_out/", "-t", "20", "--noDedupe", "-m", "DRIP",
@@ -658,10 +661,11 @@ if (is.null(rseqVars)) {
   for (xnow in names(rseqVarList)) {
     if (! xnow %in% c("dryrun", "dag", "keepTmp", "force", "reason")) {
       rseqVarList[[xnow]]$cores <- cores
+      if ("outputDir" %in% names(collect_list)) {rseqVarList[[xnow]]$out_dir <- collect_list$outputDir}
     }
   }
-  od <- rseqVarList[[1]]$out_dir
-  rseqVarList[["dryrun"]]
+  
+  if (! "outputDir" %in% names(collect_list)) {od <- rseqVarList[[1]]$out_dir} else {od <- collect_list$outputDir}
   result <- file.path(od, "rseqVars.json")
   jsonlite::write_json(rseqVarList, result)
 }

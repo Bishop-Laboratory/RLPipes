@@ -3,8 +3,9 @@ R-package/.Rhistory
 .RData
 .Ruserdata
 R-package/RSeq_out
-R-package/.snakemake
-R-package/RSeq.Rproj
+*.snakemake*
+*RSeq.Rproj*
+.Rproj.user
 .idea
 R-package/run_vars.json
 RSeq_out*
@@ -14,7 +15,7 @@ RSeq_out*
 *.bedGraph
 venv/
 analysis/
-
+*data/rlfs*
 rseq/uploads/
 
 *.pyc
@@ -32,3 +33,5 @@ build/
 .Rproj.user
 /.snakemake/
 /.snakemake/log/
+/helpers/data/rlfs_bed/
+/helpers/data/rlfs/

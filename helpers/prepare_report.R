@@ -3,15 +3,14 @@
 prepare_report <- function(input, sample_name, configs) {
   
   # ## Bug testing ##
-  # input <- c("/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/tests/RSeq_out16/SRX4776650_MapR_U87T_ActD_rep2/SRX4776650_MapR_U87T_ActD_rep2.final_report.tmp.json")
-  # sample_name <- "SRX4776650_MapR_U87T_ActD_rep2"
-  # configs <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/tests/RSeq_out16/rseqVars.json"
+  # input <- c("/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/tests/RSeq_out2/NT2_DRIP_head/NT2_DRIP_head.final_report.tmp.json")
+  # sample_name <- "NT2_DRIP_head"
+  # configs <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/tests/RSeq_out2/rseqVars.json"
   # ###########
   
   js <- jsonlite::read_json(input, simplifyVector = TRUE)
   
   suppressWarnings(suppressPackageStartupMessages(library(tidyverse)))
-  
   
   # Parse configs
   configlist <- jsonlite::read_json(configs, simplifyVector = TRUE)
@@ -19,6 +18,8 @@ prepare_report <- function(input, sample_name, configs) {
   helpers_dir <- configlist$helpers_dir
   output_html <- paste0(configlist$out_dir, "/", configlist$sample_name, "/", paste0(configlist$sample_name, "_", 
                                                       configlist$genome, ".QC_report.html"))
+  output_rda <- paste0(configlist$out_dir, "/", configlist$sample_name, "/", paste0(configlist$sample_name, "_", 
+                                                                                     configlist$genome, ".QC_report.rda"))
   
   # Parse cor data
   if (grepl(js$correlation_output[2], pattern = "\\.rda")) {
@@ -32,7 +33,7 @@ prepare_report <- function(input, sample_name, configs) {
   # Parse anno data
   if (grepl(js$anno_output[1], pattern = "\\.feature_overlaps\\.txt")) {
     anno_data <- suppressMessages(read_tsv(js$anno_output[1])) %>%
-      filter(! grepl(Annotation, pattern = "\\?"))
+      dplyr::filter(! grepl(Annotation, pattern = "\\?"))
     if(! nrow(anno_data)) {
       anno_data <- NA
     }
@@ -44,8 +45,9 @@ prepare_report <- function(input, sample_name, configs) {
   read_qc_data <- jsonlite::read_json(js$fastpdata, simplifyVector = TRUE)
   
   # Parse RLFS data
-  if (grepl(js$rlfs_output[1], pattern = "\\.rlfs_data\\.txt")) {
-    rlfs_data <- suppressMessages(read_tsv(js$rlfs_output[1])) 
+  if (grepl(js$rlfs_output[1], pattern = "\\.rlfs_enrichment\\.rda")) {
+    load(js$rlfs_output[1])
+    rlfs_data <- list(pt, lz)
   } else {
     rlfs_data <- NA
   }
@@ -70,15 +72,18 @@ prepare_report <- function(input, sample_name, configs) {
   # Make markdown report TODO: Needs to include more info...
   md_template <- file.path(helpers_dir, "report_template.Rmd")
   output_html <- gsub(output_html, pattern = "//", replacement = "/")
+  output_rda <- gsub(output_rda, pattern = "//", replacement = "/")
   
+  data_list <- list(corr_data = corr_data,
+                    anno_data = anno_data,
+                    read_qc_data = read_qc_data,
+                    rlfs_data = rlfs_data,
+                    rlcons_data = rlcons_data,
+                    bam_stats = bam_stats,
+                    configlist = configlist)
+  save(data_list, file = output_rda)
   rmarkdown::render(md_template, 
-                    params = list(corr_data = corr_data,
-                                  anno_data = anno_data,
-                                  read_qc_data = read_qc_data,
-                                  rlfs_data = rlfs_data,
-                                  rlcons_data = rlcons_data,
-                                  bam_stats = bam_stats,
-                                  configlist = configlist), 
+                    params = data_list, 
                     output_format = "html_document", 
                     output_dir = normalizePath(dirname(output_html)),
                     output_file = output_html)

@@ -21,10 +21,12 @@ library(kableExtra)
 library(pheatmap)
 library(ggpubr)
 library(RColorBrewer)
+library(regioneR)
 library(grid)
 library(plotly)
 show_anno <- ifelse(tibble::is_tibble(anno_data), TRUE, FALSE)
 show_corr <- ifelse(is.list(corr_data), TRUE, FALSE)
+show_rlfs <- ifelse(is.list(rlfs_data), TRUE, FALSE)
 sample_name <- configlist$sample_name
 mode <- configlist$mode
 current_time <- date()
@@ -51,8 +53,13 @@ Time finished: <strong>`r current_time`</strong>
 ```
 
 
+```{r child='rlfs_template.Rmd', eval=show_rlfs}
+```
+
+
 ```{r child='correlation_template.Rmd', eval=show_corr}
 ```
+
 
 
 ### Read quality

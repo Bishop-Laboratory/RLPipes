@@ -462,6 +462,75 @@ check_homer_anno <- function(available_genomes, genome = NULL) {
 }
 
 
+# Get RLFSs
+get_rlfs <- function() {
+  helpers_dir <- paste0(path.expand("~"), "/Bishop.lab/Projects/RSeq/helpers/")
+  
+  load(file.path(helpers_dir, "data", "available_genomes.rda"))
+  script <- file.path(helpers_dir, "external", "QmRLFS-finder.py")
+  outdir <- file.path(helpers_dir, "data", "rlfs")
+  dir.create(outdir, showWarnings = FALSE)
+  
+  genomes <- available_genomes$UCSC_orgID[available_genomes$homer_anno_available]
+  
+  for (genome_now in genomes) {
+    print(genome_now)
+    if (! file.exists(file.path(outdir, paste0(genome_now, ".rlfs.out.table.txt"))) && 
+        ! file.exists(file.path(outdir, paste0(genome_now, ".fa")))) {
+      download.file(paste0("ftp://hgdownload.soe.ucsc.edu/goldenPath/", genome_now, "/bigZips/", genome_now, ".fa.gz"),
+                    destfile = file.path(outdir, paste0(genome_now, ".fa.gz")))
+      R.utils::gunzip(file.path(outdir, paste0(genome_now, ".fa.gz")))
+    }
+    cmd <- paste0("python ", script, " -i ", file.path(outdir, paste0(genome_now, ".fa")),
+                  " -o ", file.path(outdir, paste0(genome_now, ".rlfs")))
+    if (! file.exists(file.path(outdir, paste0(genome_now, ".rlfs.out.table.txt")))) {
+      system(cmd, wait = FALSE)
+    }
+  }
+  
+  # Convert to bed6 and liftOver
+  # awk 'FNR > 1 {print $3"\t"$21}' "helpers/data/rlfs/hg19.rlfs.out.table.txt" | awk '{gsub(":|-","\t", $1); print $1"\t"".""\t"".""\t"$2}' > "helpers/data/rlfs_bed/rlfs.hg19.bed"
+  # bedtools sort -i "helpers/data/rlfs_bed/rlfs.hg19.bed" > "helpers/data/rlfs_bed/rlfs.hg19.sorted.bed"
+  # liftOver "helpers/data/rlfs_bed/rlfs.hg19.sorted.bed" hg19ToHg38.over.chain "helpers/data/rlfs_bed/rlfs.hg38.bed" whatever.txt
+  # bedtools sort -i "helpers/data/rlfs_bed/rlfs.hg38.bed" > "helpers/data/rlfs_bed/rlfs.hg38.sorted.bed"
+  
+}
+
+# # Collate data
+# collate_rda <- function() {
+#   helpers_dir <- paste0(path.expand("~"), "/Bishop.lab/Projects/RSeq/helpers/")
+#   outdir <- file.path(helpers_dir, "export")
+#   dir.create(outdir, showWarnings = FALSE)
+#   outfile <- file.path(outdir, "RMapDB.h5")
+#   
+#   qc_data <- list.files(path = file.path(dirname(helpers_dir), "tests"), full.names = TRUE,
+#                         pattern = "QC_report.rda", recursive = TRUE)
+#   
+#   library(rhdf5)
+#   library(tidyverse)
+#   library(readxl)
+#   
+#   if (! file.exists(outfile)) {
+#     h5createFile(outfile)
+#   }
+#   
+#   h5createGroup(file = outfile, "meta")
+#   rmap_samples <- read_csv(file.path(dirname(helpers_dir), "misc/analysis/rmapsamples_10_05_2020.csv"))
+#   
+#   
+#   for (i in 1:length(qc_data)) {
+#     dnow <- qc_data[i]
+#     load(dnow)
+#     
+#   }
+#   
+#   
+# }
+
+
+
+
+
 
 
 
