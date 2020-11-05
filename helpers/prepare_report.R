@@ -3,16 +3,22 @@
 prepare_report <- function(input, sample_name, configs) {
   
   # ## Bug testing ##
-  # input <- c("/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/tests/RSeq_out2/NT2_DRIP_head/NT2_DRIP_head.final_report.tmp.json")
-  # sample_name <- "NT2_DRIP_head"
-  # configs <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/tests/RSeq_out2/rseqVars.json"
-  # ###########
+  # input <- c("/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX1070678_NT2_DRIP-seq_1/SRX1070678_NT2_DRIP-seq_1.final_report.tmp.json")
+  # sample_name <- "SRX1070678_NT2_DRIP-seq_1"
+  # configs <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/rseqVars.json"
+  # 
+  # input <- "data/SRX113812_Ntera2_DNA/SRX113812_Ntera2_DNA.final_report.tmp.json"
+  # sample_name <- "SRX113812_Ntera2_DNA"
+  # configs <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/rseqVars.json"
   
+  # ###########
+  input <- gsub(input, pattern = "//", replacement = "/")
   js <- jsonlite::read_json(input, simplifyVector = TRUE)
   
   suppressWarnings(suppressPackageStartupMessages(library(tidyverse)))
   
   # Parse configs
+  configs <- gsub(configs, pattern = "//", replacement = "/")
   configlist <- jsonlite::read_json(configs, simplifyVector = TRUE)
   configlist <- configlist[[sample_name]]
   helpers_dir <- configlist$helpers_dir
@@ -32,7 +38,8 @@ prepare_report <- function(input, sample_name, configs) {
   
   # Parse anno data
   if (grepl(js$anno_output[1], pattern = "\\.feature_overlaps\\.txt")) {
-    anno_data <- suppressMessages(read_tsv(js$anno_output[1])) %>%
+    i <- length(js$anno_output)  # Get stranded if available
+    anno_data <- suppressMessages(read_tsv(js$anno_output[i])) %>%
       dplyr::filter(! grepl(Annotation, pattern = "\\?"))
     if(! nrow(anno_data)) {
       anno_data <- NA
@@ -46,6 +53,7 @@ prepare_report <- function(input, sample_name, configs) {
   
   # Parse RLFS data
   if (grepl(js$rlfs_output[1], pattern = "\\.rlfs_enrichment\\.rda")) {
+    # i <- length(js$rlfs_output)  # Get stranded if available
     load(js$rlfs_output[1])
     rlfs_data <- list(pt, lz)
   } else {
@@ -59,6 +67,10 @@ prepare_report <- function(input, sample_name, configs) {
     rlcons_data <- NA
   }
   
+  # Parse peak_compile data
+  i <- length(js$peak_compile_output)  # Get stranded if available
+  load(js$peak_compile_output[i])
+  
   # Parse bam stats
   bam_stats_raw <- suppressMessages(read_lines(js$bam_stats_output[[1]])) 
   bam_stats <- list(
@@ -68,7 +80,6 @@ prepare_report <- function(input, sample_name, configs) {
   )
   
   # TODO: get number of macs2 and epic2 peaks called. 
-  
   # Make markdown report TODO: Needs to include more info...
   md_template <- file.path(helpers_dir, "report_template.Rmd")
   output_html <- gsub(output_html, pattern = "//", replacement = "/")
@@ -80,7 +91,8 @@ prepare_report <- function(input, sample_name, configs) {
                     rlfs_data = rlfs_data,
                     rlcons_data = rlcons_data,
                     bam_stats = bam_stats,
-                    configlist = configlist)
+                    configlist = configlist,
+                    peak_ol = peak_ol)
   save(data_list, file = output_rda)
   rmarkdown::render(md_template, 
                     params = data_list, 

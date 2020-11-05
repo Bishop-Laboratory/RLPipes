@@ -87,62 +87,54 @@ output_fastq_control = expand("{outdir}/fastqs/{sample_name}.fastq",
                  sample_name=sample_name, outdir=outdir)
 
 # Set expected outputs of runs
+strand = ['unstranded']
 if strand_specific:
-    coverage_output = [expand("{outdir}/coverage_stranded/{sample}.{genome}.p.bw", genome=genome,
-                        sample=sample_name, outdir=outdir),
-                        expand("{outdir}/coverage_unstranded/{sample}.{genome}.bw", genome=genome,
+    strand.append('stranded')
+
+peak_output = [expand("{outdir}/peaks_macs_{strand}/{sample}_{genome}.{strand}.broadPeak", genome=genome,
+                         sample=sample_name, outdir=outdir, strand=strand),
+               expand("{outdir}/peaks_epic_{strand}/{sample}_{genome}.{strand}.bed", genome=genome,
+                     sample=sample_name, outdir=outdir, strand=strand),
+               expand("{outdir}/peaks_final_{strand}/{sample}_{genome}.{strand}.bed", genome=genome,
+                         sample=sample_name, outdir=outdir, strand=strand)]
+
+peak_compile_output = [expand("{outdir}/peaks_final_{strand}/{sample}_{genome}.{strand}.rda", genome=genome,
+                         sample=sample_name, outdir=outdir, strand=strand)]
+coverage_output = [expand("{outdir}/coverage_unstranded/{sample}.{genome}.bw", genome=genome,
                             sample=sample_name, outdir=outdir)]
-    peak_output = [expand("{outdir}/peaks_macs_unstranded/{sample}_{genome}_peaks.broadPeak", genome=genome,
-                         sample=sample_name, outdir=outdir),
-                   expand("{outdir}/peaks_epic_unstranded/{sample}_{genome}.bed", genome=genome,
-                         sample=sample_name, outdir=outdir),
-                   expand("{outdir}/peaks_epic_stranded/{sample}_{genome}_plus.bed", genome=genome,
-                         sample=sample_name, outdir=outdir),
-                   expand("{outdir}/peaks_epic_stranded/{sample}_{genome}_minus.bed", genome=genome,
-                         sample=sample_name, outdir=outdir),
-                   expand("{outdir}/peaks_macs_stranded/{sample}_{genome}_plus_peaks.xls", genome=genome,
-                         sample=sample_name, outdir=outdir)]
-else:
-    coverage_output = expand("{outdir}/coverage_unstranded/{sample}.{genome}.bw", genome=genome,
-                            sample=sample_name, outdir=outdir)
-    peak_output = [expand("{outdir}/peaks_macs_unstranded/{sample}_{genome}_peaks.broadPeak", genome=genome,
-                         sample=sample_name, outdir=outdir),
-                   expand("{outdir}/peaks_epic_unstranded/{sample}_{genome}.bed", genome=genome,
-                         sample=sample_name, outdir=outdir)
-                   ]
+if strand_specific:
+    coverage_output.extend(expand("{outdir}/coverage_stranded/{sample}.{genome}.{sign}.bw", genome=genome,
+                            sample=sample_name, outdir=outdir, sign=['p', 'm']))
 
 if genome == "hg38":
     correlation_output = expand("{outdir}/QC/{sample}.{genome}.correlation.{file_ends}", genome=genome,
                                 sample=sample_name, outdir=outdir, file_ends=["png", "rda"])
-    rlfs_output = expand("{outdir}/QC/{sample}_{genome}.rlfs_enrichment.rda", genome=genome,
-                                sample=sample_name, outdir=outdir)
+    rlfs_output = expand("{outdir}/QC/{sample}_{genome}_{strand}.rlfs_enrichment.rda", genome=genome,
+                                sample=sample_name, outdir=outdir, strand=strand)
 else:
     correlation_output = peak_output
     rlfs_output = peak_output
 
 if homer_anno_available:
-    anno_output = expand("{outdir}/QC/{sample}_{genome}.feature_overlaps.txt", genome=genome,
-                                sample=sample_name, outdir=outdir)
+    anno_output = expand("{outdir}/QC/{sample}_{genome}_{strand}.feature_overlaps.txt", genome=genome,
+                                sample=sample_name, outdir=outdir, strand=strand)
     # rlfs_output = expand("{outdir}/QC/{sample}_{genome}.rlfs_enrichment.rda", genome=genome,
     #                             sample=sample_name, outdir=outdir)
 else:
     anno_output = peak_output
     # rlfs_output = peak_output
 
+
+exp_type = ['experiment']
 if controls != "None":
-    bam_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam",
-                            sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment","control"])
-    bam_index_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam.bai",
-                            sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment","control"])
-    bam_stats_output = expand("{outdir}/info/{sample_name}.{genome}.{exp_type}.bam_stats.txt",
-                            sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment","control"])
-else:
-    bam_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam",
-                            sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment",])
-    bam_index_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam.bai",
-                            sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment",])
-    bam_stats_output = expand("{outdir}/info/{sample_name}.{genome}.{exp_type}.bam_stats.txt",
-                            sample_name=sample_name, outdir=outdir, genome=genome, exp_type=["experiment",])
+    exp_type.append('control')
+
+bam_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam",
+                        sample_name=sample_name, outdir=outdir, genome=genome, exp_type=exp_type)
+bam_index_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam.bai",
+                        sample_name=sample_name, outdir=outdir, genome=genome, exp_type=exp_type)
+bam_stats_output = expand("{outdir}/info/{sample_name}.{genome}.{exp_type}.bam_stats.txt",
+                        sample_name=sample_name, outdir=outdir, genome=genome, exp_type=exp_type)
 
 
 # TODO: Put something real here
@@ -163,7 +155,8 @@ final_report_dict = {
     "fastpdata": expand("{outdir}/QC/fastq/{sample}.experiment.json", outdir=outdir, sample=sample_name),
     "rlfs_output": rlfs_output,
     "rlcons_output": rlcons_output,
-    "bam_stats_output": bam_stats_output
+    "bam_stats_output": bam_stats_output,
+    'peak_compile_output': peak_compile_output
 }
 
 os.makedirs(outdir, exist_ok=True)
@@ -190,7 +183,8 @@ rule output:
         bam_stats_output,
         correlation_output,
         anno_output,
-        final_report_output
+        rlfs_output
+        # final_report_output
 
 
 if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph":
@@ -470,7 +464,8 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
         control_file_macs2="{outdir}/bams/{sample}.{genome}.control.bam"
         macs2_command="(macs2 callpeak -t {input.treatment} -c {input.control}" \
                       + " {params} --outdir {wildcards.outdir}/peaks_macs_unstranded/ " \
-                      + "-n {wildcards.sample}_{wildcards.genome}) &> {log}"
+                      + "-n {wildcards.sample}_{wildcards.genome}.unstranded" \
+                      + " && mv {wildcards.outdir}/peaks_macs_unstranded/{wildcards.sample}_{wildcards.genome}.unstranded_peaks.broadPeak {wildcards.outdir}/peaks_macs_unstranded/{wildcards.sample}_{wildcards.genome}.unstranded.broadPeak) &> {log}"
         epic2_command="epic2 -t {input.treatment} -c {input.control} {params.epic} --output {output}"
         if paired_end:
             control_file_epic="{outdir}/tmp/pe_beds/{sample}.{genome}.control.bed"
@@ -483,7 +478,8 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
         control_file_epic=treat_file_epic
         index_epic="{outdir}/bams/{sample}.{genome}.experiment.bam.bai"
         macs2_command="(macs2 callpeak -t {input.treatment} {params} --outdir {wildcards.outdir}/peaks_macs_unstranded/" \
-                      + " -n {wildcards.sample}_{wildcards.genome}) &> {log}"
+                      + " -n {wildcards.sample}_{wildcards.genome}.unstranded" \
+                        + " && mv {wildcards.outdir}/peaks_macs_unstranded/{wildcards.sample}_{wildcards.genome}.unstranded_peaks.broadPeak {wildcards.outdir}/peaks_macs_unstranded/{wildcards.sample}_{wildcards.genome}.unstranded.broadPeak) &> {log}"
         epic2_command="epic2 -t {input.treatment} {params.epic} --output {output}"
 
     if paired_end:
@@ -497,7 +493,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
             treatment=treat_file_macs2,
             control=control_file_macs2
         output:
-            "{outdir}/peaks_macs_unstranded/{sample}_{genome}_peaks.broadPeak",
+            "{outdir}/peaks_macs_unstranded/{sample}_{genome}.unstranded.broadPeak",
         params: params_macs2
         log: "{outdir}/logs/{sample}_{genome}__macs2_callpeak_unstranded.log"
         shell: macs2_command
@@ -529,7 +525,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
              index_epic=index_epic,
              info=epic_info
         output:
-            "{outdir}/peaks_epic_unstranded/{sample}_{genome}.bed"
+            "{outdir}/peaks_epic_unstranded/{sample}_{genome}.unstranded.bed"
         params:
             epic="-e 100 -fdr .01 --effective-genome-fraction " + str(effective_genome_fraction) \
                  + " --mapq 30 --chromsizes {outdir}/tmp/" + genome + ".chrom.sizes",
@@ -568,10 +564,10 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                          "{outdir}/bams_stranded/{sample}.{genome}.control.m.bam.bai"]),
             macs2_ss_command="macs2 callpeak -t {input.experiment_plus} -c {input.control_plus} {params.callpeak} --nomodel" \
                              + " --extsize ${{frag_med%.*}} --outdir {wildcards.outdir}/peaks_macs_stranded/ " \
-                             + "-n {wildcards.sample}_{wildcards.genome}_plus && " \
+                             + "-n {wildcards.sample}_{wildcards.genome}.plus && " \
                              + "macs2 callpeak -t {input.experiment_minus} -c {input.control_minus} {params.callpeak} --nomodel" \
                              + " --extsize ${{frag_med%.*}} --outdir {wildcards.outdir}/peaks_macs_stranded/ " \
-                             + "-n {wildcards.sample}_{wildcards.genome}_minus"
+                             + "-n {wildcards.sample}_{wildcards.genome}.minus"
             epic2_ss_command="epic2 -t {input.experiment_plus} -c {input.control_plus} {params.epic} -fs ${{frag_med%.*}}" \
                              + " --output {output.plus} && " \
                              + "epic2 -t {input.experiment_minus} -c {input.control_minus} {params.epic} -fs ${{frag_med%.*}}" \
@@ -581,10 +577,10 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
             control_minus = experiment_minus
             macs2_ss_command="macs2 callpeak -t {input.experiment_plus} {params.callpeak} --nomodel" \
                              + " --extsize ${{frag_med%.*}} --outdir {wildcards.outdir}/peaks_macs_stranded/ " \
-                             + "-n {wildcards.sample}_{wildcards.genome}_plus && " \
+                             + "-n {wildcards.sample}_{wildcards.genome}.plus && " \
                              + "macs2 callpeak -t {input.experiment_minus} {params.callpeak} --nomodel" \
                              + " --extsize ${{frag_med%.*}} --outdir {wildcards.outdir}/peaks_macs_stranded/ " \
-                             + "-n {wildcards.sample}_{wildcards.genome}_minus"
+                             + "-n {wildcards.sample}_{wildcards.genome}.minus"
             epic2_ss_command="epic2 -t {input.experiment_plus} {params.epic} -fs ${{frag_med%.*}}" \
                              + " --output {output.plus} && " \
                              + "epic2 -t {input.experiment_minus} {params.epic} -fs ${{frag_med%.*}}" \
@@ -629,8 +625,8 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                     control_plus=control_plus,
                     control_minus=control_minus
                 output:
-                    plus="{outdir}/peaks_epic_stranded/{sample}_{genome}_plus.bed",
-                    minus="{outdir}/peaks_epic_stranded/{sample}_{genome}_minus.bed"
+                    plus=temp("{outdir}/peaks_epic_stranded/{sample}_{genome}.plus.bed"),
+                    minus=temp("{outdir}/peaks_epic_stranded/{sample}_{genome}.minus.bed")
                 params:
                     epic="-e 100 -fdr .01 --effective-genome-fraction " + str(effective_genome_fraction) \
                          + " --mapq 30 --chromsizes {outdir}/tmp/" + genome + ".chrom.sizes",
@@ -649,8 +645,8 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                     control_plus=control_plus,
                     control_minus=control_minus
                 output:
-                    plus="{outdir}/peaks_macs_stranded/{sample}_{genome}_plus_peaks.xls",
-                    minus="{outdir}/peaks_macs_stranded/{sample}_{genome}_minus_peaks.xls"
+                    plus=temp("{outdir}/peaks_macs_stranded/{sample}_{genome}.plus_peaks.broadPeak"),
+                    minus=temp("{outdir}/peaks_macs_stranded/{sample}_{genome}.minus_peaks.broadPeak")
                 params:
                     callpeak="--broad-cutoff .01 -q .01 --broad -g " + str(effective_genome_size)
                 log: "{outdir}/logs/{sample}_{genome}__macs2_callpeaks_pe_stranded.log"
@@ -666,8 +662,8 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                     control_plus=control_plus,
                     control_minus=control_minus
                 output:
-                    plus="{outdir}/peaks_epic_stranded/{sample}_{genome}_plus.bed",
-                    minus="{outdir}/peaks_epic_stranded/{sample}_{genome}_minus.bed"
+                    plus=temp("{outdir}/peaks_epic_stranded/{sample}_{genome}.plus.bed"),
+                    minus=temp("{outdir}/peaks_epic_stranded/{sample}_{genome}.minus.bed")
                 params:
                     epic="-e 100 -fdr .01 --effective-genome-fraction " + str(effective_genome_fraction) \
                          + " --mapq 30 --chromsizes {outdir}/tmp/" + genome + ".chrom.sizes",
@@ -687,14 +683,34 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                     control_plus=control_plus,
                     control_minus=control_minus
                 output:
-                    plus="{outdir}/peaks_macs_stranded/{sample}_{genome}_plus_peaks.xls",
-                    minus="{outdir}/peaks_macs_stranded/{sample}_{genome}_minus_peaks.xls"
+                    plus=temp("{outdir}/peaks_macs_stranded/{sample}_{genome}.plus_peaks.broadPeak"),
+                    minus=temp("{outdir}/peaks_macs_stranded/{sample}_{genome}.minus_peaks.broadPeak")
                 params:
                     callpeak="--broad-cutoff .01 -q .01 --broad -g " + str(effective_genome_size)
                 log: "{outdir}/logs/{sample}_{genome}__macs2_callpeaks_se_stranded.log"
                 shell: "(frag_med=$(cat {input.info} | grep -o 'predicted fragment length is [0-9]* bps' | cut -d ' ' -f 5)" \
                        + " && " + macs2_ss_command + ") &> {log}"
 
+        rule merge_stranded_peaks:
+            input:
+                macs2_plus="{outdir}/peaks_macs_stranded/{sample}_{genome}.plus_peaks.broadPeak",
+                macs2_minus="{outdir}/peaks_macs_stranded/{sample}_{genome}.minus_peaks.broadPeak",
+                epic2_plus="{outdir}/peaks_epic_stranded/{sample}_{genome}.plus.bed",
+                epic2_minus="{outdir}/peaks_epic_stranded/{sample}_{genome}.minus.bed"
+            output:
+                macs2_sorted="{outdir}/peaks_macs_stranded/{sample}_{genome}.stranded.broadPeak",
+                epic2_sorted="{outdir}/peaks_epic_stranded/{sample}_{genome}.stranded.bed"
+            params:
+                epic2_unsorted="{outdir}/peaks_epic_stranded/{sample}_{genome}.stranded.unsorted.bed",
+                macs2_unsorted="{outdir}/peaks_macs_stranded/{sample}_{genome}.stranded.unsorted.broadPeak"
+            shell: """
+            awk ' {{print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t""+""\t"$7"\t"$8"\t"$9}} ' {input.macs2_plus} > {params.macs2_unsorted}
+            awk ' {{print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t""-""\t"$7"\t"$8"\t"$9}} ' {input.macs2_minus} >> {params.macs2_unsorted}
+            bedtools sort -i {params.macs2_unsorted} > {output.macs2_sorted}
+            awk ' NR==1 {{print; next}} {{print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t""+""\t"$7"\t"$8"\t"$9"\t"$10}} ' {input.epic2_plus} > {params.epic2_unsorted}
+            awk ' NR==1 {{print; next}} {{print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t""-""\t"$7"\t"$8"\t"$9"\t"$10}} ' {input.epic2_minus} >> {params.epic2_unsorted}
+            bedtools sort -i {params.epic2_unsorted} > {output.epic2_sorted}
+            """
 
 ## TODO: Correlation module goes here
 rule get_correlation_bin_scores:
@@ -732,12 +748,12 @@ rule assign_genome_annotations:
     # Calculates the percentage of called peaks overlapping with repeat regions
     input:
         gene_anno=genome_home_dir + "/{genome}/homer_anno.txt",
-        peaks_macs2="{outdir}/peaks_macs_unstranded/{sample}_{genome}_peaks.broadPeak"
+        peaks="{outdir}/peaks_final_{strand}/{sample}_{genome}.{strand}.bed"
     output:
-        stats_out="{outdir}/QC/{sample}_{genome}.feature_overlaps.txt"
-    log: "{outdir}/logs/{sample}_{genome}__assign_genome_annotations.log"
+        stats_out="{outdir}/QC/{sample}_{genome}_{strand}.feature_overlaps.txt"
+    log: "{outdir}/logs/{sample}_{genome}_{strand}__assign_genome_annotations.log"
     shell: """
-        (assignGenomeAnnotation {input.peaks_macs2} {input.gene_anno} > {output.stats_out}) &> {log}
+        (assignGenomeAnnotation {input.peaks} {input.gene_anno} > {output.stats_out}) &> {log}
     """
 
 
@@ -749,7 +765,7 @@ rule prepare_report:
     params:
         helpers_dir=helpers_dir,
         sample_name=sample_name,
-        configs=outdirorig + "rseqVars.json",
+        configs=outdirorig + "/rseqVars.json",
         final_report_dict_file=final_report_dict_file[0]
     log: "{outdir}/logs/{sample}_{genome}__prepare_report.log"
     shell:
@@ -768,28 +784,45 @@ rule run_QmRLFS_finder:
         bed=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.bed"
     params:
         helpers_dir=helpers_dir,
+        bed=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.raw.bed",
         genome_home_dir=genome_home_dir
     shell: """
     python {params.helpers_dir}/external/QmRLFS-finder.py -i {input} \
     -o {params.genome_home_dir}/{wildcards.genome}/rloop_predictions/RLFS.{wildcards.genome}
-    awk '{{OFS="\t";print($1,$4,$14,$3,0,$21)}}' {output.table} > {output.bed}'
+    awk '{{OFS="\t";print($1,$4,$14,$3,0,$21)}}' {output.table} > {params.bed}
+    bedtools sort -i {params.bed} | mergeBed -i stdin -s | awk '{{OFS="\t";print($1,$2,$3,".",".",$4)}}' > {output.bed}
     """
 
 
 rule rlfs_enrichment:
     input:
-         peaks="{outdir}/peaks_macs_unstranded/{sample}_{genome}_peaks.broadPeak",
+         peaks="{outdir}/peaks_final_{strand}/{sample}_{genome}.{strand}.bed",
          rlfs=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.bed"
-    output: "{outdir}/QC/{sample}_{genome}.rlfs_enrichment.rda"
+    output: "{outdir}/QC/{sample}_{genome}_{strand}.rlfs_enrichment.rda"
     params:
         helpers_dir=helpers_dir
     threads: cores
-    log: "{outdir}/logs/{sample}_{genome}__rlfs_enrichment.log"
+    log: "{outdir}/logs/{sample}_{genome}_{strand}__rlfs_enrichment.log"
     shell: """
      (Rscript {params.helpers_dir}/rlfs_perm_test.R {threads} {wildcards.genome} {input.peaks} {input.rlfs} {output}) &> {log}
      """
 
 
+rule compile_peaks:
+    input:
+        macs2="{outdir}/peaks_macs_{strand}/{sample}_{genome}.{strand}.broadPeak",
+        epic2="{outdir}/peaks_epic_{strand}/{sample}_{genome}.{strand}.bed"
+    output:
+        output_bed="{outdir}/peaks_final_{strand}/{sample}_{genome}.{strand}.bed",
+        output_rda="{outdir}/peaks_final_{strand}/{sample}_{genome}.{strand}.rda"
+    params:
+        configs=outdirorig + "/rseqVars.json",
+        sample_name=sample_name,
+        helpers_dir=helpers_dir
+    log: "{outdir}/logs/{sample}_{genome}_{strand}__compile_peaks_{strand}.log"
+    shell: """
+    (Rscript {params.helpers_dir}/compile_peaks.R {params.configs} {params.sample_name} {input.macs2} {input.epic2} {output.output_rda} {output.output_bed}) &> {log}
+    """
 
 
 

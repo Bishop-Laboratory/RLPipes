@@ -529,9 +529,40 @@ get_rlfs <- function() {
 
 
 
+# Fix MACS2 and EPIC2 filenames -- needed for switch to new naming schema 11/5/2020
+fix_peak_files <- function() {
+  # Macs unstranded
+  bp <- list.files("~/Bishop.lab/Projects/RMapDB/data/", recursive = TRUE, full.names = TRUE, 
+                   pattern = ".+_peaks.broadPeak")
+  bp <- bp[grep(bp, pattern = "peaks_macs_unstranded")]
+  newbp <- gsub(bp, pattern = "_peaks(\\.broadPeak)", replacement = ".unstranded\\1")
+  lapply(seq(length(bp)), function(i) {file.rename(bp[i], newbp[i])})
+  
+  # Macs stranded
+  bp <- list.files("~/Bishop.lab/Projects/RMapDB/data/", recursive = TRUE, full.names = TRUE, 
+                   pattern = ".+_[plus|minus]+_peaks.broadPeak")
+  bp <- bp[grep(bp, pattern = "peaks_macs_stranded")]
+  newbp <- gsub(bp, pattern = "_([plus|minus]+_peaks\\.broadPeak)", replacement = ".\\1")
+  lapply(seq(length(bp)), function(i) {file.rename(bp[i], newbp[i])})
+  
+  # Epic unstranded
+  bp <- list.files("~/Bishop.lab/Projects/RMapDB/data/", recursive = TRUE, full.names = TRUE, 
+                   pattern = "_[a-zA-Z]+[0-9]+\\.bed")
+  bp <- bp[grep(bp, pattern = "peaks_epic_unstranded")]
+  newbp <- gsub(bp, pattern = "\\.bed", replacement = ".unstranded.bed")
+  lapply(seq(length(bp)), function(i) {file.rename(bp[i], newbp[i])})
+  
+  # Epic stranded
+  bp <- list.files("~/Bishop.lab/Projects/RMapDB/data/", recursive = TRUE, full.names = TRUE, 
+                   pattern = ".+_[plus|minus]+\\.bed")
+  bp <- bp[grep(bp, pattern = "peaks_epic_stranded")]
+  newbp <- gsub(bp, pattern = "_([plus|minus]+\\.bed)", replacement = ".\\1")
+  lapply(seq(length(bp)), function(i) {file.rename(bp[i], newbp[i])})
+  
+  
+}
 
-
-
+  
 
 
 

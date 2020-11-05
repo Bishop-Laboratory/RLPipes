@@ -1,6 +1,6 @@
 ### R-Loop Forming Sequences (RLFS) Enrichment
 
-RLFS were derived across the genome using [`QmRLFS-finder.py`](https://github.com/piroonj/QmRLFS-finder). R-loop broad peaks were called with `macs2` and then compared with RLFS using `permTest` from the `RegioneR` R package. An empirical distribution of RLFS was generated using the `circularRandomizeRegions` method and compared to the peaks in order to calculate enrichment p value and zscore (effect size of enrichment). 
+RLFS were derived across the genome using [`QmRLFS-finder.py`](https://github.com/piroonj/QmRLFS-finder){target="_blank"}. R-loop broad peaks were called with `macs2` and then compared with RLFS using `permTest` from the `RegioneR` R package. An empirical distribution of RLFS was generated using the `circularRandomizeRegions` method and compared to the peaks in order to calculate enrichment p value and zscore (effect size of enrichment). 
 
 
 ```{r}

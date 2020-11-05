@@ -11,6 +11,7 @@ params:
   rlfs_data: "placeholder"
   rlcons_data: "placeholder"
   bam_stats: "placeholder"
+  peak_ol: "placeholder"
   read_qc_data: "placeholder"
   configlist: "placeholder"
 ---
@@ -21,6 +22,7 @@ library(kableExtra)
 library(pheatmap)
 library(ggpubr)
 library(RColorBrewer)
+library(ChIPpeakAnno)
 library(regioneR)
 library(grid)
 library(plotly)
@@ -28,11 +30,13 @@ show_anno <- ifelse(tibble::is_tibble(anno_data), TRUE, FALSE)
 show_corr <- ifelse(is.list(corr_data), TRUE, FALSE)
 show_rlfs <- ifelse(is.list(rlfs_data), TRUE, FALSE)
 sample_name <- configlist$sample_name
-mode <- configlist$mode
+control <- ifelse(configlist$controls == "None", FALSE, TRUE)
+mode_now <- configlist$mode
 current_time <- date()
 pe <- configlist$paired_end
 genome <- configlist$genome
 strand <- configlist$strand_specific
+strandedness <- ifelse(strand, "stranded", "unstranded")
 moiety <- configlist$moeity
 ip_type <- configlist$ip_type
 ```
@@ -49,6 +53,51 @@ Time finished: <strong>`r current_time`</strong>
 
 ***
 
+## Summary
+
+```{r}
+# # TODO: Put real link later
+# rmap_samples <- read_csv("https://raw.githubusercontent.com/millerh1/RMapDB/development/data/RMapDB_samples_10_22_2020.csv?token=AKV4343ZBQUD72AZ2RCFTXS7VVYKW")
+# # Median correlation of user sample to samples of the same mode, exluding control samples (e.g., RNaseH1).
+# corr_score <- data.frame("clean_name" = rownames(corr_data$annoNow), "R" = corr_data$corMat[sample_name,]) %>%
+#   inner_join(y = rmap_samples, by = "clean_name") %>%
+#   dplyr::filter(mode == mode_now & ! Condition %in% c("IgG", "RNaseH1", "RNASEH1", "RNH-high", "WKKD")) %>%
+#   pull(R) %>%
+#   median() * 100
+# # RLFS score. LogP * zscore * kurtosis / absolute skew + 1
+# pval <- rlfs_data[[1]]$`regioneR::numOverlaps`$pval
+# pval <- ifelse(pval > .05, 1, pval)
+# pval <- -log10(pval)
+# minpvalpossible <- -log10(1/(1+rlfs_data[[1]]$`regioneR::numOverlaps`$ntimes))
+# zscore_summit <- rlfs_data[[1]]$`regioneR::numOverlaps`$zscore
+# zscores <- rlfs_data[[2]]$`regioneR::numOverlaps`$shifted.z.scores
+# zscores <- (zscores - min(zscores)) + .01
+# zscore_freq <- round(zscores, 3) * 1000  # 1E5 precision
+# shifts <- rlfs_data[[2]]$`regioneR::numOverlaps`$shifts
+# distres <- unlist(lapply(seq(shifts), function(i) {rep(shifts[i], zscore_freq[i])}))
+# krt <- moments::kurtosis(distres) / 3
+# krt <- ifelse(krt > 1, 1, krt)  # Discount platykurtic
+# zscore_summit <- ifelse(zscore_summit > 10, 10, zscore_summit) * 10  # Ensure 100 range, middle is 5
+# skw <- moments::skewness(distres)
+# rlfs_score <- (pval/minpvalpossible) * zscore_summit * krt / (abs(skw) + 1)
+
+
+
+```
+
+Quality score: 
+
+
+
+
+
+***
+
+## Details
+
+<hr>
+
+
 ```{r child='annotation_template.Rmd', eval=show_anno}
 ```
 
@@ -61,6 +110,62 @@ Time finished: <strong>`r current_time`</strong>
 ```
 
 
+### Peak calling
+
+```{r}
+controlstr <- ifelse(control, "was", "was <strong style='color: red'>not</strong>")
+opt1 <- " the MACS2 peaks which overlapped with EPIC2 peaks were considered the 'final' peakset by RSeq."
+opt2 <- " the EPIC2 peaks were considered the 'final' peakset by RSeq."
+
+if (mode %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP', 'RDIP', 'ssDRIP')) {
+  if (control) {
+    outbed <- peak_ol$overlappingPeaks$`MACS2///EPIC2`
+    outbedgr <- toGRanges(outbed[,c(2:4, 7, 6)])
+    opt <- opt1
+  } else {
+    outbedgr <- peak_ol$all.peaks$EPIC2
+    opt <- opt2
+  }
+} else if (mode %in% c("R-ChIP", "RR-ChIP", "RNH-CnR", "MapR", 'DRIVE')) {
+  outbed <- peak_ol$overlappingPeaks$`MACS2///EPIC2`
+  outbedgr <- toGRanges(outbed[,c(2:4, 7, 6)])
+  opt <- opt1
+}
+peak_protocol <- paste0("Because the mode was <strong>", mode, "</strong> and there ", controlstr, 
+                        " a control sample (e.g., genomic input), ", opt)
+total_peaks <- length(outbedgr)
+total_peaks_color <- ifelse(total_peaks < 3000, 'red', ifelse(total_peaks < 6000, 'orange', 'green'))
+```
+
+The peak callers `macs2` and `epic2` were used to call <strong>`r strandedness`</strong> peaks from the bam files. `r peak_protocol` 
+
+Please see the <a href="https://github.com/millerh1/RSeq"  target="_blank">RSeq documentation</a> for a full explanation of the peak analysis approach. 
+
+Number of peaks in final RSeq peakset: <strong style="color: `r total_peaks_color`">`r total_peaks`</strong>
+
+#### Peak MACS2 and EPIC2 overlap statistics
+
+```{r}
+res <- suppressMessages(suppressWarnings(makeVennDiagram(peak_ol, ignore.strand = FALSE, margin = .05,
+                                         fill = c('skyblue', 'firebrick'))))
+```
+
+
+```{r}
+venn_counts <- res$vennCounts
+peak_stats <- data.frame(
+  "MACS2" = venn_counts[c(3:4),c(4)],
+  "EPIC2" = venn_counts[c(2, 4),c(5)],
+  row.names = c("Distinct Peak Count", "Overlapping Peak Count")
+)
+peak_stats['Percentage Peaks Overlapping',] <- c(round(100*(peak_stats$MACS2[2]/sum(peak_stats$MACS2)), 1),
+                                           round(100*(peak_stats$EPIC2[2]/sum(peak_stats$EPIC2)), 1))
+kable(peak_stats) %>%
+  kable_styling(full_width = FALSE, position = "left", bootstrap_options = "striped")
+```
+
+
+***
 
 ### Read quality
 
@@ -122,7 +227,7 @@ Percent of reads duplicated: <strong style="color: `r pct_duplicated_color`">`r 
 
 &nbsp;
 <hr />
-<p style="text-align: center;">RSeq (c) 2020, <a href="https://gccri.bishop-lab.uthscsa.edu/"  target="_blank">Bishop Lab</a>, UT Health San Antonio</p>
+<p style="text-align: center;">RSeq © 2020, <a href="https://gccri.bishop-lab.uthscsa.edu/"  target="_blank">Bishop Lab</a>, UT Health San Antonio</p>
 <p style="text-align: center;">RSeq maintainer: <span style="color: #808080;"><em>millerh1@uthscsa.edu</em></span></p>
 
 &nbsp;
