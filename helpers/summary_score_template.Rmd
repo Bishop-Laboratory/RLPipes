@@ -1,0 +1,63 @@
+
+```{r}
+# Get corr_median
+my_sample <- rownames(corr_data$annoNow)[which(corr_data$annoNow$Source != "RMapDB")]
+corr_median <- data.frame("clean_name" = rownames(corr_data$annoNow), "R" = corr_data$corMat[my_sample,]) %>% 
+    left_join(y = rmap_samples, by = "clean_name") %>%
+    dplyr::filter(mode_group == "DRIP" & 
+                    ! Condition %in% c("IgG", "RNaseH1", "RNASEH1", "RNH-high", "WKKD")) %>%
+    pull(R) %>% median()
+
+# Get annotations
+annos <- anno_data %>%
+    pivot_longer(!Annotation) %>%
+    mutate(feature = paste0(Annotation, "__", name)) %>%
+    dplyr::select(feature, value) 
+annos <- as.data.frame(t(annos))
+colnames(annos) <- as.character(unlist(annos[1,,drop=TRUE]))
+annos <- annos[-1,]
+
+# Pct aligned  
+total_reads <- bam_stats$total_reads 
+reads_aligned <- bam_stats$reads_aligned
+pct_aligned <- 100*(reads_aligned/total_reads)
+  
+# Compile into mat
+test_x <- annos
+test_x$corr_median <- corr_median
+test_x$pct_aligned <- pct_aligned
+test_x <- as.matrix(test_x)
+test_x <- apply(test_x, 1:2, as.numeric)
+
+# XGBoost
+xgb_feats <- c("corr_median", "TTS__Log2 Ratio (obs/exp)", "SINE__Log2 Ratio (obs/exp)",
+               "Exon__Log2 Ratio (obs/exp)", "Intron__Log2 Ratio (obs/exp)")
+test_x_xgb <- test_x[,xgb_feats, drop = FALSE]
+bst <- xgb.load(modelfile = xgb_file)
+xgbprob <- predict(bst, newdata = test_x_xgb)
+xgbverdict <- ifelse(xgbprob > .5, 'pass', 'fail')
+
+# Linear Regression
+test_x <- as.data.frame(test_x)
+colnames(test_x) <- gsub(colnames(test_x), pattern = " |\\(|\\)|\\/", replacement = "_")
+colnames(test_x) <- gsub(colnames(test_x), pattern = "^([0-9]+)", replacement = "d\\1")
+load(lm_file)
+lmscore <- predict(lmfit, newdata = test_x)
+
+```
+
+
+### Scoring
+
+This is inside the child template!!
+
+
+lmscore: `r lmscore`
+
+
+xgbprob: `r xgbprob`
+
+
+xgbverdict: `r xgbverdict`
+
+

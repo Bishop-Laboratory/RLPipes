@@ -48,8 +48,8 @@ processInput <- function(helpers_dir,
 
   mode_df <- data.frame(
     mode = c("DRIP", "ssDRIP", "qDRIP",
-             "sDRIP", "S1-DRIP", "bisDRIP",
-             "SMRF", "RDIP", "DRIPc",
+             "sDRIP", "S1-DRIP", # "bisDRIP", "SMRF",
+             "RDIP", "DRIPc",
              "R-ChIP", "RR-ChIP", "DRIVE",
              "MapR", "RNH-CnR"),
     strand_specific = c(FALSE, rep(TRUE, 3), FALSE, rep(TRUE, 6), rep(FALSE, 3)),

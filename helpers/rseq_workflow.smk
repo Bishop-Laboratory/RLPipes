@@ -183,8 +183,8 @@ rule output:
         bam_stats_output,
         correlation_output,
         anno_output,
-        rlfs_output
-        # final_report_output
+        rlfs_output,
+        final_report_output
 
 
 if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph":

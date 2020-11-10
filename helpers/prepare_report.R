@@ -10,12 +10,14 @@ prepare_report <- function(input, sample_name, configs) {
   # input <- "data/SRX113812_Ntera2_DNA/SRX113812_Ntera2_DNA.final_report.tmp.json"
   # sample_name <- "SRX113812_Ntera2_DNA"
   # configs <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/rseqVars.json"
-  
   # ###########
+  
   input <- gsub(input, pattern = "//", replacement = "/")
   js <- jsonlite::read_json(input, simplifyVector = TRUE)
   
   suppressWarnings(suppressPackageStartupMessages(library(tidyverse)))
+  suppressWarnings(suppressPackageStartupMessages(library(xgboost)))
+  
   
   # Parse configs
   configs <- gsub(configs, pattern = "//", replacement = "/")
@@ -85,6 +87,72 @@ prepare_report <- function(input, sample_name, configs) {
   output_html <- gsub(output_html, pattern = "//", replacement = "/")
   output_rda <- gsub(output_rda, pattern = "//", replacement = "/")
   
+  
+  # Add in scores
+  show_anno <- ifelse(tibble::is_tibble(anno_data), TRUE, FALSE)
+  show_corr <- ifelse(is.list(corr_data), TRUE, FALSE)
+  correct_mode <- configlist$mode %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP')
+  if (show_anno & show_corr & correct_mode) {
+    rmap_samples <- file.path(helpers_dir, 'data', 'RMapDB_samples_10_22_2020.csv')
+    rmap_samples <- read_csv(rmap_samples)
+    rmap_samples$mode_group <- ifelse(rmap_samples$mode %in% c("RNH-CnR", "MapR"), "MapR",
+                                      ifelse(rmap_samples$mode %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP'), 'DRIP',
+                                             ifelse(rmap_samples$mode %in% c("RDIP"), "RDIP", 
+                                                    ifelse(rmap_samples$mode %in% c("ssDRIP"), "ssDRIP", 
+                                                           ifelse(rmap_samples$mode %in% c("R-ChIP"), 'R-ChIP', "misc")))))
+    # Get corr_median
+    my_sample <- rownames(corr_data$annoNow)[which(corr_data$annoNow$Source != "RMapDB")]
+    corr_median <- data.frame("clean_name" = rownames(corr_data$annoNow), "R" = corr_data$corMat[my_sample,]) %>% 
+      left_join(y = rmap_samples, by = "clean_name") %>%
+      dplyr::filter((is.na(mode_group) | mode_group == "DRIP") & 
+                      ! Condition %in% c("IgG", "RNaseH1", "RNASEH1", "RNH-high", "WKKD")) %>%
+      pull(R) %>% median()
+    
+    # Get annotations
+    annos <- anno_data %>%
+      pivot_longer(!Annotation) %>%
+      mutate(feature = paste0(Annotation, "__", name)) %>%
+      dplyr::select(feature, value) 
+    annos <- as.data.frame(t(annos))
+    colnames(annos) <- as.character(unlist(annos[1,,drop=TRUE]))
+    annos <- annos[-1,]
+    
+    # Pct aligned  
+    total_reads <- bam_stats$total_reads 
+    reads_aligned <- bam_stats$reads_aligned
+    pct_aligned <- 100*(reads_aligned/total_reads)
+    
+    # Compile into mat
+    test_x <- annos
+    test_x$corr_median <- corr_median
+    test_x$pct_aligned <- pct_aligned
+    test_x <- as.matrix(test_x)
+    test_x <- apply(test_x, 1:2, as.numeric)
+    
+    # XGBoost
+    xgb_file <- file.path(helpers_dir, 'data', "xgb_DRIP_group_HS_binary_11_09_2020.model")
+    xgb_feats <- c("corr_median", "TTS__Log2 Ratio (obs/exp)", "SINE__Log2 Ratio (obs/exp)",
+                   "Exon__Log2 Ratio (obs/exp)", "Intron__Log2 Ratio (obs/exp)")
+    test_x_xgb <- test_x[,xgb_feats, drop = FALSE]
+    bst <- xgb.load(modelfile = xgb_file)
+    xgbprob <- predict(bst, newdata = test_x_xgb)
+    xgbverdict <- ifelse(xgbprob > .5, 'pass', 'fail')
+    
+    # Linear Regression
+    lm_file <- file.path(helpers_dir, 'data', "lm_DRIP_group_HS_nonbinary_11_09_2020.rda")
+    test_x <- as.data.frame(test_x)
+    colnames(test_x) <- gsub(colnames(test_x), pattern = " |\\(|\\)|\\/", replacement = "_")
+    colnames(test_x) <- gsub(colnames(test_x), pattern = "^([0-9]+)", replacement = "d\\1")
+    load(lm_file)
+    lmscore <- predict(lmfit, newdata = test_x)
+    
+    # Compile
+    summary_scores <- data.frame(xgbprob, xgbverdict, lmscore)
+  } else {
+    summary_scores <- NA
+  }
+  
+  # Write files
   data_list <- list(corr_data = corr_data,
                     anno_data = anno_data,
                     read_qc_data = read_qc_data,
@@ -92,14 +160,15 @@ prepare_report <- function(input, sample_name, configs) {
                     rlcons_data = rlcons_data,
                     bam_stats = bam_stats,
                     configlist = configlist,
-                    peak_ol = peak_ol)
+                    peak_ol = peak_ol,
+                    summary_scores = summary_scores)
   save(data_list, file = output_rda)
+  
   rmarkdown::render(md_template, 
                     params = data_list, 
                     output_format = "html_document", 
                     output_dir = normalizePath(dirname(output_html)),
                     output_file = output_html)
-  
 }
 
 # Parse shell args
