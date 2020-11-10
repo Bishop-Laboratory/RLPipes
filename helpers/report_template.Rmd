@@ -52,7 +52,7 @@ rmap_samples$mode_group <- ifelse(rmap_samples$mode %in% c("RNH-CnR", "MapR"), "
                                                       ifelse(rmap_samples$mode %in% c("R-ChIP"), 'R-ChIP', "misc")))))
 xgb_file <- file.path(helpers_dir, 'data', "xgb_DRIP_group_HS_binary_11_09_2020.model")
 lm_file <- file.path(helpers_dir, 'data', "lm_DRIP_group_HS_nonbinary_11_09_2020.rda")
-
+rmap_quality <- file.path(helpers_dir, 'data', 'rmap_quality_DRIP_11_09_2020.csv')
 ```
 
 <br>
@@ -65,20 +65,14 @@ Genome: <strong>`r genome`</strong>
 
 Time finished: <strong>`r current_time`</strong>
 
+
 ***
-
-## Summary
-
-This is the summary paragraph! Not much to see here.
-
 
 ```{r child='summary_score_template.Rmd', eval=show_summary}
 ```
 
 
-***
-
-## Details
+## Quality Report Details
 
 <hr>
 
