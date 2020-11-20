@@ -1,7 +1,7 @@
 # Compile peaks from MACS2 and EPIC2 based on mode of sequencing
 compile_peaks <- function(configs, sample_name, macs2, epic2, output_rda, output_bed) {
   # configs <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/rseqVars.json"
-  # sample_name <- 'SRX1761639_UNKNOWN'
+  # sample_name <- 'SRX2675003_HKE293-D210N-V5ChIP-Rep1'
   # # macs2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX113813_Ntera2_DNA/peaks_macs_unstranded/SRX113813_Ntera2_DNA_hg38.unstranded.broadPeak"
   # # epic2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX113813_Ntera2_DNA/peaks_epic_unstranded/SRX113813_Ntera2_DNA_hg38.unstranded.bed"
   # # macs2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX6427717_DMSO_qDRIP-seq_1/peaks_macs_stranded/SRX6427717_DMSO_qDRIP-seq_1_hg38.stranded.broadPeak"
@@ -12,6 +12,9 @@ compile_peaks <- function(configs, sample_name, macs2, epic2, output_rda, output
   # epic2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX5547605_Replicate_1_RR-ChIP_seq_D210N/peaks_epic_stranded/SRX5547605_Replicate_1_RR-ChIP_seq_D210N_hg38.stranded.bed"
   # macs2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX1761639_UNKNOWN/peaks_macs_unstranded/SRX1761639_UNKNOWN_sacCer3.unstranded.broadPeak"
   # epic2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX1761639_UNKNOWN/peaks_epic_unstranded/SRX1761639_UNKNOWN_sacCer3.unstranded.bed"
+  # 
+  # macs2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX2675003_HKE293-D210N-V5ChIP-Rep1/peaks_macs_unstranded/SRX2675003_HKE293-D210N-V5ChIP-Rep1_hg38.unstranded.broadPeak"
+  # epic2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX2675003_HKE293-D210N-V5ChIP-Rep1/peaks_epic_unstranded/SRX2675003_HKE293-D210N-V5ChIP-Rep1_hg38.unstranded.bed"
   # 
   
   configs <- gsub(configs, pattern = "//", replacement = "/")

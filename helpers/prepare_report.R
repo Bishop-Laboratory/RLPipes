@@ -10,6 +10,13 @@ prepare_report <- function(input, sample_name, configs) {
   # input <- "data/SRX113812_Ntera2_DNA/SRX113812_Ntera2_DNA.final_report.tmp.json"
   # sample_name <- "SRX113812_Ntera2_DNA"
   # configs <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/rseqVars.json"
+  # input <- "data/SRX1761639_UNKNOWN/SRX1761639_UNKNOWN.final_report.tmp.json"
+  # sample_name <- "SRX1761639_UNKNOWN"
+  
+  # input <- "data/SRX8908661_Control_rep_2_Rnase-H_DRIP-seq/SRX8908661_Control_rep_2_Rnase-H_DRIP-seq.final_report.tmp.json"
+  # sample_name <- "SRX8908661_Control_rep_2_Rnase-H_DRIP-seq"
+  # configs <- "data/rseqVars.json"
+  
   # ###########
   
   input <- gsub(input, pattern = "//", replacement = "/")
@@ -28,6 +35,7 @@ prepare_report <- function(input, sample_name, configs) {
                                                       configlist$genome, ".QC_report.html"))
   output_rda <- paste0(configlist$out_dir, "/", configlist$sample_name, "/", paste0(configlist$sample_name, "_", 
                                                                                      configlist$genome, ".QC_report.rda"))
+  tmp_folder <- paste0(configlist$out_dir, "/", configlist$sample_name, "/tmp")
   
   # Parse cor data
   if (grepl(js$correlation_output[2], pattern = "\\.rda")) {
@@ -133,21 +141,26 @@ prepare_report <- function(input, sample_name, configs) {
     xgb_file <- file.path(helpers_dir, 'data', "xgb_DRIP_group_HS_binary_11_09_2020.model")
     xgb_feats <- c("corr_median", "TTS__Log2 Ratio (obs/exp)", "SINE__Log2 Ratio (obs/exp)",
                    "Exon__Log2 Ratio (obs/exp)", "Intron__Log2 Ratio (obs/exp)")
-    test_x_xgb <- test_x[,xgb_feats, drop = FALSE]
-    bst <- xgb.load(modelfile = xgb_file)
-    xgbprob <- predict(bst, newdata = test_x_xgb)
-    xgbverdict <- ifelse(xgbprob > .5, 'pass', 'fail')
+    if (any(! xgb_feats %in% colnames(test_x))) {
+      summary_scores <- NA
+    } else {
+      test_x_xgb <- test_x[ , xgb_feats, drop = FALSE]
+      bst <- xgb.load(modelfile = xgb_file)
+      xgbprob <- predict(bst, newdata = test_x_xgb)
+      xgbverdict <- ifelse(xgbprob > .5, 'pass', 'fail')
+      
+      # Linear Regression
+      lm_file <- file.path(helpers_dir, 'data', "lm_DRIP_group_HS_nonbinary_11_09_2020.rda")
+      test_x <- as.data.frame(test_x)
+      colnames(test_x) <- gsub(colnames(test_x), pattern = " |\\(|\\)|\\/", replacement = "_")
+      colnames(test_x) <- gsub(colnames(test_x), pattern = "^([0-9]+)", replacement = "d\\1")
+      load(lm_file)
+      lmscore <- predict(lmfit, newdata = test_x)
+      
+      # Compile
+      summary_scores <- data.frame(xgbprob, xgbverdict, lmscore)
+    }
     
-    # Linear Regression
-    lm_file <- file.path(helpers_dir, 'data', "lm_DRIP_group_HS_nonbinary_11_09_2020.rda")
-    test_x <- as.data.frame(test_x)
-    colnames(test_x) <- gsub(colnames(test_x), pattern = " |\\(|\\)|\\/", replacement = "_")
-    colnames(test_x) <- gsub(colnames(test_x), pattern = "^([0-9]+)", replacement = "d\\1")
-    load(lm_file)
-    lmscore <- predict(lmfit, newdata = test_x)
-    
-    # Compile
-    summary_scores <- data.frame(xgbprob, xgbverdict, lmscore)
   } else {
     summary_scores <- NA
   }
@@ -163,12 +176,19 @@ prepare_report <- function(input, sample_name, configs) {
                     peak_ol = peak_ol,
                     summary_scores = summary_scores)
   save(data_list, file = output_rda)
-  
+  print("Starting render!")
   rmarkdown::render(md_template, 
                     params = data_list, 
                     output_format = "html_document", 
                     output_dir = normalizePath(dirname(output_html)),
                     output_file = output_html)
+  
+  
+  if (dir.exists(tmp_folder)) {
+    print(paste0("Deleting tmp folder: ", tmp_folder))
+    system(paste0("rm -rf ", tmp_folder))
+  }
+  
 }
 
 # Parse shell args

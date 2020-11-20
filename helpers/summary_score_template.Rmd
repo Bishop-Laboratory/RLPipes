@@ -23,20 +23,42 @@ total_reads <- bam_stats$total_reads
 reads_aligned <- bam_stats$reads_aligned
 pct_aligned <- 100*(reads_aligned/total_reads)
   
+# rlfs
+pval <- rlfs_data[[1]]$`regioneR::numOverlaps`$pval
+pval <- -log10(pval)
+minpvalpossible <- -log10(1/(1+rlfs_data[[1]]$`regioneR::numOverlaps`$ntimes))
+zscore_summit <- rlfs_data[[1]]$`regioneR::numOverlaps`$zscore
+if (is.na(zscore_summit)) {
+  next
+}
+zscores <- rlfs_data[[2]]$`regioneR::numOverlaps`$shifted.z.scores
+zscores <- (zscores - min(zscores)) + .01
+zscore_freq <- round(zscores, 3) * 1000  # 1E5 precision
+shifts <- rlfs_data[[2]]$`regioneR::numOverlaps`$shifts
+distres <- unlist(lapply(seq(shifts), function(i) {rep(shifts[i], zscore_freq[i])}))
+resrlfs <- as.data.frame(t(as.data.frame(unlist(fitdistrplus::descdist(distres, graph = FALSE)))))
+colnames(resrlfs) <- paste0("rlfs_", colnames(resrlfs))
+resrlfs$rlfs_pval <- pval
+
 # Compile into mat
 test_x <- annos
 test_x$corr_median <- corr_median
 test_x$pct_aligned <- pct_aligned
+test_x$rlfs_kurtosis <- resrlfs$rlfs_kurtosis
+test_x$rlfs_skewness <- resrlfs$rlfs_skewness
 test_x <- as.matrix(test_x)
 test_x <- apply(test_x, 1:2, as.numeric)
 
 # XGBoost
-xgb_feats <- c("corr_median", "TTS__Log2 Ratio (obs/exp)", "SINE__Log2 Ratio (obs/exp)",
-               "Exon__Log2 Ratio (obs/exp)", "Intron__Log2 Ratio (obs/exp)")
+xgb_feats <- c("corr_median", "Exon__Log2 Ratio (obs/exp)", "TTS__Log2 Ratio (obs/exp)", 
+               "5UTR__Log2 Ratio (obs/exp)", "3UTR__Log2 Ratio (obs/exp)",
+               "rlfs_kurtosis", "rlfs_skewness")
+
+
 test_x_xgb <- test_x[,xgb_feats, drop = FALSE]
 bst <- xgb.load(modelfile = xgb_file)
 xgbprob <- predict(bst, newdata = test_x_xgb)
-xgbverdict <- ifelse(xgbprob > .5, 'pass', 'fail')
+xgbverdict <- ifelse(xgbprob > .8, 'pass', 'fail')
 xgbcolor <- ifelse(xgbprob > .90, 'green', ifelse(xgbprob > .70, 'orange', 'red'))
 verdictcolor <- ifelse(xgbverdict == 'pass', 'green', 'red')
 
@@ -106,15 +128,19 @@ The linear regression model predicted the quality score of this sample to be <st
 
 The linear model follows this formula:
 
-$$
-y = 97.27C_m + 14.24I_r + 8.903S_r - 13.53L_r + 0.440A_p - 20.39
-$$
+$y = 97.27C_m + 14.24I_r + 8.903S_r - 13.53L_r + 0.440A_p - 20.39$
+
 Where:
-$$C_m = \text{Median pearson correlation among similar sample types}$$
-$$I_r = \text{Intron enrichment in peaks log2(Observed / Expected)}$$
-$$S_r = \text{SINE enrichment in peaks log2(Observed / Expected)}$$
-$$S_r = \text{LINE enrichment in peaks log2(Observed / Expected)}$$
-$$A_p = \text{percent of reads aligned to genome}$$
+
+$C_m = \text{Median pearson correlation among similar sample types}$
+
+$I_r = \text{Intron enrichment in peaks log2(Observed / Expected)}$
+
+$S_r = \text{SINE enrichment in peaks log2(Observed / Expected)}$
+
+$L_r = \text{LINE enrichment in peaks log2(Observed / Expected)}$
+
+$A_p = \text{percent of reads aligned to genome}$
 
 
 \**See RSeq publication for additional details*

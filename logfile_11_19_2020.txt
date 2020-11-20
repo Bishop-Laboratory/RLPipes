@@ -1,0 +1,70 @@
+
+Parsing input...
+
+Unlocking working directory.
+Building DAG of jobs...
+Nothing to be done.
+Complete log: /home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/.snakemake/log/2020-11-19T214426.222235.snakemake.log
+Unlocking working directory.
+Building DAG of jobs...
+Nothing to be done.
+Complete log: /home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/.snakemake/log/2020-11-19T214426.362628.snakemake.log
+Unlocking working directory.
+Building DAG of jobs...
+Nothing to be done.
+Complete log: /home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/.snakemake/log/2020-11-19T214426.486997.snakemake.log
+Unlocking working directory.
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 80
+Rules claiming more threads will be scaled down.
+Conda environments: ignored
+Job counts:
+	count	jobs
+	2	assign_genome_annotations
+	1	bam_stats
+	2	compile_peaks
+	1	deeptools_coverage_stranded
+	1	deeptools_coverage_unstranded
+	1	epic2_callpeak_unstranded
+	1	epic_callpeaks_se_stranded
+	1	index_bam
+	1	macs2_callpeak_unstranded
+	1	macs2_callpeaks_se_stranded
+	1	macs2_predictd
+	1	merge_stranded_peaks
+	1	output
+	1	prepare_report
+	1	split_strands_se
+	17
+
+[Thu Nov 19 21:44:26 2020]
+rule bam_stats:
+    input: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/tmp/bams/SRX1674681_3T3_DRIPc-seq.mm10.experiment.bam
+    output: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/info/SRX1674681_3T3_DRIPc-seq.mm10.experiment.bam_stats.txt
+    log: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/logs/SRX1674681_3T3_DRIPc-seq_mm10_experiment__bam_stats.log
+    jobid: 10
+    wildcards: outdir=../RMapDB/data/SRX1674681_3T3_DRIPc-seq, sample=SRX1674681_3T3_DRIPc-seq, genome=mm10, exp_type=experiment
+    threads: 80
+
+[Thu Nov 19 21:44:29 2020]
+Finished job 10.
+1 of 17 steps (6%) done
+
+[Thu Nov 19 21:44:29 2020]
+rule macs2_predictd:
+    input: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/bams_unstranded/SRX1674681_3T3_DRIPc-seq.mm10.experiment.bam
+    output: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/info/SRX1674681_3T3_DRIPc-seq.mm10.experiment_predictd.txt
+    log: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/logs/SRX1674681_3T3_DRIPc-seq_mm10_experiment__macs2_predictd.log
+    jobid: 16
+    wildcards: outdir=../RMapDB/data/SRX1674681_3T3_DRIPc-seq, sample=SRX1674681_3T3_DRIPc-seq, genome=mm10, exp_type=experiment
+
+
+[Thu Nov 19 21:44:29 2020]
+rule macs2_callpeak_unstranded:
+    input: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/bams_unstranded/SRX1674681_3T3_DRIPc-seq.mm10.experiment.bam, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/bams_unstranded/SRX1674681_3T3_DRIPc-seq.mm10.experiment.bam
+    output: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_macs_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.broadPeak
+    log: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/logs/SRX1674681_3T3_DRIPc-seq_mm10__macs2_callpeak_unstranded.log
+    jobid: 1
+    wildcards: outdir=../RMapDB/data/SRX1674681_3T3_DRIPc-seq, sample=SRX1674681_3T3_DRIPc-seq, genome=mm10
+

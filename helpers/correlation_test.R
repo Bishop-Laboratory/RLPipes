@@ -62,9 +62,6 @@ correlation_test <- function(input, sample_name, mode, helper_dir) {
 										 annotation_col = annoNow,
 										 filename = output_correlation_picture)
 	save(corMat, annoNow, file = output_data)
-	# # Make markdown report TODO: Needs to include more info...
-	# rmarkdown::render(md_template, params = list(data_file = output_data), output_format = "html_document",
-	# 									output_file = output_html)
 
 }
 

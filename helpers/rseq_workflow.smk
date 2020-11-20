@@ -20,6 +20,7 @@ cores=int(config['cores'][0])
 sample_type=config['sample_type'][0]
 no_dedupe=config['no_dedupe'][0]
 no_fastp=config['no_fastp'][0]
+downsample=config['downsample'][0]
 sample_name=config['sample_name'][0]
 # TODO: Should there be an option to specify whether or not to separate output folders based on sample_name?
 outdirorig=config['out_dir'][0]
@@ -129,9 +130,9 @@ exp_type = ['experiment']
 if controls != "None":
     exp_type.append('control')
 
-bam_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam",
+bam_output = expand("{outdir}/bams_unstranded/{sample_name}.{genome}.{exp_type}.bam",
                         sample_name=sample_name, outdir=outdir, genome=genome, exp_type=exp_type)
-bam_index_output = expand("{outdir}/bams/{sample_name}.{genome}.{exp_type}.bam.bai",
+bam_index_output = expand("{outdir}/bams_unstranded/{sample_name}.{genome}.{exp_type}.bam.bai",
                         sample_name=sample_name, outdir=outdir, genome=genome, exp_type=exp_type)
 bam_stats_output = expand("{outdir}/info/{sample_name}.{genome}.{exp_type}.bam_stats.txt",
                         sample_name=sample_name, outdir=outdir, genome=genome, exp_type=exp_type)
@@ -345,7 +346,7 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
             bwa_index_done=genome_home_dir + "/{genome}/bwa_index/{genome}.amb",
             reads=bwa_reads
         output:
-            bam="{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
+            bam=temp("{outdir}/tmp/bams/{sample}.{genome}.{exp_type}.bam")
         log: "{outdir}/logs/{sample}_{genome}_{exp_type}__bwa_mem.log"
         params:
             index=genome_home_dir + "/{genome}/bwa_index/{genome}",
@@ -362,7 +363,7 @@ if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph
          """
 
     rule bam_stats:
-        input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
+        input: "{outdir}/tmp/bams/{sample}.{genome}.{exp_type}.bam"
         output: "{outdir}/info/{sample}.{genome}.{exp_type}.bam_stats.txt"
         threads: cores
         log: "{outdir}/logs/{sample}_{genome}_{exp_type}__bam_stats.log"
@@ -386,9 +387,39 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                     cp {input} {output}
                 """
 
+    rule prep_bam:
+        input: "{outdir}/tmp/bams/{sample}.{genome}.{exp_type}.bam"
+        output: "{outdir}/bams_unstranded/{sample}.{genome}.{exp_type}.bam"
+        threads: cores
+        params:
+            downsample=downsample
+        log: "{outdir}/logs/{sample}_{genome}_{exp_type}__prep_bam.log"
+        shell: """
+            (
+            downsample={params.downsample}
+            if [[ "$downsample" -gt 0 ]]; then
+                echo "Downsampling to "$downsample" reads."
+                numread=$(samtools view -@ {cores} {input} | wc -l)
+                echo {params.downsample}
+                echo $numread 
+                if [[ $downsample -gt $numread ]] || [[ $downsample -eq $numread ]]; then
+                    echo "Attempted to downsample the same number or more reads than available in .bam. All reads will be used!"
+                    cp {input} {output}
+                else
+                    downfrac=$(echo "scale=20; $downsample/$numread" | bc)
+                    echo "Downsample fraction is "$downfrac
+                    picard-tools DownsampleSam I={input} O={output} P=$downfrac VALIDATION_STRINGENCY=SILENT R=42
+                fi
+            else
+                echo "No downsampling. Moving bam to output."
+                cp {input} {output}
+            fi
+            ) &> {log}
+        """
+
     rule index_bam:
-        input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
-        output: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam.bai"
+        input: "{outdir}/bams_unstranded/{sample}.{genome}.{exp_type}.bam"
+        output: "{outdir}/bams_unstranded/{sample}.{genome}.{exp_type}.bam.bai"
         threads: cores
         log: "{outdir}/logs/{sample}_{genome}_{exp_type}__index_bam.log"
         shell: """
@@ -398,7 +429,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
     if strand_specific and paired_end:
         rule split_strands_pe:
             input:
-                bam="{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
+                bam="{outdir}/bams_unstranded/{sample}.{genome}.{exp_type}.bam"
             output:
                 plus="{outdir}/bams_stranded/{sample}.{genome}.{exp_type}.p.bam",
                 minus="{outdir}/bams_stranded/{sample}.{genome}.{exp_type}.m.bam"
@@ -414,11 +445,12 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                 samtools view -@ {threads} -b -f 144 {input} > {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.{wildcards.exp_type}.rev1.bam
                 samtools view -@ {threads} -b -f 64 -F 16 {input} > {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.{wildcards.exp_type}.rev2.bam
                 samtools merge -@ {threads} -f {output.minus} {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.{wildcards.exp_type}.rev1.bam {wildcards.outdir}/bams_tmp/{wildcards.sample}.{wildcards.genome}.{wildcards.exp_type}.rev2.bam
-                samtools index -@ {threads} {output.minus}) &> {log}
+                samtools index -@ {threads} {output.minus}
+                rm -rf {wildcards.outdir}/bams_tmp) &> {log}
             """
     elif strand_specific:
         rule split_strands_se:
-            input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam",
+            input: "{outdir}/bams_unstranded/{sample}.{genome}.{exp_type}.bam",
             output:
                 plus="{outdir}/bams_stranded/{sample}.{genome}.{exp_type}.p.bam",
                 minus="{outdir}/bams_stranded/{sample}.{genome}.{exp_type}.m.bam"
@@ -430,11 +462,12 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
                 (samtools view -@ {threads} -b -f 16 {input} > {output.plus}
                 samtools index -@ {threads} {output.plus}
                 samtools view -@ {threads} -b -F 16 {input} > {output.minus}
-                samtools index -@ {threads} {output.minus}) &> {log}
+                samtools index -@ {threads} {output.minus}
+                rm -rf {wildcards.outdir}/bams_tmp) &> {log}
             """
 
     rule macs2_predictd:
-        input: "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
+        input: "{outdir}/bams_unstranded/{sample}.{genome}.{exp_type}.bam"
         output: "{outdir}/info/{sample}.{genome}.{exp_type}_predictd.txt"
         params: "-g " + str(effective_genome_size) + " --outdir " + outdir + "/info"
         log: "{outdir}/logs/{sample}_{genome}_{exp_type}__macs2_predictd.log"
@@ -448,7 +481,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
         """
 
     # Set up arguments for peak callers
-    treat_file_macs2="{outdir}/bams/{sample}.{genome}.experiment.bam"
+    treat_file_macs2="{outdir}/bams_unstranded/{sample}.{genome}.experiment.bam"
 
     if paired_end:
         params_macs2="-f BAMPE --broad-cutoff .01 -q .01 --broad -g " + str(effective_genome_size)
@@ -458,10 +491,10 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
     else:
         params_macs2="--broad-cutoff .01 -q .01 --broad -g " + str(effective_genome_size)
         epic_info="{outdir}/info/{sample}.{genome}.experiment_predictd.txt"
-        treat_file_epic="{outdir}/bams/{sample}.{genome}.experiment.bam"
+        treat_file_epic="{outdir}/bams_unstranded/{sample}.{genome}.experiment.bam"
 
     if controls != "None":
-        control_file_macs2="{outdir}/bams/{sample}.{genome}.control.bam"
+        control_file_macs2="{outdir}/bams_unstranded/{sample}.{genome}.control.bam"
         macs2_command="(macs2 callpeak -t {input.treatment} -c {input.control}" \
                       + " {params} --outdir {wildcards.outdir}/peaks_macs_unstranded/ " \
                       + "-n {wildcards.sample}_{wildcards.genome}.unstranded" \
@@ -470,13 +503,13 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
         if paired_end:
             control_file_epic="{outdir}/tmp/pe_beds/{sample}.{genome}.control.bed"
         else:
-            control_file_epic="{outdir}/bams/{sample}.{genome}.control.bam"
-            index_epic=["{outdir}/bams/{sample}.{genome}.experiment.bam.bai",
-                        "{outdir}/bams/{sample}.{genome}.control.bam.bai"]
+            control_file_epic="{outdir}/bams_unstranded/{sample}.{genome}.control.bam"
+            index_epic=["{outdir}/bams_unstranded/{sample}.{genome}.experiment.bam.bai",
+                        "{outdir}/bams_unstranded/{sample}.{genome}.control.bam.bai"]
     else:
         control_file_macs2=treat_file_macs2
         control_file_epic=treat_file_epic
-        index_epic="{outdir}/bams/{sample}.{genome}.experiment.bam.bai"
+        index_epic="{outdir}/bams_unstranded/{sample}.{genome}.experiment.bam.bai"
         macs2_command="(macs2 callpeak -t {input.treatment} {params} --outdir {wildcards.outdir}/peaks_macs_unstranded/" \
                       + " -n {wildcards.sample}_{wildcards.genome}.unstranded" \
                         + " && mv {wildcards.outdir}/peaks_macs_unstranded/{wildcards.sample}_{wildcards.genome}.unstranded_peaks.broadPeak {wildcards.outdir}/peaks_macs_unstranded/{wildcards.sample}_{wildcards.genome}.unstranded.broadPeak) &> {log}"
@@ -503,7 +536,7 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
         # adapted from https://github.com/biocore-ntnu/epic2/issues/24
         # awk only accepts MAPQ score > 30 and non-negative start position
         input:
-            "{outdir}/bams/{sample}.{genome}.{exp_type}.bam"
+            "{outdir}/bams_unstranded/{sample}.{genome}.{exp_type}.bam"
         output:
             temp("{outdir}/tmp/pe_beds/{sample}.{genome}.{exp_type}.bed")
         params:
@@ -539,8 +572,8 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
     # Calculate this for all reads
     rule deeptools_coverage_unstranded:
             input:
-                bam="{outdir}/bams/{sample}.{genome}.experiment.bam",
-                index="{outdir}/bams/{sample}.{genome}.experiment.bam.bai"
+                bam="{outdir}/bams_unstranded/{sample}.{genome}.experiment.bam",
+                index="{outdir}/bams_unstranded/{sample}.{genome}.experiment.bam.bai"
             output: "{outdir}/coverage_unstranded/{sample}.{genome}.bw"
             threads: cores
             log: "{outdir}/logs/{sample}_{genome}__deeptools_coverage_unstranded.log"
@@ -588,8 +621,8 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
 
         rule deeptools_coverage_stranded:
                 input:
-                    bam="{outdir}/bams/{sample}.{genome}.experiment.bam",
-                    index="{outdir}/bams/{sample}.{genome}.experiment.bam.bai"
+                    bam="{outdir}/bams_unstranded/{sample}.{genome}.experiment.bam",
+                    index="{outdir}/bams_unstranded/{sample}.{genome}.experiment.bam.bai"
                 output:
                     plus="{outdir}/coverage_stranded/{sample}.{genome}.p.bw",
                     minus="{outdir}/coverage_stranded/{sample}.{genome}.m.bw"
@@ -607,8 +640,8 @@ if sample_type != "bigWig" and sample_type != "bedGraph":
             rule deeptools_get_pe_fragment_sizes:
                 # TODO: First, remove the low MAPQ score reads as they increase the overall size
                 input:
-                    bam="{outdir}/bams/{sample}.{genome}.experiment.bam",
-                    index="{outdir}/bams/{sample}.{genome}.experiment.bam.bai"
+                    bam="{outdir}/bams_unstranded/{sample}.{genome}.experiment.bam",
+                    index="{outdir}/bams_unstranded/{sample}.{genome}.experiment.bam.bai"
                 output:
                     info="{outdir}/info/{sample}.{genome}.experiment.frag_lengths.txt",
                     plot="{outdir}/info/{sample}.{genome}.experiment.frag_lengths.png"
@@ -817,11 +850,15 @@ rule compile_peaks:
         output_rda="{outdir}/peaks_final_{strand}/{sample}_{genome}.{strand}.rda"
     params:
         configs=outdirorig + "/rseqVars.json",
+        output_bed_tmp="{outdir}/peaks_final_{strand}/{sample}_{genome}.{strand}.tmp.bed",
         sample_name=sample_name,
         helpers_dir=helpers_dir
     log: "{outdir}/logs/{sample}_{genome}_{strand}__compile_peaks_{strand}.log"
     shell: """
-    (Rscript {params.helpers_dir}/compile_peaks.R {params.configs} {params.sample_name} {input.macs2} {input.epic2} {output.output_rda} {output.output_bed}) &> {log}
+    (
+    Rscript {params.helpers_dir}/compile_peaks.R {params.configs} {params.sample_name} {input.macs2} {input.epic2} {output.output_rda} {params.output_bed_tmp}
+    awk ' $2 >= 0 ' {params.output_bed_tmp} > {output.output_bed} && rm {params.output_bed_tmp}
+    ) &> {log}
     """
 
 

@@ -5,10 +5,10 @@ R-loop broad peaks were called with `macs2` and then compared with genomic featu
 
 ```{r fig.height=4, fig.width=10}
 anno_cats <- data.frame(
-  "Annotation" = c('Intergenic', 'Simple_repeat', 'Satellite', 'Promoter', 'pseudo', 'Intron', 'TTS', 'LINE', 'LTR', 'SINE', 'DNA', 'CpG-Island', 'ncRNA', 'Low_complexity', 'Exon', 'snRNA', 'Retroposon', '5UTR', '3UTR', 'srpRNA', 'rRNA', 'tRNA', 'RC', 'scRNA', 'miRNA', 'RNA', 'snoRNA'),
+  "Annotation" = c('Intergenic', 'Simple_repeat', 'Satellite', 'Promoter', 'pseudo', 'Intron', 'TTS', 'LINE', 'LTR', 'SINE', 'DNA', 'CpG-Island', 'ncRNA', 'Low_complexity', 'Exon', 'snRNA', 'Retroposon', '5UTR', '3UTR', 'srpRNA', 'tRNA', 'RC', 'scRNA', 'miRNA', 'RNA', 'snoRNA'),
   "annotate_type" = c("gene", "rep", "rep", "gene", "RNA", "gene", "gene", 
              "rep", "rep", "rep", "rep", "gene", "RNA", "rep",
-             "gene", "RNA", "rep", "gene", "gene", "RNA", "rep",
+             "gene", "RNA", "rep", "gene", "gene", "RNA",
              "RNA", "RNA", "RNA", "RNA", "RNA", "RNA"), stringsAsFactors = FALSE
 )
 
