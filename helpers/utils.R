@@ -478,6 +478,7 @@ get_rlfs <- function() {
     print(genome_now)
     if (! file.exists(file.path(outdir, paste0(genome_now, ".rlfs.out.table.txt"))) && 
         ! file.exists(file.path(outdir, paste0(genome_now, ".fa")))) {
+      print("Getting genome!")
       download.file(paste0("ftp://hgdownload.soe.ucsc.edu/goldenPath/", genome_now, "/bigZips/", genome_now, ".fa.gz"),
                     destfile = file.path(outdir, paste0(genome_now, ".fa.gz")))
       R.utils::gunzip(file.path(outdir, paste0(genome_now, ".fa.gz")))
@@ -485,18 +486,32 @@ get_rlfs <- function() {
     cmd <- paste0("python ", script, " -i ", file.path(outdir, paste0(genome_now, ".fa")),
                   " -o ", file.path(outdir, paste0(genome_now, ".rlfs")))
     if (! file.exists(file.path(outdir, paste0(genome_now, ".rlfs.out.table.txt")))) {
+      print("Calculating RLFS")
       system(cmd, wait = FALSE)
+    }
+    
+    # Conver to bed6 and liftOver
+    
+    cmd <- paste0("awk 'FNR > 1 {print $3\"\\t\"$21}' ", file.path(outdir, paste0(genome_now, ".rlfs.out.table.txt")),
+                  "| awk '{gsub(\":|-\",\"\\t\", $1); print $1\"\\t\"\".\"\"\\t\"\".\"\"\\t\"$2}'",
+                  " | bedtools sort -i stdin | mergeBed -i stdin -s -c 4,5,6 -o distinct > ", 
+                  file.path(outdir, paste0(genome_now, ".rlfs.bed")))
+    if (file.exists(file.path(outdir, paste0(genome_now, ".rlfs.out.table.txt"))) &&
+        ! file.exists(file.path(outdir, paste0(genome_now, ".rlfs.bed")))) {
+      print("Convert to bed!")
+      system(cmd)
     }
   }
   
-  # Convert to bed6 and liftOver
-  # awk 'FNR > 1 {print $3"\t"$21}' "helpers/data/rlfs/hg19.rlfs.out.table.txt" | awk '{gsub(":|-","\t", $1); print $1"\t"".""\t"".""\t"$2}' > "helpers/data/rlfs_bed/rlfs.hg19.bed"
-  # bedtools sort -i "helpers/data/rlfs_bed/rlfs.hg19.bed" > "helpers/data/rlfs_bed/rlfs.hg19.sorted.bed"
-  # liftOver "helpers/data/rlfs_bed/rlfs.hg19.sorted.bed" hg19ToHg38.over.chain "helpers/data/rlfs_bed/rlfs.hg38.bed" whatever.txt
-  # bedtools sort -i "helpers/data/rlfs_bed/rlfs.hg38.bed" > "helpers/data/rlfs_bed/rlfs.hg38.sorted.bed"
+  # Clean up
+  bed_files <- list.files(outdir, pattern = "\\.bed", full.names = F)
+  lapply(bed_files, function(filenow) {
+    old_file <- file.path(outdir, filenow)
+    new_file <- file.path(paste0(outdir, '-beds'), filenow)
+    file.copy(old_file, new_file, overwrite = TRUE)
+  })
   
 }
-
 # # Collate data
 # collate_rda <- function() {
 #   helpers_dir <- paste0(path.expand("~"), "/Bishop.lab/Projects/RSeq/helpers/")

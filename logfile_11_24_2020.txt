@@ -1,0 +1,366 @@
+
+Parsing input...
+
+Unlocking working directory.
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 80
+Rules claiming more threads will be scaled down.
+Conda environments: ignored
+Job counts:
+	count	jobs
+	1	output
+	1	prepare_report
+	1	rlfs_enrichment
+	3
+
+[Tue Nov 24 13:02:32 2020]
+rule rlfs_enrichment:
+    input: ../RMapDB/data/SRX113814_Ntera2_DNA/peaks_final_unstranded/SRX113814_Ntera2_DNA_hg38.unstranded.bed, /home/UTHSCSA/millerh1/.RSeq_genomes/hg38/rloop_predictions/hg38.rlfs.bed
+    output: ../RMapDB/data/SRX113814_Ntera2_DNA/QC/SRX113814_Ntera2_DNA_hg38.rlfs_enrichment.rda
+    log: ../RMapDB/data/SRX113814_Ntera2_DNA/logs/SRX113814_Ntera2_DNA_hg38__rlfs_enrichment.log
+    jobid: 10
+    wildcards: outdir=../RMapDB/data/SRX113814_Ntera2_DNA, sample=SRX113814_Ntera2_DNA, genome=hg38
+    threads: 80
+
+[Tue Nov 24 13:02:50 2020]
+Finished job 10.
+1 of 3 steps (33%) done
+
+[Tue Nov 24 13:02:50 2020]
+rule prepare_report:
+    input: ../RMapDB/data/SRX113814_Ntera2_DNA/QC/SRX113814_Ntera2_DNA_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX113814_Ntera2_DNA/QC/SRX113814_Ntera2_DNA.hg38.correlation.png, ../RMapDB/data/SRX113814_Ntera2_DNA/QC/SRX113814_Ntera2_DNA.hg38.correlation.rda, ../RMapDB/data/SRX113814_Ntera2_DNA/QC/fastq/SRX113814_Ntera2_DNA.experiment.json, ../RMapDB/data/SRX113814_Ntera2_DNA/QC/SRX113814_Ntera2_DNA_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX113814_Ntera2_DNA/peaks_macs_unstranded/SRX113814_Ntera2_DNA_hg38.unstranded.broadPeak, ../RMapDB/data/SRX113814_Ntera2_DNA/peaks_epic_unstranded/SRX113814_Ntera2_DNA_hg38.unstranded.bed, ../RMapDB/data/SRX113814_Ntera2_DNA/peaks_final_unstranded/SRX113814_Ntera2_DNA_hg38.unstranded.bed, ../RMapDB/data/SRX113814_Ntera2_DNA/info/SRX113814_Ntera2_DNA.hg38.experiment.bam_stats.txt
+    output: ../RMapDB/data/SRX113814_Ntera2_DNA/SRX113814_Ntera2_DNA_hg38.QC_report.html, ../RMapDB/data/SRX113814_Ntera2_DNA/SRX113814_Ntera2_DNA_hg38.QC_report.rda
+    log: ../RMapDB/data/SRX113814_Ntera2_DNA/logs/SRX113814_Ntera2_DNA_hg38__prepare_report.log
+    jobid: 11
+    wildcards: outdir=../RMapDB/data/SRX113814_Ntera2_DNA, sample=SRX113814_Ntera2_DNA, genome=hg38
+
+[Tue Nov 24 13:03:08 2020]
+Finished job 11.
+2 of 3 steps (67%) done
+
+[Tue Nov 24 13:03:08 2020]
+localrule output:
+    input: ../RMapDB/data/SRX113814_Ntera2_DNA/peaks_macs_unstranded/SRX113814_Ntera2_DNA_hg38.unstranded.broadPeak, ../RMapDB/data/SRX113814_Ntera2_DNA/peaks_epic_unstranded/SRX113814_Ntera2_DNA_hg38.unstranded.bed, ../RMapDB/data/SRX113814_Ntera2_DNA/peaks_final_unstranded/SRX113814_Ntera2_DNA_hg38.unstranded.bed, ../RMapDB/data/SRX113814_Ntera2_DNA/coverage_unstranded/SRX113814_Ntera2_DNA.hg38.bw, ../RMapDB/data/SRX113814_Ntera2_DNA/bams_unstranded/SRX113814_Ntera2_DNA.hg38.experiment.bam, ../RMapDB/data/SRX113814_Ntera2_DNA/bams_unstranded/SRX113814_Ntera2_DNA.hg38.experiment.bam.bai, ../RMapDB/data/SRX113814_Ntera2_DNA/info/SRX113814_Ntera2_DNA.hg38.experiment.bam_stats.txt, ../RMapDB/data/SRX113814_Ntera2_DNA/QC/SRX113814_Ntera2_DNA.hg38.correlation.png, ../RMapDB/data/SRX113814_Ntera2_DNA/QC/SRX113814_Ntera2_DNA.hg38.correlation.rda, ../RMapDB/data/SRX113814_Ntera2_DNA/QC/SRX113814_Ntera2_DNA_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX113814_Ntera2_DNA/QC/SRX113814_Ntera2_DNA_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX113814_Ntera2_DNA/SRX113814_Ntera2_DNA_hg38.QC_report.html, ../RMapDB/data/SRX113814_Ntera2_DNA/SRX113814_Ntera2_DNA_hg38.QC_report.rda
+    jobid: 0
+
+[Tue Nov 24 13:03:08 2020]
+Finished job 0.
+3 of 3 steps (100%) done
+Complete log: /home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/.snakemake/log/2020-11-24T130232.301687.snakemake.log
+Unlocking working directory.
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 80
+Rules claiming more threads will be scaled down.
+Conda environments: ignored
+Job counts:
+	count	jobs
+	1	output
+	1	prepare_report
+	1	rlfs_enrichment
+	3
+
+[Tue Nov 24 13:03:08 2020]
+rule rlfs_enrichment:
+    input: ../RMapDB/data/SRX113813_Ntera2_DNA/peaks_final_unstranded/SRX113813_Ntera2_DNA_hg38.unstranded.bed, /home/UTHSCSA/millerh1/.RSeq_genomes/hg38/rloop_predictions/hg38.rlfs.bed
+    output: ../RMapDB/data/SRX113813_Ntera2_DNA/QC/SRX113813_Ntera2_DNA_hg38.rlfs_enrichment.rda
+    log: ../RMapDB/data/SRX113813_Ntera2_DNA/logs/SRX113813_Ntera2_DNA_hg38__rlfs_enrichment.log
+    jobid: 10
+    wildcards: outdir=../RMapDB/data/SRX113813_Ntera2_DNA, sample=SRX113813_Ntera2_DNA, genome=hg38
+    threads: 80
+
+[Tue Nov 24 13:03:30 2020]
+Finished job 10.
+1 of 3 steps (33%) done
+
+[Tue Nov 24 13:03:30 2020]
+rule prepare_report:
+    input: ../RMapDB/data/SRX113813_Ntera2_DNA/QC/SRX113813_Ntera2_DNA_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX113813_Ntera2_DNA/QC/SRX113813_Ntera2_DNA.hg38.correlation.png, ../RMapDB/data/SRX113813_Ntera2_DNA/QC/SRX113813_Ntera2_DNA.hg38.correlation.rda, ../RMapDB/data/SRX113813_Ntera2_DNA/QC/fastq/SRX113813_Ntera2_DNA.experiment.json, ../RMapDB/data/SRX113813_Ntera2_DNA/QC/SRX113813_Ntera2_DNA_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX113813_Ntera2_DNA/peaks_macs_unstranded/SRX113813_Ntera2_DNA_hg38.unstranded.broadPeak, ../RMapDB/data/SRX113813_Ntera2_DNA/peaks_epic_unstranded/SRX113813_Ntera2_DNA_hg38.unstranded.bed, ../RMapDB/data/SRX113813_Ntera2_DNA/peaks_final_unstranded/SRX113813_Ntera2_DNA_hg38.unstranded.bed, ../RMapDB/data/SRX113813_Ntera2_DNA/info/SRX113813_Ntera2_DNA.hg38.experiment.bam_stats.txt
+    output: ../RMapDB/data/SRX113813_Ntera2_DNA/SRX113813_Ntera2_DNA_hg38.QC_report.html, ../RMapDB/data/SRX113813_Ntera2_DNA/SRX113813_Ntera2_DNA_hg38.QC_report.rda
+    log: ../RMapDB/data/SRX113813_Ntera2_DNA/logs/SRX113813_Ntera2_DNA_hg38__prepare_report.log
+    jobid: 11
+    wildcards: outdir=../RMapDB/data/SRX113813_Ntera2_DNA, sample=SRX113813_Ntera2_DNA, genome=hg38
+
+[Tue Nov 24 13:03:50 2020]
+Finished job 11.
+2 of 3 steps (67%) done
+
+[Tue Nov 24 13:03:50 2020]
+localrule output:
+    input: ../RMapDB/data/SRX113813_Ntera2_DNA/peaks_macs_unstranded/SRX113813_Ntera2_DNA_hg38.unstranded.broadPeak, ../RMapDB/data/SRX113813_Ntera2_DNA/peaks_epic_unstranded/SRX113813_Ntera2_DNA_hg38.unstranded.bed, ../RMapDB/data/SRX113813_Ntera2_DNA/peaks_final_unstranded/SRX113813_Ntera2_DNA_hg38.unstranded.bed, ../RMapDB/data/SRX113813_Ntera2_DNA/coverage_unstranded/SRX113813_Ntera2_DNA.hg38.bw, ../RMapDB/data/SRX113813_Ntera2_DNA/bams_unstranded/SRX113813_Ntera2_DNA.hg38.experiment.bam, ../RMapDB/data/SRX113813_Ntera2_DNA/bams_unstranded/SRX113813_Ntera2_DNA.hg38.experiment.bam.bai, ../RMapDB/data/SRX113813_Ntera2_DNA/info/SRX113813_Ntera2_DNA.hg38.experiment.bam_stats.txt, ../RMapDB/data/SRX113813_Ntera2_DNA/QC/SRX113813_Ntera2_DNA.hg38.correlation.png, ../RMapDB/data/SRX113813_Ntera2_DNA/QC/SRX113813_Ntera2_DNA.hg38.correlation.rda, ../RMapDB/data/SRX113813_Ntera2_DNA/QC/SRX113813_Ntera2_DNA_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX113813_Ntera2_DNA/QC/SRX113813_Ntera2_DNA_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX113813_Ntera2_DNA/SRX113813_Ntera2_DNA_hg38.QC_report.html, ../RMapDB/data/SRX113813_Ntera2_DNA/SRX113813_Ntera2_DNA_hg38.QC_report.rda
+    jobid: 0
+
+[Tue Nov 24 13:03:50 2020]
+Finished job 0.
+3 of 3 steps (100%) done
+Complete log: /home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/.snakemake/log/2020-11-24T130308.209817.snakemake.log
+Unlocking working directory.
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 80
+Rules claiming more threads will be scaled down.
+Conda environments: ignored
+Job counts:
+	count	jobs
+	1	output
+	1	prepare_report
+	1	rlfs_enrichment
+	3
+
+[Tue Nov 24 13:03:50 2020]
+rule rlfs_enrichment:
+    input: ../RMapDB/data/SRX113812_Ntera2_DNA/peaks_final_unstranded/SRX113812_Ntera2_DNA_hg38.unstranded.bed, /home/UTHSCSA/millerh1/.RSeq_genomes/hg38/rloop_predictions/hg38.rlfs.bed
+    output: ../RMapDB/data/SRX113812_Ntera2_DNA/QC/SRX113812_Ntera2_DNA_hg38.rlfs_enrichment.rda
+    log: ../RMapDB/data/SRX113812_Ntera2_DNA/logs/SRX113812_Ntera2_DNA_hg38__rlfs_enrichment.log
+    jobid: 10
+    wildcards: outdir=../RMapDB/data/SRX113812_Ntera2_DNA, sample=SRX113812_Ntera2_DNA, genome=hg38
+    threads: 80
+
+[Tue Nov 24 13:04:10 2020]
+Finished job 10.
+1 of 3 steps (33%) done
+
+[Tue Nov 24 13:04:10 2020]
+rule prepare_report:
+    input: ../RMapDB/data/SRX113812_Ntera2_DNA/QC/SRX113812_Ntera2_DNA_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX113812_Ntera2_DNA/QC/SRX113812_Ntera2_DNA.hg38.correlation.png, ../RMapDB/data/SRX113812_Ntera2_DNA/QC/SRX113812_Ntera2_DNA.hg38.correlation.rda, ../RMapDB/data/SRX113812_Ntera2_DNA/QC/fastq/SRX113812_Ntera2_DNA.experiment.json, ../RMapDB/data/SRX113812_Ntera2_DNA/QC/SRX113812_Ntera2_DNA_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX113812_Ntera2_DNA/peaks_macs_unstranded/SRX113812_Ntera2_DNA_hg38.unstranded.broadPeak, ../RMapDB/data/SRX113812_Ntera2_DNA/peaks_epic_unstranded/SRX113812_Ntera2_DNA_hg38.unstranded.bed, ../RMapDB/data/SRX113812_Ntera2_DNA/peaks_final_unstranded/SRX113812_Ntera2_DNA_hg38.unstranded.bed, ../RMapDB/data/SRX113812_Ntera2_DNA/info/SRX113812_Ntera2_DNA.hg38.experiment.bam_stats.txt
+    output: ../RMapDB/data/SRX113812_Ntera2_DNA/SRX113812_Ntera2_DNA_hg38.QC_report.html, ../RMapDB/data/SRX113812_Ntera2_DNA/SRX113812_Ntera2_DNA_hg38.QC_report.rda
+    log: ../RMapDB/data/SRX113812_Ntera2_DNA/logs/SRX113812_Ntera2_DNA_hg38__prepare_report.log
+    jobid: 11
+    wildcards: outdir=../RMapDB/data/SRX113812_Ntera2_DNA, sample=SRX113812_Ntera2_DNA, genome=hg38
+
+[Tue Nov 24 13:04:29 2020]
+Finished job 11.
+2 of 3 steps (67%) done
+
+[Tue Nov 24 13:04:29 2020]
+localrule output:
+    input: ../RMapDB/data/SRX113812_Ntera2_DNA/peaks_macs_unstranded/SRX113812_Ntera2_DNA_hg38.unstranded.broadPeak, ../RMapDB/data/SRX113812_Ntera2_DNA/peaks_epic_unstranded/SRX113812_Ntera2_DNA_hg38.unstranded.bed, ../RMapDB/data/SRX113812_Ntera2_DNA/peaks_final_unstranded/SRX113812_Ntera2_DNA_hg38.unstranded.bed, ../RMapDB/data/SRX113812_Ntera2_DNA/coverage_unstranded/SRX113812_Ntera2_DNA.hg38.bw, ../RMapDB/data/SRX113812_Ntera2_DNA/bams_unstranded/SRX113812_Ntera2_DNA.hg38.experiment.bam, ../RMapDB/data/SRX113812_Ntera2_DNA/bams_unstranded/SRX113812_Ntera2_DNA.hg38.experiment.bam.bai, ../RMapDB/data/SRX113812_Ntera2_DNA/info/SRX113812_Ntera2_DNA.hg38.experiment.bam_stats.txt, ../RMapDB/data/SRX113812_Ntera2_DNA/QC/SRX113812_Ntera2_DNA.hg38.correlation.png, ../RMapDB/data/SRX113812_Ntera2_DNA/QC/SRX113812_Ntera2_DNA.hg38.correlation.rda, ../RMapDB/data/SRX113812_Ntera2_DNA/QC/SRX113812_Ntera2_DNA_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX113812_Ntera2_DNA/QC/SRX113812_Ntera2_DNA_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX113812_Ntera2_DNA/SRX113812_Ntera2_DNA_hg38.QC_report.html, ../RMapDB/data/SRX113812_Ntera2_DNA/SRX113812_Ntera2_DNA_hg38.QC_report.rda
+    jobid: 0
+
+[Tue Nov 24 13:04:29 2020]
+Finished job 0.
+3 of 3 steps (100%) done
+Complete log: /home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/.snakemake/log/2020-11-24T130350.677580.snakemake.log
+Unlocking working directory.
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 80
+Rules claiming more threads will be scaled down.
+Conda environments: ignored
+Job counts:
+	count	jobs
+	1	output
+	1	prepare_report
+	1	rlfs_enrichment
+	3
+
+[Tue Nov 24 13:04:29 2020]
+rule rlfs_enrichment:
+    input: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_final_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.bed, /home/UTHSCSA/millerh1/.RSeq_genomes/mm10/rloop_predictions/mm10.rlfs.bed
+    output: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/QC/SRX1674681_3T3_DRIPc-seq_mm10.rlfs_enrichment.rda
+    log: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/logs/SRX1674681_3T3_DRIPc-seq_mm10__rlfs_enrichment.log
+    jobid: 13
+    wildcards: outdir=../RMapDB/data/SRX1674681_3T3_DRIPc-seq, sample=SRX1674681_3T3_DRIPc-seq, genome=mm10
+    threads: 80
+
+[Tue Nov 24 13:04:52 2020]
+Finished job 13.
+1 of 3 steps (33%) done
+
+[Tue Nov 24 13:04:52 2020]
+rule prepare_report:
+    input: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/QC/SRX1674681_3T3_DRIPc-seq_mm10_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/QC/SRX1674681_3T3_DRIPc-seq_mm10_stranded.feature_overlaps.txt, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_macs_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.broadPeak, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_macs_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.broadPeak, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_epic_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_epic_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_final_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_final_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/QC/fastq/SRX1674681_3T3_DRIPc-seq.experiment.json, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/QC/SRX1674681_3T3_DRIPc-seq_mm10.rlfs_enrichment.rda, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_macs_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.broadPeak, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_macs_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.broadPeak, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_epic_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_epic_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_final_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_final_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/info/SRX1674681_3T3_DRIPc-seq.mm10.experiment.bam_stats.txt
+    output: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/SRX1674681_3T3_DRIPc-seq_mm10.QC_report.html, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/SRX1674681_3T3_DRIPc-seq_mm10.QC_report.rda
+    log: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/logs/SRX1674681_3T3_DRIPc-seq_mm10__prepare_report.log
+    jobid: 14
+    wildcards: outdir=../RMapDB/data/SRX1674681_3T3_DRIPc-seq, sample=SRX1674681_3T3_DRIPc-seq, genome=mm10
+
+[Tue Nov 24 13:05:08 2020]
+Finished job 14.
+2 of 3 steps (67%) done
+
+[Tue Nov 24 13:05:08 2020]
+localrule output:
+    input: ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_macs_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.broadPeak, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_macs_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.broadPeak, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_epic_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_epic_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_final_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_final_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/coverage_unstranded/SRX1674681_3T3_DRIPc-seq.mm10.bw, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/coverage_stranded/SRX1674681_3T3_DRIPc-seq.mm10.p.bw, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/coverage_stranded/SRX1674681_3T3_DRIPc-seq.mm10.m.bw, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/bams_unstranded/SRX1674681_3T3_DRIPc-seq.mm10.experiment.bam, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/bams_unstranded/SRX1674681_3T3_DRIPc-seq.mm10.experiment.bam.bai, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/info/SRX1674681_3T3_DRIPc-seq.mm10.experiment.bam_stats.txt, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_macs_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.broadPeak, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_macs_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.broadPeak, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_epic_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_epic_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_final_unstranded/SRX1674681_3T3_DRIPc-seq_mm10.unstranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_final_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.bed, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/QC/SRX1674681_3T3_DRIPc-seq_mm10_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/QC/SRX1674681_3T3_DRIPc-seq_mm10_stranded.feature_overlaps.txt, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/QC/SRX1674681_3T3_DRIPc-seq_mm10.rlfs_enrichment.rda, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/SRX1674681_3T3_DRIPc-seq_mm10.QC_report.html, ../RMapDB/data/SRX1674681_3T3_DRIPc-seq/SRX1674681_3T3_DRIPc-seq_mm10.QC_report.rda
+    jobid: 0
+
+[Tue Nov 24 13:05:08 2020]
+Finished job 0.
+3 of 3 steps (100%) done
+Complete log: /home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/.snakemake/log/2020-11-24T130429.818003.snakemake.log
+Unlocking working directory.
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 80
+Rules claiming more threads will be scaled down.
+Conda environments: ignored
+Job counts:
+	count	jobs
+	1	output
+	1	prepare_report
+	1	rlfs_enrichment
+	3
+
+[Tue Nov 24 13:05:08 2020]
+rule rlfs_enrichment:
+    input: ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_final_unstranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.unstranded.bed, /home/UTHSCSA/millerh1/.RSeq_genomes/hg38/rloop_predictions/hg38.rlfs.bed
+    output: ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/QC/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.rlfs_enrichment.rda
+    log: ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/logs/SRX1070676_NT2_DRIPc-seq_rep_1_hg38__rlfs_enrichment.log
+    jobid: 14
+    wildcards: outdir=../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1, sample=SRX1070676_NT2_DRIPc-seq_rep_1, genome=hg38
+    threads: 80
+
+[Tue Nov 24 13:05:36 2020]
+Finished job 14.
+1 of 3 steps (33%) done
+
+[Tue Nov 24 13:05:36 2020]
+rule prepare_report:
+    input: ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/QC/SRX1070676_NT2_DRIPc-seq_rep_1_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/QC/SRX1070676_NT2_DRIPc-seq_rep_1_hg38_stranded.feature_overlaps.txt, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/QC/SRX1070676_NT2_DRIPc-seq_rep_1.hg38.correlation.png, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/QC/SRX1070676_NT2_DRIPc-seq_rep_1.hg38.correlation.rda, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/QC/fastq/SRX1070676_NT2_DRIPc-seq_rep_1.experiment.json, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/QC/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_macs_unstranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.unstranded.broadPeak, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_macs_stranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.stranded.broadPeak, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_epic_unstranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.unstranded.bed, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_epic_stranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.stranded.bed, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_final_unstranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.unstranded.bed, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_final_stranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.stranded.bed, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/info/SRX1070676_NT2_DRIPc-seq_rep_1.hg38.experiment.bam_stats.txt
+    output: ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.QC_report.html, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.QC_report.rda
+    log: ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/logs/SRX1070676_NT2_DRIPc-seq_rep_1_hg38__prepare_report.log
+    jobid: 15
+    wildcards: outdir=../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1, sample=SRX1070676_NT2_DRIPc-seq_rep_1, genome=hg38
+
+[Tue Nov 24 13:05:56 2020]
+Finished job 15.
+2 of 3 steps (67%) done
+
+[Tue Nov 24 13:05:56 2020]
+localrule output:
+    input: ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_macs_unstranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.unstranded.broadPeak, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_macs_stranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.stranded.broadPeak, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_epic_unstranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.unstranded.bed, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_epic_stranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.stranded.bed, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_final_unstranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.unstranded.bed, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/peaks_final_stranded/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.stranded.bed, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/coverage_unstranded/SRX1070676_NT2_DRIPc-seq_rep_1.hg38.bw, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/coverage_stranded/SRX1070676_NT2_DRIPc-seq_rep_1.hg38.p.bw, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/coverage_stranded/SRX1070676_NT2_DRIPc-seq_rep_1.hg38.m.bw, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/bams_unstranded/SRX1070676_NT2_DRIPc-seq_rep_1.hg38.experiment.bam, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/bams_unstranded/SRX1070676_NT2_DRIPc-seq_rep_1.hg38.experiment.bam.bai, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/info/SRX1070676_NT2_DRIPc-seq_rep_1.hg38.experiment.bam_stats.txt, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/QC/SRX1070676_NT2_DRIPc-seq_rep_1.hg38.correlation.png, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/QC/SRX1070676_NT2_DRIPc-seq_rep_1.hg38.correlation.rda, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/QC/SRX1070676_NT2_DRIPc-seq_rep_1_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/QC/SRX1070676_NT2_DRIPc-seq_rep_1_hg38_stranded.feature_overlaps.txt, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/QC/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.QC_report.html, ../RMapDB/data/SRX1070676_NT2_DRIPc-seq_rep_1/SRX1070676_NT2_DRIPc-seq_rep_1_hg38.QC_report.rda
+    jobid: 0
+
+[Tue Nov 24 13:05:56 2020]
+Finished job 0.
+3 of 3 steps (100%) done
+Complete log: /home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/.snakemake/log/2020-11-24T130508.487705.snakemake.log
+Unlocking working directory.
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 80
+Rules claiming more threads will be scaled down.
+Conda environments: ignored
+Job counts:
+	count	jobs
+	1	output
+	1	prepare_report
+	1	rlfs_enrichment
+	3
+
+[Tue Nov 24 13:05:56 2020]
+rule rlfs_enrichment:
+    input: ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_final_unstranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.unstranded.bed, /home/UTHSCSA/millerh1/.RSeq_genomes/hg38/rloop_predictions/hg38.rlfs.bed
+    output: ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/QC/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.rlfs_enrichment.rda
+    log: ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/logs/SRX1070677_NT2_DRIPc-seq_rep_2_hg38__rlfs_enrichment.log
+    jobid: 14
+    wildcards: outdir=../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2, sample=SRX1070677_NT2_DRIPc-seq_rep_2, genome=hg38
+    threads: 80
+
+[Tue Nov 24 13:06:22 2020]
+Finished job 14.
+1 of 3 steps (33%) done
+
+[Tue Nov 24 13:06:22 2020]
+rule prepare_report:
+    input: ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/QC/SRX1070677_NT2_DRIPc-seq_rep_2_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/QC/SRX1070677_NT2_DRIPc-seq_rep_2_hg38_stranded.feature_overlaps.txt, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/QC/SRX1070677_NT2_DRIPc-seq_rep_2.hg38.correlation.png, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/QC/SRX1070677_NT2_DRIPc-seq_rep_2.hg38.correlation.rda, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/QC/fastq/SRX1070677_NT2_DRIPc-seq_rep_2.experiment.json, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/QC/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_macs_unstranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.unstranded.broadPeak, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_macs_stranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.stranded.broadPeak, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_epic_unstranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.unstranded.bed, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_epic_stranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.stranded.bed, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_final_unstranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.unstranded.bed, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_final_stranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.stranded.bed, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/info/SRX1070677_NT2_DRIPc-seq_rep_2.hg38.experiment.bam_stats.txt
+    output: ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.QC_report.html, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.QC_report.rda
+    log: ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/logs/SRX1070677_NT2_DRIPc-seq_rep_2_hg38__prepare_report.log
+    jobid: 15
+    wildcards: outdir=../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2, sample=SRX1070677_NT2_DRIPc-seq_rep_2, genome=hg38
+
+[Tue Nov 24 13:06:42 2020]
+Finished job 15.
+2 of 3 steps (67%) done
+
+[Tue Nov 24 13:06:42 2020]
+localrule output:
+    input: ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_macs_unstranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.unstranded.broadPeak, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_macs_stranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.stranded.broadPeak, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_epic_unstranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.unstranded.bed, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_epic_stranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.stranded.bed, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_final_unstranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.unstranded.bed, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/peaks_final_stranded/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.stranded.bed, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/coverage_unstranded/SRX1070677_NT2_DRIPc-seq_rep_2.hg38.bw, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/coverage_stranded/SRX1070677_NT2_DRIPc-seq_rep_2.hg38.p.bw, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/coverage_stranded/SRX1070677_NT2_DRIPc-seq_rep_2.hg38.m.bw, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/bams_unstranded/SRX1070677_NT2_DRIPc-seq_rep_2.hg38.experiment.bam, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/bams_unstranded/SRX1070677_NT2_DRIPc-seq_rep_2.hg38.experiment.bam.bai, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/info/SRX1070677_NT2_DRIPc-seq_rep_2.hg38.experiment.bam_stats.txt, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/QC/SRX1070677_NT2_DRIPc-seq_rep_2.hg38.correlation.png, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/QC/SRX1070677_NT2_DRIPc-seq_rep_2.hg38.correlation.rda, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/QC/SRX1070677_NT2_DRIPc-seq_rep_2_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/QC/SRX1070677_NT2_DRIPc-seq_rep_2_hg38_stranded.feature_overlaps.txt, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/QC/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.QC_report.html, ../RMapDB/data/SRX1070677_NT2_DRIPc-seq_rep_2/SRX1070677_NT2_DRIPc-seq_rep_2_hg38.QC_report.rda
+    jobid: 0
+
+[Tue Nov 24 13:06:42 2020]
+Finished job 0.
+3 of 3 steps (100%) done
+Complete log: /home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/.snakemake/log/2020-11-24T130556.471147.snakemake.log
+Unlocking working directory.
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 80
+Rules claiming more threads will be scaled down.
+Conda environments: ignored
+Job counts:
+	count	jobs
+	1	output
+	1	prepare_report
+	1	rlfs_enrichment
+	3
+
+[Tue Nov 24 13:06:42 2020]
+rule rlfs_enrichment:
+    input: ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/peaks_final_unstranded/SRX1070678_NT2_DRIP-seq_1_hg38.unstranded.bed, /home/UTHSCSA/millerh1/.RSeq_genomes/hg38/rloop_predictions/hg38.rlfs.bed
+    output: ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/QC/SRX1070678_NT2_DRIP-seq_1_hg38.rlfs_enrichment.rda
+    log: ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/logs/SRX1070678_NT2_DRIP-seq_1_hg38__rlfs_enrichment.log
+    jobid: 10
+    wildcards: outdir=../RMapDB/data/SRX1070678_NT2_DRIP-seq_1, sample=SRX1070678_NT2_DRIP-seq_1, genome=hg38
+    threads: 80
+
+[Tue Nov 24 13:07:11 2020]
+Finished job 10.
+1 of 3 steps (33%) done
+
+[Tue Nov 24 13:07:11 2020]
+rule prepare_report:
+    input: ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/QC/SRX1070678_NT2_DRIP-seq_1_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/QC/SRX1070678_NT2_DRIP-seq_1.hg38.correlation.png, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/QC/SRX1070678_NT2_DRIP-seq_1.hg38.correlation.rda, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/QC/fastq/SRX1070678_NT2_DRIP-seq_1.experiment.json, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/QC/SRX1070678_NT2_DRIP-seq_1_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/peaks_macs_unstranded/SRX1070678_NT2_DRIP-seq_1_hg38.unstranded.broadPeak, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/peaks_epic_unstranded/SRX1070678_NT2_DRIP-seq_1_hg38.unstranded.bed, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/peaks_final_unstranded/SRX1070678_NT2_DRIP-seq_1_hg38.unstranded.bed, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/info/SRX1070678_NT2_DRIP-seq_1.hg38.experiment.bam_stats.txt
+    output: ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/SRX1070678_NT2_DRIP-seq_1_hg38.QC_report.html, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/SRX1070678_NT2_DRIP-seq_1_hg38.QC_report.rda
+    log: ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/logs/SRX1070678_NT2_DRIP-seq_1_hg38__prepare_report.log
+    jobid: 11
+    wildcards: outdir=../RMapDB/data/SRX1070678_NT2_DRIP-seq_1, sample=SRX1070678_NT2_DRIP-seq_1, genome=hg38
+
+[Tue Nov 24 13:07:33 2020]
+Finished job 11.
+2 of 3 steps (67%) done
+
+[Tue Nov 24 13:07:33 2020]
+localrule output:
+    input: ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/peaks_macs_unstranded/SRX1070678_NT2_DRIP-seq_1_hg38.unstranded.broadPeak, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/peaks_epic_unstranded/SRX1070678_NT2_DRIP-seq_1_hg38.unstranded.bed, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/peaks_final_unstranded/SRX1070678_NT2_DRIP-seq_1_hg38.unstranded.bed, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/coverage_unstranded/SRX1070678_NT2_DRIP-seq_1.hg38.bw, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/bams_unstranded/SRX1070678_NT2_DRIP-seq_1.hg38.experiment.bam, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/bams_unstranded/SRX1070678_NT2_DRIP-seq_1.hg38.experiment.bam.bai, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/info/SRX1070678_NT2_DRIP-seq_1.hg38.experiment.bam_stats.txt, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/QC/SRX1070678_NT2_DRIP-seq_1.hg38.correlation.png, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/QC/SRX1070678_NT2_DRIP-seq_1.hg38.correlation.rda, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/QC/SRX1070678_NT2_DRIP-seq_1_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/QC/SRX1070678_NT2_DRIP-seq_1_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/SRX1070678_NT2_DRIP-seq_1_hg38.QC_report.html, ../RMapDB/data/SRX1070678_NT2_DRIP-seq_1/SRX1070678_NT2_DRIP-seq_1_hg38.QC_report.rda
+    jobid: 0
+
+[Tue Nov 24 13:07:33 2020]
+Finished job 0.
+3 of 3 steps (100%) done
+Complete log: /home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/.snakemake/log/2020-11-24T130642.880446.snakemake.log
+Unlocking working directory.
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 80
+Rules claiming more threads will be scaled down.
+Conda environments: ignored
+Job counts:
+	count	jobs
+	1	output
+	1	prepare_report
+	1	rlfs_enrichment
+	3
+
+[Tue Nov 24 13:07:33 2020]
+rule rlfs_enrichment:
+    input: ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/peaks_final_unstranded/SRX1070679_NT2_DRIP-seq_2_hg38.unstranded.bed, /home/UTHSCSA/millerh1/.RSeq_genomes/hg38/rloop_predictions/hg38.rlfs.bed
+    output: ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/QC/SRX1070679_NT2_DRIP-seq_2_hg38.rlfs_enrichment.rda
+    log: ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/logs/SRX1070679_NT2_DRIP-seq_2_hg38__rlfs_enrichment.log
+    jobid: 10
+    wildcards: outdir=../RMapDB/data/SRX1070679_NT2_DRIP-seq_2, sample=SRX1070679_NT2_DRIP-seq_2, genome=hg38
+    threads: 80
+
+[Tue Nov 24 13:08:01 2020]
+Finished job 10.
+1 of 3 steps (33%) done
+
+[Tue Nov 24 13:08:01 2020]
+rule prepare_report:
+    input: ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/QC/SRX1070679_NT2_DRIP-seq_2_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/QC/SRX1070679_NT2_DRIP-seq_2.hg38.correlation.png, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/QC/SRX1070679_NT2_DRIP-seq_2.hg38.correlation.rda, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/QC/fastq/SRX1070679_NT2_DRIP-seq_2.experiment.json, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/QC/SRX1070679_NT2_DRIP-seq_2_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/peaks_macs_unstranded/SRX1070679_NT2_DRIP-seq_2_hg38.unstranded.broadPeak, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/peaks_epic_unstranded/SRX1070679_NT2_DRIP-seq_2_hg38.unstranded.bed, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/peaks_final_unstranded/SRX1070679_NT2_DRIP-seq_2_hg38.unstranded.bed, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/info/SRX1070679_NT2_DRIP-seq_2.hg38.experiment.bam_stats.txt
+    output: ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/SRX1070679_NT2_DRIP-seq_2_hg38.QC_report.html, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/SRX1070679_NT2_DRIP-seq_2_hg38.QC_report.rda
+    log: ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/logs/SRX1070679_NT2_DRIP-seq_2_hg38__prepare_report.log
+    jobid: 11
+    wildcards: outdir=../RMapDB/data/SRX1070679_NT2_DRIP-seq_2, sample=SRX1070679_NT2_DRIP-seq_2, genome=hg38
+

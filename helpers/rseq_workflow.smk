@@ -110,8 +110,6 @@ if strand_specific:
 if genome == "hg38":
     correlation_output = expand("{outdir}/QC/{sample}.{genome}.correlation.{file_ends}", genome=genome,
                                 sample=sample_name, outdir=outdir, file_ends=["png", "rda"])
-    rlfs_output = expand("{outdir}/QC/{sample}_{genome}_{strand}.rlfs_enrichment.rda", genome=genome,
-                                sample=sample_name, outdir=outdir, strand=strand)
 else:
     correlation_output = peak_output
     rlfs_output = peak_output
@@ -119,11 +117,11 @@ else:
 if homer_anno_available:
     anno_output = expand("{outdir}/QC/{sample}_{genome}_{strand}.feature_overlaps.txt", genome=genome,
                                 sample=sample_name, outdir=outdir, strand=strand)
-    # rlfs_output = expand("{outdir}/QC/{sample}_{genome}.rlfs_enrichment.rda", genome=genome,
-    #                             sample=sample_name, outdir=outdir)
+    rlfs_output = expand("{outdir}/QC/{sample}_{genome}.rlfs_enrichment.rda", genome=genome,
+                                sample=sample_name, outdir=outdir)
 else:
     anno_output = peak_output
-    # rlfs_output = peak_output
+    rlfs_output = peak_output
 
 
 exp_type = ['experiment']
@@ -809,33 +807,40 @@ rule prepare_report:
      """
 
 
-rule run_QmRLFS_finder:
-    # Packaged with RSeq from: https://github.com/piroonj/QmRLFS-finder (Oct 12 2020)
-    input: genome_home_dir + "/{genome}/{genome}.fa"
+# rule run_QmRLFS_finder:
+#     # Packaged with RSeq from: https://github.com/piroonj/QmRLFS-finder (Oct 12 2020)
+#     input: genome_home_dir + "/{genome}/{genome}.fa"
+#     output:
+#         table=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.txt",
+#         bed=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.bed"
+#     params:
+#         helpers_dir=helpers_dir,
+#         bed=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.raw.bed",
+#         genome_home_dir=genome_home_dir
+#     shell: """
+#     python {params.helpers_dir}/external/QmRLFS-finder.py -i {input} \
+#     -o {params.genome_home_dir}/{wildcards.genome}/rloop_predictions/RLFS.{wildcards.genome}
+#     awk '{{OFS="\t";print($1,$4,$14,$3,0,$21)}}' {output.table} > {params.bed}
+#     bedtools sort -i {params.bed} | mergeBed -i stdin -s | awk '{{OFS="\t";print($1,$2,$3,".",".",$4)}}' > {output.bed}
+#     """
+
+rule download_rlfs_annotations:
     output:
-        table=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.txt",
-        bed=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.bed"
-    params:
-        helpers_dir=helpers_dir,
-        bed=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.raw.bed",
-        genome_home_dir=genome_home_dir
+        bed=genome_home_dir + "/{genome}/rloop_predictions/{genome}.rlfs.bed"
     shell: """
-    python {params.helpers_dir}/external/QmRLFS-finder.py -i {input} \
-    -o {params.genome_home_dir}/{wildcards.genome}/rloop_predictions/RLFS.{wildcards.genome}
-    awk '{{OFS="\t";print($1,$4,$14,$3,0,$21)}}' {output.table} > {params.bed}
-    bedtools sort -i {params.bed} | mergeBed -i stdin -s | awk '{{OFS="\t";print($1,$2,$3,".",".",$4)}}' > {output.bed}
+    wget -O {output} https://rmapdb-data.s3.us-east-2.amazonaws.com/rlfs-beds/{wildcards.genome}.rlfs.bed
     """
 
 
 rule rlfs_enrichment:
     input:
-         peaks="{outdir}/peaks_final_{strand}/{sample}_{genome}.{strand}.bed",
-         rlfs=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.bed"
-    output: "{outdir}/QC/{sample}_{genome}_{strand}.rlfs_enrichment.rda"
+         peaks="{outdir}/peaks_final_unstranded/{sample}_{genome}.unstranded.bed",
+         rlfs=genome_home_dir + "/{genome}/rloop_predictions/{genome}.rlfs.bed"
+    output: "{outdir}/QC/{sample}_{genome}.rlfs_enrichment.rda"
     params:
         helpers_dir=helpers_dir
     threads: cores
-    log: "{outdir}/logs/{sample}_{genome}_{strand}__rlfs_enrichment.log"
+    log: "{outdir}/logs/{sample}_{genome}__rlfs_enrichment.log"
     shell: """
      (Rscript {params.helpers_dir}/rlfs_perm_test.R {threads} {wildcards.genome} {input.peaks} {input.rlfs} {output}) &> {log}
      """
