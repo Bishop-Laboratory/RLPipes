@@ -36,3 +36,4 @@ build/
 /helpers/data/rlfs_bed/
 /helpers/data/rlfs/
 /helpers/data/rlfs-beds/
+logfile*

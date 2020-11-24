@@ -364,3 +364,50 @@ rule prepare_report:
     jobid: 11
     wildcards: outdir=../RMapDB/data/SRX1070679_NT2_DRIP-seq_2, sample=SRX1070679_NT2_DRIP-seq_2, genome=hg38
 
+[Tue Nov 24 13:08:21 2020]
+Finished job 11.
+2 of 3 steps (67%) done
+
+[Tue Nov 24 13:08:21 2020]
+localrule output:
+    input: ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/peaks_macs_unstranded/SRX1070679_NT2_DRIP-seq_2_hg38.unstranded.broadPeak, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/peaks_epic_unstranded/SRX1070679_NT2_DRIP-seq_2_hg38.unstranded.bed, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/peaks_final_unstranded/SRX1070679_NT2_DRIP-seq_2_hg38.unstranded.bed, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/coverage_unstranded/SRX1070679_NT2_DRIP-seq_2.hg38.bw, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/bams_unstranded/SRX1070679_NT2_DRIP-seq_2.hg38.experiment.bam, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/bams_unstranded/SRX1070679_NT2_DRIP-seq_2.hg38.experiment.bam.bai, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/info/SRX1070679_NT2_DRIP-seq_2.hg38.experiment.bam_stats.txt, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/QC/SRX1070679_NT2_DRIP-seq_2.hg38.correlation.png, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/QC/SRX1070679_NT2_DRIP-seq_2.hg38.correlation.rda, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/QC/SRX1070679_NT2_DRIP-seq_2_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/QC/SRX1070679_NT2_DRIP-seq_2_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/SRX1070679_NT2_DRIP-seq_2_hg38.QC_report.html, ../RMapDB/data/SRX1070679_NT2_DRIP-seq_2/SRX1070679_NT2_DRIP-seq_2_hg38.QC_report.rda
+    jobid: 0
+
+[Tue Nov 24 13:08:21 2020]
+Finished job 0.
+3 of 3 steps (100%) done
+Complete log: /home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/.snakemake/log/2020-11-24T130733.158434.snakemake.log
+Unlocking working directory.
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 80
+Rules claiming more threads will be scaled down.
+Conda environments: ignored
+Job counts:
+	count	jobs
+	1	output
+	1	prepare_report
+	1	rlfs_enrichment
+	3
+
+[Tue Nov 24 13:08:21 2020]
+rule rlfs_enrichment:
+    input: ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/peaks_final_unstranded/SRX1070680_NT2_DRIP-seq_RNaseA_hg38.unstranded.bed, /home/UTHSCSA/millerh1/.RSeq_genomes/hg38/rloop_predictions/hg38.rlfs.bed
+    output: ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/QC/SRX1070680_NT2_DRIP-seq_RNaseA_hg38.rlfs_enrichment.rda
+    log: ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/logs/SRX1070680_NT2_DRIP-seq_RNaseA_hg38__rlfs_enrichment.log
+    jobid: 10
+    wildcards: outdir=../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA, sample=SRX1070680_NT2_DRIP-seq_RNaseA, genome=hg38
+    threads: 80
+
+[Tue Nov 24 13:08:51 2020]
+Finished job 10.
+1 of 3 steps (33%) done
+
+[Tue Nov 24 13:08:51 2020]
+rule prepare_report:
+    input: ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/QC/SRX1070680_NT2_DRIP-seq_RNaseA_hg38_unstranded.feature_overlaps.txt, ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/QC/SRX1070680_NT2_DRIP-seq_RNaseA.hg38.correlation.png, ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/QC/SRX1070680_NT2_DRIP-seq_RNaseA.hg38.correlation.rda, ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/QC/fastq/SRX1070680_NT2_DRIP-seq_RNaseA.experiment.json, ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/QC/SRX1070680_NT2_DRIP-seq_RNaseA_hg38.rlfs_enrichment.rda, ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/peaks_macs_unstranded/SRX1070680_NT2_DRIP-seq_RNaseA_hg38.unstranded.broadPeak, ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/peaks_epic_unstranded/SRX1070680_NT2_DRIP-seq_RNaseA_hg38.unstranded.bed, ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/peaks_final_unstranded/SRX1070680_NT2_DRIP-seq_RNaseA_hg38.unstranded.bed, ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/info/SRX1070680_NT2_DRIP-seq_RNaseA.hg38.experiment.bam_stats.txt
+    output: ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/SRX1070680_NT2_DRIP-seq_RNaseA_hg38.QC_report.html, ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/SRX1070680_NT2_DRIP-seq_RNaseA_hg38.QC_report.rda
+    log: ../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA/logs/SRX1070680_NT2_DRIP-seq_RNaseA_hg38__prepare_report.log
+    jobid: 11
+    wildcards: outdir=../RMapDB/data/SRX1070680_NT2_DRIP-seq_RNaseA, sample=SRX1070680_NT2_DRIP-seq_RNaseA, genome=hg38
+
