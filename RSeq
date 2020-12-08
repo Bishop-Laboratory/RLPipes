@@ -41,6 +41,8 @@ usage() {
   echo
   echo "RSeq -e1 treated_A.R1.fastq treated_B.R1.fastq -e2 treated_A.R2.fastq treated_B.R2.fastq -m R-ChIP -g dm6"
   echo
+  echo "Thank you for using RSeq. Please cite Bishop-Laboratory/RSeq"
+  echo
 
 }
 
