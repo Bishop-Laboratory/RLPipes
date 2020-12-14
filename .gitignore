@@ -37,3 +37,4 @@ build/
 /helpers/data/rlfs/
 /helpers/data/rlfs-beds/
 logfile*
+misc/conservation_analysis/**/*.bed

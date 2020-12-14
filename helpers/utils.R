@@ -579,7 +579,24 @@ fix_peak_files <- function() {
 }
 
   
-
+# Send peaks to AWS
+fix_peak_files <- function() {
+  # Peaks final unstranded
+  bp <- list.files("~/Bishop.lab/Projects/RMapDB/data/", recursive = TRUE, full.names = TRUE, 
+                   pattern = "_[a-zA-Z]+[0-9]+\\.unstranded\\.bed")
+  bp <- bp[grep(bp, pattern = "peaks_final_unstranded")]
+  
+  # Copy files to new folder
+  dir.create("helpers/export/final-peaks-unstranded")
+  
+  for (i in 1:length(bp)) {
+    print(i)
+    filenow <- bp[i]
+    file.copy(filenow, to = "helpers/export/final-peaks-unstranded")
+    
+  }
+  
+}
 
 
 
