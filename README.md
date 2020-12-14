@@ -1,6 +1,6 @@
 # RSeq CLI
 
-RSeq CLI is a command-line interface to the RSeq best-practices R-looping mapping pipeline. 
+RSeq CLI is a command-line interface to the RSeq best-practices R-looping mapping pipeline. It's good software!
 
 ## Quickstart
 
