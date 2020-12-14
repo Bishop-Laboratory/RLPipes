@@ -2,7 +2,7 @@
 
 The raw data for this analysis is here: https://uthscsa.box.com/s/l5ehtq8rd2e7u0ctdl4x3ev3qqgl5rcx
 
-That contains all the peak files. The current R code in `conservation_analysis.R` works if that folder I linked is unzipped in the `conservation_analysis` directory. 
+That contains all the peak files. The current R code in `conservation_analysis.R` works if that folder I linked is unzipped in the `conservation_analysis/data` directory. 
 
 For `conservation_analysis.R`, the current strategy is:
 
