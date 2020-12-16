@@ -1,6 +1,6 @@
 # Analysis and other misc components
 
-This folder is primarily used in completing analysis tasks, such as the development of the conservation analysis module and the PASS/FAIL label assignment module. 
+This folder is primarily used in completing analysis tasks, such as the development of the conservation analysis module and the PASS/FAIL label assignment module. The newest set of samples with all quality features included is in `rmap_full_11_25.csv`. A slightly older version which includes the pass/fail labels and the predictions made by the original classifier and quality score models (only applied to DRIP family datasets like qDRIP-Seq) is included in `scored_rmap_full_11_17_2020.csv`.
 
 The repository containing all the processed R-loop mapping samples (including quality summaries, peak files, and signal tracks) is currently available here: https://uthscsa.box.com/s/emwlbtzqeh4ya3i52dfr7ee1zrdybf1x
 
