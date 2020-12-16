@@ -2,6 +2,8 @@
 
 This folder is primarily used in completing analysis tasks, such as the development of the conservation analysis module and the PASS/FAIL label assignment module. 
 
+The repository containing all the processed R-loop mapping samples (including quality summaries, peak files, and signal tracks) is currently available here: https://uthscsa.box.com/s/emwlbtzqeh4ya3i52dfr7ee1zrdybf1x
+
 Here are some examples of HTML reports provided by the current version of RSeq:
 
 1. TC32 DRIP-Seq experimental sample -- https://static-html-pages.s3-us-west-2.amazonaws.com/RMapDB/SRX1025890_TC32_NT_DRIP_hg38.QC_report.html
