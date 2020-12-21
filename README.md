@@ -53,5 +53,5 @@ General options:
 
 ### Details
 
-
+Here are some details.
 
