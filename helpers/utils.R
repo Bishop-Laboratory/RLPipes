@@ -598,8 +598,39 @@ fix_peak_files <- function() {
   
 }
 
+# Send quality reports to AWS
+prepare_reports_to_upload <- function() {
+  # Peaks final unstranded
+  bp <- list.files("~/Bishop.lab/Projects/RMapDB/data/", recursive = TRUE, full.names = TRUE, 
+                   pattern = "._report\\.html")
+  
+  # Copy files to new folder
+  dir.create("helpers/export/rseq-quality-reports")
+  
+  for (i in 1:length(bp)) {
+    print(i)
+    filenow <- bp[i]
+    file.copy(filenow, to = "helpers/export/rseq-quality-reports")
+    
+  }
+  
+}
 
 
-
-
-
+prepare_unstranded_bw_to_upload <- function() {
+  # Peaks final unstranded
+  bp <- list.files("~/Bishop.lab/Projects/RMapDB/data/", recursive = TRUE, full.names = TRUE, 
+                   pattern = "\\.bw")
+  bp <- bp[grep(bp, pattern = "coverage_unstranded")]
+  
+  # Copy files to new folder
+  dir.create("helpers/export/rseq-coverage-unstranded")
+  
+  for (i in 1:length(bp)) {
+    print(i)
+    filenow <- bp[i]
+    file.copy(filenow, to = "helpers/export/rseq-coverage-unstranded")
+    
+  }
+  
+}

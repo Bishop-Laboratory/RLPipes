@@ -17,10 +17,11 @@ venv/
 analysis/
 *data/rlfs*
 rseq/uploads/
-
+*.Rhistory*
+helpers/export*
 *.pyc
 __pycache__/
-
+*.ipynb_checkpoints*
 instance/
 
 .pytest_cache/
