@@ -1,0 +1,224 @@
+---
+title: "RSeq Report"
+output: 
+  html_document:
+    code_folding: hide
+    theme: flatly
+    highlight: textmate
+params:
+  corr_data: "placeholder"
+  anno_data: "placeholder"
+  rlfs_data: "placeholder"
+  rlcons_data: "placeholder"
+  bam_stats: "placeholder"
+  peak_ol: "placeholder"
+  summary_scores: "placeholder"
+  read_qc_data: "placeholder"
+  configlist: "placeholder"
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+library(knitr)
+library(kableExtra)
+library(pheatmap)
+library(xgboost)
+library(ggpubr)
+library(RColorBrewer)
+library(ChIPpeakAnno)
+library(regioneR)
+library(grid)
+library(plotly)
+show_anno <- ifelse(tibble::is_tibble(anno_data), TRUE, FALSE)
+show_corr <- ifelse(is.list(corr_data), TRUE, FALSE)
+show_rlfs <- ifelse(is.list(rlfs_data), TRUE, FALSE)
+correct_mode <- configlist$mode %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP')
+show_summary <- show_anno & show_corr & correct_mode
+if (show_anno) {
+  needed_categories <- c("Exon", "LINE", 'SINE', 'TTS', 'Intron')
+  if (any(! needed_categories %in% anno_data$Annotation)) {
+    show_summary <- FALSE
+  }
+}
+sample_name <- configlist$sample_name
+control <- ifelse(configlist$controls == "None", FALSE, TRUE)
+mode_now <- configlist$mode
+current_time <- date()
+pe <- configlist$paired_end
+genome <- configlist$genome
+strand <- configlist$strand_specific
+strandedness <- ifelse(strand, "stranded", "unstranded")
+moiety <- configlist$moeity
+ip_type <- configlist$ip_type
+rmap_samples <- file.path(helpers_dir, 'data', 'RMapDB_samples_11_13_2020.csv')
+rmap_samples <- read_csv(rmap_samples)
+rmap_samples$mode_group <- ifelse(rmap_samples$mode %in% c("RNH-CnR", "MapR"), "MapR",
+                                  ifelse(rmap_samples$mode %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP'), 'DRIP',
+                                         ifelse(rmap_samples$mode %in% c("RDIP"), "RDIP", 
+                                                ifelse(rmap_samples$mode %in% c("ssDRIP"), "ssDRIP", 
+                                                      ifelse(rmap_samples$mode %in% c("R-ChIP"), 'R-ChIP', "misc")))))
+xgb_file <- file.path(helpers_dir, 'data', "xgb_DRIP_group_HS_binary_11_17_2020.model")
+lm_file <- file.path(helpers_dir, 'data', "lm_DRIP_group_HS_nonbinary_11_17_2020.rda")
+rmap_quality <- file.path(helpers_dir, 'data', 'rmap_quality_DRIP_11_17_2020.csv')
+```
+
+<br>
+
+Sample name: <strong>`r sample_name`</strong>
+
+Sample type: <strong>`r paste0(mode_now, "-Seq")`</strong>
+
+Genome: <strong>`r genome`</strong>
+
+Time finished: <strong>`r current_time`</strong>
+
+
+***
+
+```{r child='summary_score_template.Rmd', eval=show_summary}
+```
+
+
+## Quality Report Details
+
+<hr>
+
+
+```{r child='annotation_template.Rmd', eval=show_anno}
+```
+
+
+```{r child='rlfs_template.Rmd', eval=show_rlfs}
+```
+
+
+```{r child='correlation_template.Rmd', eval=show_corr}
+```
+
+
+### Peak calling
+
+```{r}
+controlstr <- ifelse(control, "was", "was <strong style='color: red'>not</strong>")
+opt1 <- " the MACS2 peaks which overlapped with EPIC2 peaks were considered the 'final' peakset by RSeq."
+opt2 <- " the EPIC2 peaks were considered the 'final' peakset by RSeq."
+
+if (mode_now %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP', 'RDIP', 'ssDRIP', 'S1-DRIP')) {
+  if (control) {
+    outbed <- peak_ol$overlappingPeaks$`MACS2///EPIC2`
+    outbedgr <- toGRanges(outbed[,c(2:4, 7, 6)])
+    opt <- opt1
+  } else {
+    outbedgr <- peak_ol$all.peaks$EPIC2
+    opt <- opt2
+  }
+} else if (mode_now %in% c("R-ChIP", "RR-ChIP", "RNH-CnR", "MapR", 'DRIVE')) {
+  outbed <- peak_ol$overlappingPeaks$`MACS2///EPIC2`
+  outbedgr <- toGRanges(outbed[,c(2:4, 7, 6)])
+  opt <- opt1
+}
+peak_protocol <- paste0("Because the mode was <strong>", mode_now, "</strong> and there ", controlstr, 
+                        " a control sample (e.g., genomic input), ", opt)
+total_peaks <- length(outbedgr)
+total_peaks_color <- ifelse(total_peaks < 3000, 'red', ifelse(total_peaks < 6000, 'orange', 'green'))
+```
+
+The peak callers `macs2` and `epic2` were used to call <strong>`r strandedness`</strong> peaks from the bam files. `r peak_protocol` 
+
+Please see the <a href="https://github.com/millerh1/RSeq"  target="_blank">RSeq documentation</a> for a full explanation of the peak analysis approach. 
+
+Number of peaks in final RSeq peakset: <strong style="color: `r total_peaks_color`">`r total_peaks`</strong>
+
+#### Peak MACS2 and EPIC2 overlap statistics
+
+```{r}
+res <- suppressMessages(suppressWarnings(makeVennDiagram(peak_ol, ignore.strand = FALSE, margin = .05,
+                                         fill = c('skyblue', 'firebrick'))))
+```
+
+
+```{r}
+venn_counts <- res$vennCounts
+peak_stats <- data.frame(
+  "MACS2" = venn_counts[c(3:4),c(4)],
+  "EPIC2" = venn_counts[c(2, 4),c(5)],
+  row.names = c("Distinct Peak Count", "Overlapping Peak Count")
+)
+peak_stats['Percentage Peaks Overlapping',] <- c(round(100*(peak_stats$MACS2[2]/sum(peak_stats$MACS2)), 1),
+                                           round(100*(peak_stats$EPIC2[2]/sum(peak_stats$EPIC2)), 1))
+kable(peak_stats) %>%
+  kable_styling(full_width = FALSE, position = "left", bootstrap_options = "striped")
+```
+
+
+***
+
+### Read quality
+
+From `fastp` report:
+
+```{r}
+before_filter <- unlist(read_qc_data$summary$before_filtering)
+after_filter <- unlist(read_qc_data$summary$after_filtering)
+namestable <- gsub(names(after_filter), pattern = "_", replacement = " ")
+namestable <- stringr::str_to_title(namestable)
+namestable <- gsub(namestable, pattern = "Gc", replacement = "GC")
+namestable[1:4] <- paste0(namestable[1:4], " (millions)")
+read_qc <- tibble(
+  "attribute" = namestable,
+  "Before filtering" = before_filter,
+  "After filtering" = after_filter
+) %>% 
+  mutate_at(.vars = c("Before filtering", "After filtering"), function(x) {
+    ifelse(x > 1000000, x / 1000000, x)
+  }) %>% tibble::column_to_rownames(var = "attribute") 
+reads_before <- read_qc$`Before filtering`[1]
+reads_after <- read_qc$`After filtering`[1]
+percent_passing <- round(100*(reads_after/reads_before), digits = 1)
+read_qc_color <- ifelse(percent_passing > 90, "green", ifelse(percent_passing > 80, "orange", "red"))
+kable(read_qc) %>%
+  kable_styling(full_width = FALSE, position = "left", bootstrap_options = "striped")
+```
+
+Percent reads passing filter: <strong style="color: `r read_qc_color`">`r percent_passing`</strong>
+
+***
+
+### Mapping quality
+
+```{r}
+total_reads <- bam_stats$total_reads / 1e6
+reads_aligned <- bam_stats$reads_aligned / 1e6
+duplicate_reads <- bam_stats$duplicate_reads / 1e6
+pct_aligned <- round(100*(reads_aligned/total_reads), digits = 2)
+pct_align_color <- ifelse(pct_aligned > 80, "green", ifelse(pct_aligned > 60, "orange", "red"))
+pct_duplicated <- round(100*(duplicate_reads/total_reads), digits = 2)
+pct_duplicated_color <- ifelse(pct_duplicated < 35, "green", ifelse(pct_aligned < 50, "orange", "red"))
+genome <- configlist$genome
+```
+
+Reads were aligned to **`r genome`** with `bwa mem`. 
+
+Total reads (millions): **`r total_reads`**
+
+Aligned reads (millions): **`r reads_aligned`**
+
+Percent of reads aligned: <strong style="color: `r pct_align_color`">`r pct_aligned`</strong>
+
+Duplicated reads (millions): **`r duplicate_reads`**
+
+Percent of reads duplicated: <strong style="color: `r pct_duplicated_color`">`r pct_duplicated`</strong>
+
+
+
+&nbsp;
+<hr />
+<p style="text-align: center;">RSeq © 2020, <a href="https://gccri.bishop-lab.uthscsa.edu/"  target="_blank">Bishop Lab</a>, UT Health San Antonio</p>
+<p style="text-align: center;">RSeq maintainer: <span style="color: #808080;"><em>millerh1@uthscsa.edu</em></span></p>
+
+&nbsp;
+
+
+
+
+
+

@@ -1,0 +1,49 @@
+### Correlation analysis
+
+Using the method described in *Chedin et al. 2020*, the correlation between `r configlist$sample_name` and the 
+other samples in *RMapDB* was calculated. The resulting correlation matrix is available in the `QC` folder. 
+
+
+```{r fig.height=5, fig.width=9}
+anno_now <- corr_data$annoNow
+sample_name <- configlist$sample_name
+anno_now$correlations <- corr_data$corMat[,sample_name]
+anno_now$sample_name <- rownames(anno_now)
+anno_now <- anno_now[order(anno_now$correlations, decreasing = FALSE), ]
+anno_now$rank <- seq(anno_now$sample_name)
+plt <- ggplot(anno_now, mapping = aes(x = rank, label = sample_name, y = correlations, color = Mode)) +
+  geom_point() +
+  ylab("Correlation (R)") +
+  xlab(NULL) +
+  labs(title = paste0(sample_name, " correlation with RMapDB")) +
+  theme_bw()
+ggplotly(p = plt)
+
+```
+
+
+Correlation heatmap (full-size image in `QC` folder)
+
+```{r fig.height=8, fig.width=10}
+annoNow <- corr_data$annoNow 
+
+
+# Make static correlation picture
+# From: https://stackoverflow.com/questions/31677923/set-0-point-for-pheatmap-in-r
+paletteLength <- 100
+myColor <- colorRampPalette(rev(brewer.pal(n = 7, name = "RdBu")))(paletteLength)
+# length(breaks) == length(paletteLength) + 1
+# use floor and ceiling to deal with even/odd length pallettelengths
+myBreaks <- c(seq(min(corMat), 0, length.out=ceiling(paletteLength/2) + 1), 
+              seq(max(corMat)/paletteLength, max(corMat), length.out=floor(paletteLength/2)))
+pheatmap::pheatmap(corMat, show_rownames = FALSE,
+                   show_colnames = FALSE,
+                   annotation_colors = list(
+                     Source = c("RMapDB" = "grey", "User-supplied" = "firebrick")
+                   ), 
+                   color = myColor, breaks = myBreaks,
+                   annotation_col = annoNow)
+```
+
+
+***

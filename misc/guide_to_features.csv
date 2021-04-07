@@ -1,0 +1,52 @@
+﻿Feature,Explanation
+clean_name,Publication-ready sample name
+cluster,"PASS/FAIL labels. 1 is PASS, 0 is FAIL"
+xgbprob,Probability of PASS as determined by classifier
+xgbverdict,PASS/FAIL as determined by classifier
+lmscore,Quality score as determined by linear model
+experiment,Sample accessions in SRR format
+mode,Type of sequencing
+control,Sample control accessions in SRR format
+paired_end,Is sequencing paired end?
+genome,Genome assembly reads were aligned to
+strand_specific,Is the sequencing strand specific?
+moeity,Was RNA or DNA sequenced?
+ip_type,What was the IP type used?
+sample_name,Official sample name. This is used in the naming of directories and files by RSeq.
+read_length,Length of seq reads
+GSM,GEO accession for sample
+Group,Who published this?
+Species,What species?
+Cell,What cell line/tissue?
+Genotype,Genotype of sample?
+Other,Treatments or other conditions?
+Condition,"Experimental conditions are S9.6, D210N, D209N, FLAG, etc. Control conditions are RNH, ACTD, WKKD, etc."
+Replicate,Not used.
+ControlType,Is there an Input control?
+Shearing_method,Sonication or restriction enzyme?
+SRX,Sample experiment accession.
+mode_group,"What category of sequencing. E.g., ""DRIP"" includes DRIPc, DRIP, qDRIP, sDRIP"
+"corr_min,_max,_median,_mean,etc","With respect to correlation distribution; min, max, median, etc."
+"rlfs_min,_max,_median,_mean,etc","With respect to RLFS distribution; min, max, median, etc."
+rlfs_pval,RLFS enrichment p value (minimum is usually ~.0019)
+X__Number of peaks,"Number of R-loop peaks which were annotated with feature ""X"""
+X__Total size (bp),"Total size of genomic regions with feature ""X"""
+X__Log2 Ratio (obs/exp),"Log2 Ratio of enrichment for R-loops in feature ""X"" compared to background/random"
+X__LogP enrichment (+values depleted),"log10 P value of enrichment for R-loops in feature ""X"" compared to background/random"
+MACS2__Distinct Peak Count,Number of MACS2-called R-loop peaks that do not overlap with EPIC2 peaks
+EPIC2__Distinct Peak Count,Number of EPIC2-called R-loop peaks that do not overlap with MACS2 peaks
+MACS2__Overlapping Peak Count,Number of MACS2-called R-loop peaks that overlap with EPIC2 peaks
+EPIC2__Overlapping Peak Count,Number of EPIC2-called R-loop peaks that overlap with MACS2 peaks
+MACS2__Percentage Peaks Overlapping,Percent of MACS2 peaks overlapping with EPIC2 peaks
+EPIC2__Percentage Peaks Overlapping,Percent of EPIC2 peaks overlapping with MACS2 peaks
+MACS2__total_peaks,Total number of MACS2 peaks
+EPIC2__total_peaks,Total number of EPIC2 peaks
+reads_before,Number of sequencing reads before quality filtering
+reads_after,Number of sequencing reads after quality filtering
+percent_passing,Percent of reads passing quality filtering
+gc_content,GC content of reads after quality filtering
+read_length_after_filter,Length of reads after quality filtering
+reads_aligned,Number of reads aligned to genome
+pct_aligned,Percentage of reads aligned to genome
+duplicate_reads,Number of duplicate reads
+pct_duplicated,Percent of duplicated reads

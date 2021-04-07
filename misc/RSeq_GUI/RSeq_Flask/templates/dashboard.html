@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="px-3 py-3 pt-md-5 pb-md-4 mx-auto text-center">
+  <h1 class="display-4">RSeq Dashboard</h1>
+  <p class="lead">Create, execute, and monitor RSeq runs. See <a href="/help">Help</a> for more information.</p>
+</div>
+<div class="row">
+  <div class="col">
+    {% if run_exists %}
+    <div class="container" style="border-style: solid; border-width: 1px; ">
+      <div class="row">
+        <div class="col-sm-2">
+          <h2>
+            Runs
+          </h2>
+        </div>
+        <div class="col-sm-2">
+          <a role="button" href="{{ url_for('runs.create_run') }}" class="btn btn-default btn-lg">
+            <span class="fa fa-plus"></span>
+          </a>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+            <table id="run_table" class="display" style="width:100%"></table>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <br>
+    <a role="button" href="{{ url_for('runs.create_run') }}" style="width: 100%; height:100%; font-size: 4.42em;
+  font-weight: 300;
+  width: 106px;
+  border-radius: 50%;
+  color: white; display:block;
+  line-height: 106px;
+  vertical-align: middle;
+  height: 106px;
+  margin: 0 auto;
+  text-decoration: none;
+  box-shadow: 0px 0px 8.73px 0.27px rgba(0, 0, 0, 0.39);
+  cursor: pointer;
+  transition: all 0.4s ease-in-out;
+  text-align: center;
+  background-color: red;">+
+    </a>
+
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

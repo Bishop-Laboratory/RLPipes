@@ -1,0 +1,242 @@
+<!--Most of this is ripped straight from the snakemake gui html -->
+<!--https://github.com/snakemake/snakemake/blob/master/snakemake/gui.html-->
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+</style>
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script src="//d3js.org/d3.v5.min.js"></script>
+<script src="https://unpkg.com/@hpcc-js/wasm@0.3.11/dist/index.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3-graphviz/3.1.0/d3-graphviz.min.js"></script>
+<script>
+
+  var configs = {{sample_dict|tojson|safe}}
+  var run_status = {{run_status|tojson|safe}}
+  // Decode unicode: from -- https://stackoverflow.com/questions/7885096/how-do-i-decode-a-string-with-escaped-unicode
+  var r = /\\u([\d\w]{4})/gi;
+  run_status = run_status.replace(r, function (match, grp) {
+     return String.fromCharCode(parseInt(grp, 16)); } );
+
+  window.onload = function() {
+      update_button(run_status);
+  }
+
+  // Function to replace action buttons based on run_status
+  function update_button(run_status) {
+    if (run_status == '<strong class="text-info">Ready for takeoff 🛫</strong>') {
+      document.getElementById("repl_div").innerHTML = '<button id="run-btn" class="btn btn-success">Takeoff</button>';
+    } else if (run_status == '<strong class="text-info">In flight ✈️</strong>') {
+      document.getElementById("repl_div").innerHTML = '<button id="abort-btn" class="btn btn-danger">Abort</button>';
+    } else if (run_status == '<strong class="text-info">Safely aborting</strong>') {
+      document.getElementById("repl_div").innerHTML = '<button id="abort-btn" class="btn btn-danger disabled">Abort</button>';
+    } else if (run_status == '<strong class="text-danger">Failed! ❌</strong>') {
+      document.getElementById("repl_div").innerHTML = `
+      <button id="retryrun-btn" class="btn btn-info">Retry unfinished</button>
+      <button id="retryall-btn" class="btn btn-warning">Retry all</button>`;
+    } else if (run_status == '<strong class="text-info">Complete! ✔️</strong>') {
+      document.getElementById("repl_div").innerHTML = `
+      <a role="button" href="/reports/{{run_id}}/report" id="report-btn" class="btn btn-info">View report</a>
+      <button id="rerun-btn" class="btn btn-warning">Re-run</button>`;
+    }
+  }
+
+  // Link button actions to API calls and update buttons
+  jQuery(document).ready(function() {
+
+    $("#repl_div").on('click', '#run-btn', function() {
+      $.ajax({
+        type: "get",
+        url: "/runs/{{run_id}}/takeoff",
+        success: function(response) {
+          run_status = JSON.parse(response)['run_status']
+          update_button(run_status)
+        }
+      });
+    });
+    $("#repl_div").on('click', '#abort-btn', function() {
+      $.ajax({
+        type: "get",
+        url: "/runs/{{run_id}}/abort",
+        success: function(response) {
+          run_status = JSON.parse(response)['run_status']
+          update_button(run_status)
+        }
+      });
+    });
+    $("#repl_div").on('click', '#retryrun-btn', function() {
+      $.ajax({
+        type: "get",
+        url: "/runs/{{run_id}}/takeoff",
+        success: function(response) {
+          run_status = JSON.parse(response)['run_status']
+          update_button(run_status)
+        }
+      });
+    });
+    $("#repl_div").on('click', '#retryall-btn', function() {
+      $.ajax({
+        type: "get",
+        url: "/runs/{{run_id}}/takeoff?rerun",
+        success: function(response) {
+          run_status = JSON.parse(response)['run_status']
+          update_button(run_status)
+        }
+      });
+    });
+    $("#repl_div").on('click', '#rerun-btn', function() {
+      $.ajax({
+        type: "get",
+        url: "/runs/{{run_id}}/takeoff?rerun",
+        success: function(response) {
+          run_status = JSON.parse(response)['run_status']
+          update_button(run_status)
+        }
+      });
+    });
+  });
+
+  function track_flight() {
+    $.ajax({
+      type: "get",
+      url: "/runs/{{run_id}}/track_flight",
+      data: {
+        samples: Object.keys(configs)
+      },
+      success:function(response) {
+        var tracker = JSON.parse(response);
+        var status_dict = tracker['status_dict']
+        run_status = tracker['run_status']
+        console.log("in tracker");
+        console.log(run_status);
+        var tracker_message = tracker['msg']
+
+        // Callback to push run_status for updating html
+        update_button(run_status);
+
+        for (const [key, value] of Object.entries(status_dict)) {
+
+          // Get the current status of card
+          //var status_log = status_dict['status_log'];
+
+          // Default color
+          document.getElementById(key + "_monitor_card").classList.add("list-group-item-light");
+
+          // Update the color of card
+          var prevclass = document.getElementById(key + "_monitor_card").className.match(".+(list\\-group\\-item\\-[a-z]+)")[1];
+          if (run_status == '<strong class="text-info">Ready for takeoff 🛫</strong>') {
+            // Condition: Flight is waiting
+            document.getElementById(key + "_monitor_card").classList.remove(prevclass);
+            document.getElementById(key + "_monitor_card").classList.add("list-group-item-light");
+          } else {
+            // Condition: Flight is in progress or finished
+            // We want to display the color-coded card statuses now
+          }
+
+          document.getElementById(key + "_card_status").innerHTML = value['current_step'];
+
+
+          // Update the logs
+
+          // Update the DAG
+          var diagraph = value['DAG']
+          d3.select("#" + key + "_dag_canvas").graphviz().renderDot(diagraph);
+        }
+
+      }
+    });
+  }
+
+  // When doc is loaded, do a flight track
+  jQuery(document).ready(track_flight());
+
+  // Check periodically for the need to do a flight track
+  setInterval(function() {
+    var include_arr = ['<strong class="text-info">In flight ✈️</strong>',
+                       '<strong class="text-info">Safely aborting</strong>']
+    console.log(run_status)
+    if (include_arr.includes(run_status)) {
+      console.log("Tracking");
+      track_flight();
+    }
+  }, 5000);
+
+
+
+</script>
+
+
+<div class="row">
+  <div class="col">
+    <div class="d-flex align-items-center">
+      <h1 style="display: inline;">Control panel for '{{run_name}}'&nbsp;</h1>
+      <div id="repl_div"></div>
+    </div>
+  </div>
+</div>
+
+<hr>
+<div class="row">
+  <div class="col-4">
+    <div class="list-group">
+      {% for sample_name, sample_data in sample_dict.items() %}
+      <div class="list-group-item flex-column align-items-start" id="{{ sample_name }}_monitor_card">
+        <div class="d-flex w-100 justify-content-between">
+          <h5 class="mb-1">{{sample_name}}</h5>
+          <small>last updated</small>
+        </div>
+        <div class="d-flex w-100 justify-content-between">
+          <p class="mb-1" id="{{ sample_name }}_card_status">Status: {{ sample_data['status'] }}.</p>
+          <div class="nav btn-group">
+              <a href="#{{sample_name}}_details" data-toggle="tab" class="btn btn-secondary">Details</a>
+              <a href="#{{sample_name}}_logs" data-toggle="tab" class="btn btn-secondary">Logs</a>
+              <a href="#{{sample_name}}_dag" data-toggle="tab" class="btn btn-secondary">DAG</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="col-8">
+    <div class="tab-content" id="tabs">
+      {% for sample_name, sample_data in sample_dict.items() %}
+      <div class="tab-pane" id="{{sample_name}}_details">
+        <div class="card card-body">
+          <h5 class="card-title">Details</h5>
+          <p class="card-text">Experiment: {{ sample_data['experiments']}}</p>
+          <p class="card-text">Control: {{ sample_data['controls']}}</p>
+          <p class="card-text">Moeity: {{ sample_data['moeity']}}</p>
+          <p class="card-text">IP type: {{ sample_data['ip_type']}}</p>
+          <p class="card-text">Paired end: {{ sample_data['paired_end']}}</p>
+          <p class="card-text">Output: {{ sample_data['out_dir']}}</p>
+          <p class="card-text">Genome: {{ sample_data['genome']}}</p>
+          <p class="card-text">Pipeline: {{ sample_data['mode']}}</p>
+        </div>
+      </div>
+      <div class="tab-pane" id="{{sample_name}}_logs">
+        <div class="card card-body">
+          <h5 class="card-title">Logs</h5>
+        </div>
+      </div>
+      <div class="tab-pane" id="{{sample_name}}_dag">
+        <div class="card card-body">
+          <h5 class="card-title">DAG</h5>
+          <div id="{{sample_name}}_dag_canvas"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<hr>
+<div id="row">
+  <div id="col">
+    <a role="button" href="{{ url_for('dashboard.dashboard') }}" class="btn btn-default btn-lg">
+      <span class="fa fa-chevron-left"></span> Dashboard
+    </a>
+  </div>
+</div>
+
+{% endblock %}

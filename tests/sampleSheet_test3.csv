@@ -1,0 +1,2 @@
+"","experiment","control"
+"1","RSeq_CLI/tests/qDRIP_R1.fastq+RSeq_CLI/tests/qDRIP_R2.fastq","RSeq_CLI/tests/qDRIP_ctr_R1.fastq+RSeq_CLI/tests/qDRIP_ctr_R2.fastq"

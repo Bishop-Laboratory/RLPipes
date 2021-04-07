@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Edit sample sheet</h1>
+<div class="controls">
+<!--  <button name="load" id="load" class="intext-btn">Load</button>-->
+  <button name="save" id="save" class="intext-btn">Save</button>
+  <label>
+    <input type="checkbox" name="autosave" id="autosave" checked="checked" autocomplete="off">
+    Autosave
+  </label>
+</div>
+<pre class="console" id="sample_sheet_console"></pre>
+<div id="sample_sheet"></div>
+<hr>
+<div id="row">
+  <div id="col">
+    <a role="button" href="{{ url_for('dashboard.dashboard') }}" class="btn btn-default btn-lg">
+      <span class="fa fa-chevron-left"></span> Dashboard
+    </a>
+  </div>
+</div>
+<script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.js"></script>
+<script>
+// from https://stackoverflow.com/questions/11922383/how-can-i-access-and-process-nested-objects-arrays-or-json
+// Converts js objects to arrays of arrays
+function toArray(obj) {
+    const result = [];
+    for (const prop in obj) {
+        const value = obj[prop];
+        if (typeof value === 'object') {
+            result.push(toArray(value)); // <- recursive call
+        }
+        else {
+            result.push(value);
+        }
+    }
+    return result;
+};
+
+// Grab the data dictionary and headers from flask -- convert to json object
+var json = JSON.parse('{{ data|tojson|safe }}');
+var headers = JSON.parse('{{ colnames|tojson|safe }}');
+console.log(headers);
+
+// convert js object to array of arrays
+var data=toArray(json);
+
+// TODO: Add json keys as the headers
+// data.unshift(Object.keys(json[0]));
+var headers = Object.keys(json[0])
+
+// TODO: Order array using headers from flask
+
+// get the div to replace with the handsontable
+var container = document.getElementById('sample_sheet');
+
+// Set up load and save functions
+var
+  $$ = function(id) {
+    return document.getElementById(id);
+  },
+  container = $$('sample_sheet'),
+  exampleConsole = $$('sample_sheet_console'),
+  autosave = $$('autosave'),
+  load = $$('load'),
+  save = $$('save'),
+  autosaveNotification,
+  hot;
+
+// Create the handsontable
+var hot = new Handsontable(container, {
+  data: data,
+  rowHeaders: true,
+  colHeaders: headers,
+  filters: true,
+  dropdownMenu: true,
+  licenseKey: 'non-commercial-and-evaluation',
+  afterChange: function (change, source) {
+    if (source === 'loadData') {
+      return; //don't save this change
+    }
+    if (!autosave.checked) {
+      return;
+    }
+    clearTimeout(autosaveNotification);
+    var arr = toArray({ data: hot.getData() });
+    var data_now = arr[0]
+    data_now.unshift(Object.keys(json[0]));
+
+    $.ajax({
+      url: '/runs/{{ run_id }}/sample_sheet/save',
+      type: 'POST',
+      data: JSON.stringify(data_now),
+      contentType: 'application/json; charset=utf-8',
+      dataType: 'json',
+      async: true,
+      success: function (data) {
+      sample_sheet_console.innerText  = 'Autosaved ' + new Date();
+    }});
+  }
+});
+
+// Load and save buttons
+Handsontable.dom.addEvent(save, 'click', function() {
+  // save all cell's data
+  var arr = { data: hot.getData() };
+  var arr = toArray({ data: hot.getData() });
+  var data_now = arr[0]
+  data_now.unshift(Object.keys(json[0]));
+  console.log(data_now)
+
+  $.ajax({
+  url: '/runs/{{ run_id }}/sample_sheet/save',
+  type: 'POST',
+  data: JSON.stringify(arr),
+  contentType: 'application/json; charset=utf-8',
+  dataType: 'json',
+  async: true,
+  success: function (data) {
+      sample_sheet_console.innerText  = 'Saved ' + new Date();
+    }
+  });
+});
+</script>
+{% endblock %}

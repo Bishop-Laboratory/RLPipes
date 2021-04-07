@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<script>
+// from https://getbootstrap.com/docs/4.3/components/forms/
+// Example starter JavaScript for disabling form submissions if there are invalid fields
+(function() {
+  'use strict';
+  window.addEventListener('load', function() {
+    // Fetch all the forms we want to apply custom Bootstrap validation styles to
+    var forms = document.getElementsByClassName('needs-validation');
+    // Loop over them and prevent submission
+    var validation = Array.prototype.filter.call(forms, function(form) {
+      form.addEventListener('submit', function(event) {
+        if (form.checkValidity() === false) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  }, false);
+})();
+
+</script>
+
+<hr>
+<h2>Create new run</h2>
+<hr>
+<div class="container">
+  <form class="needs-validation" novalidate method="post" enctype="multipart/form-data">
+    <div class="form-row">
+      <div class="col-md-4">
+        <div class="form-group">
+          <label for="run_name">Run name</label>
+          <input type="text" name="run_name" id="run_name" class="form-control" placeholder="e.g., 'HeLa DRIPSeq'" required>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-group">
+          <label for="mode">Mode</label>
+          <select id="mode" name="mode" class="form-control">
+            <optgroup label="S9.6-based">
+              <option>DRIP</option>
+              <option>ssDRIP</option>
+              <option>qDRIP</option>
+              <option>sDRIP</option>
+              <option>S1-DRIP</option>
+              <option>bisDRIP</option>
+              <option>SMRF</option>
+              <option>RDIP</option>
+              <option>DRIPc</option>
+            </optgroup>
+            <optgroup label="RNH-based">
+              <option>R-ChIP</option>
+              <option>RR-ChIP</option>
+              <option>DRIVE</option>
+              <option>MapR</option>
+              <option>RNH-CnR</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="col-md-8">
+        <div class="custom-file">
+          <input type="file" name="sample_sheet" class="custom-file-input" id="sample_sheet" required>
+          <label class="custom-file-label" for="sample_sheet">Select sample sheet (.csv)</label>
+          <div class="invalid-feedback">Please upload a sample sheet in .csv format</div>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="col-md-4">
+        <br>
+        <span>Enter samples manually &nbsp;</span>
+        <label class="switch">
+          <input type="checkbox" name="manual_toggle" onclick="toggle_hot()">
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </div>
+
+
+    <div class="form-row">
+      <div class="col">
+        <br>
+        <div id="sample_sheet_hot" style="display: none;"></div>
+        <textarea id="hiddeninput" style="display: none;" name="hiddeninput"></textarea>
+      </div>
+    </div>
+
+    <br>
+    <button class="btn btn-primary" id="create" type="submit">Create</button>
+  </form>
+</div>
+
+<script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.js"></script>
+<script>
+  // Code for Handson table
+
+  var container = document.getElementById('sample_sheet_hot');
+  var create = document.getElementById('create');
+
+  function toggle_hot() {
+    // Toggle the hot
+    if (container.style.display === "none") {
+      container.style.display = "block";
+    } else {
+      container.style.display = "none";
+    }
+    // Toggle the file upload component
+    var file_upload_div = document.getElementById('sample_sheet');
+    if (file_upload_div.disabled) {
+      file_upload_div.disabled = false;
+    } else {
+      file_upload_div.disabled = true;
+    }
+  }
+
+  var data = [
+    [null, null, null, null],
+    [null, null, null, null],
+    [null, null, null, null],
+    [null, null, null, null],
+    [null, null, null, null],
+    [null, null, null, null]
+  ];
+
+  var place_holders = {
+    'sample_name': 'S9.6 DRIP Seq_1',
+    'experiment': 'SRX2481503',
+    'control': 'SRX2481504',
+    'genome': 'hg38'
+  };
+
+
+  // Create the handsontable
+  var hot = new Handsontable(container, {
+    data: data,
+    rowHeaders: true,
+    colHeaders: true,
+    filters: true,
+    columnSorting: false,
+    minSpareRows: 2,
+    placeholder: 'Empty Cell',
+    dropdownMenu: true,
+    licenseKey: 'non-commercial-and-evaluation',
+    colHeaders: ['sample_name', 'experiment', 'control', 'genome'],
+    autoColumnSize: true,
+    columns: [
+      {placeholder: place_holders.sample_name},
+      {placeholder: place_holders.experiment,
+       allowEmpty: false},
+      {placeholder: place_holders.control},
+      {placeholder: place_holders.genome}
+    ],
+    // null the placeholder text except first row using cell definitions
+    cells: function (row, col, prop) {
+    if (row != 0) {
+      this.placeholder = null;
+    }}
+  });
+
+  // On form submission -- populate a text input field with hot data so it can be included in the request
+  $(function(){
+      $('#create').click(function () {
+          var mysave = JSON.stringify(hot.getSourceData());
+          $('#hiddeninput').val(mysave);
+      });
+  });
+
+</script>
+
+<hr>
+<div id="row">
+  <div id="col">
+    <a role="button" href="{{ url_for('dashboard.dashboard') }}" class="btn btn-default btn-lg">
+      <span class="fa fa-chevron-left"></span> Dashboard
+    </a>
+  </div>
+</div>
+{% endblock %}
