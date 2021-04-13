@@ -3,7 +3,6 @@ import json
 import sys
 import io
 import os
-import time
 import pathlib
 from contextlib import redirect_stdout
 
@@ -36,13 +35,11 @@ def make_snakes(config_file):
         os.system('cat ' + out_file + ' | dot -Tpng -o ' + out_svg)
         os.remove(out_file)
 
-    # Run pipeline
-    kwargs = {
-        "printdag": True,
-        "dryrun": True
-    }
-    snk.snakemake(snake_path, config=config, cores=threads,
-                  **kwargs)
+    # Create kwargs dictionary from snake_args
+    kwargs = dict(x.split('=', 1) for x in snake_args)
+
+    # Run snakemake
+    snk.snakemake(snake_path, config=config, cores=threads, **kwargs)
 
 
 if __name__ == "__main__":
