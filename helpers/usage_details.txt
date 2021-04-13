@@ -83,6 +83,10 @@ Pipeline options:
 
 -t|--threads          INT    Specify number of threads to be used in parallel computations. [default = 1]
 
+-S|--snakeArgs        STR    Quoted string containing arguments to pass to snakemake.api. For the full list of
+                             arguments: https://snakemake.readthedocs.io/en/stable/api_reference/snakemake.html
+                             E.g., RSeq -e testFile.fq -m DRIP -S "touch=True, report=True, containerize=False"
+
 --dryRun                     If specified, RSeq will evaluate user input, generate configuration files,
                              and then test the pipeline validity. This is recommended prior to running any
                              larger mapping operation.

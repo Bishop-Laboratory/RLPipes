@@ -21,12 +21,12 @@ usage() {
   echo "  -m|--mode              str           Analysis mode ('DRIP', 'RChIP', etc.)"
   echo "  -g|--genome            str           UCSC genome for samples (e.g., 'hg38')"
   echo "  -n|--name              str           Sample names(s) for use in output files."
-  echo "  -d|--downsample        int           Downsample .bam files to N reads. [default = NULL]"
   echo "  -s|--sampleSheet       csv           CSV file describing samples (overrides -e/-c/-m/-g/-n)."
   echo "  -o|--outputDir         dir           Output directory. [default = 'RSeq_out/']"
   echo "  -G|--genomeDir         dir           Genome directory. [default = '~/.RSeq_genomes']"
   echo "  -t|--threads           int           Specify number of threads. [default = 1]"
   echo "  -r|--rseqVars          json          rseqVars.json file (above options are ignored)."
+  echo "  -S|--snakeArgs         str           Quoted string containing arguments to pass to snakemake.api"
   echo "  -v|--version                         Display version info"
   echo "  -h|--help                            Display detailed usage"
   echo "  --dryRun                             Dry run of analysis pipeline."
@@ -57,7 +57,7 @@ usageDetail() {
 
 version() {
   echo
-  echo "RSeq v0.9.9 (c) 2020 Bishop Laboratory"
+  echo "RSeq v0.9.9 (c) 2021 Bishop Laboratory"
   echo
 }
 
@@ -82,12 +82,13 @@ elif [ "$inputJSON" == "version" ]; then
   exit 0
 elif [ ! -f "$inputJSON" ]; then
   echo "$inputJSON"
+  echo "Not a file!"
   echo
   exit 1
 fi
 
 # Run the pipeline!
-python "$helpersDir"/run_workflow.py "$inputJSON" "$helpersDir"/rseq_workflow.smk
+python "$helpersDir"/run_workflow.py "$inputJSON"
 
 echo
 exit 0

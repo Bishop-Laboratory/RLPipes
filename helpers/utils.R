@@ -84,16 +84,17 @@ get_fastq_read_length <- function(fastq_file) {
 # Helper function for querying public data accession, convert to SRA, and return run table
 get_public_run_info <- function(accessions) {
 
-  #### Bug testing ##
-  #accessions <- c("SRX2481503", "SRX2481504", "GSE134101", "SRP150774", "GSE127329", "SRS1466492")
-  #accessions <- c("SRX2918366", "SRX2918367", "GSM3936516", "SRX5129664")
-  #accessions <- c("SRX2918366", "SRX2918367", "GSM3936517", "GSM3936517", "GSM3936517", "SRX5129664", "GSM2550995")
-  #accessions <- c("SRR2019278")
+  # ### Bug testing ##
+  # accessions <- c("SRX2481503", "SRX2481504", "GSE134101", "SRP150774", "GSE127329", "SRS1466492")
+  # accessions <- c("SRX2918366", "SRX2918367", "GSM3936516", "SRX5129664")
+  # accessions <- c("SRX2918366", "SRX2918367", "GSM3936517", "GSM3936517", "GSM3936517", "SRX5129664", "GSM2550995")
+  # accessions <- c("SRR2019278")
   # accessions <- public_ctr_accessions
   # accessions <- samples_public$experiment
   # accessions <- public_ctr_accessions
   # accessions <- "SRR3504393"
-  ###################
+  # accessions <- c("SRR2019278", "SRR2019279")
+  # ##################
 
   accessions <- unique(accessions)
   badMsg <- c("HTTP error: Status 429; Too Many Requests", "HTTP error: Status 500; Internal Server Error")
@@ -158,6 +159,7 @@ get_public_run_info <- function(accessions) {
       if (fail_counter > 1) {
         stop("Unable to contact NCBI servers. Please use only local files for now and please contact the package maintainer!")
       }
+      # TODO: Need to specify reutils v0.2.5 since this includes curl instead of Rcurl
       esearch_sra <- reutils::esearch(accnow, db = "sra")
       if (length(as.character(esearch_sra$errors$error))) {
         if (as.character(esearch_sra$errors$error) %in% badMsg) {
@@ -446,7 +448,12 @@ check_homer_anno <- function(available_genomes, genome = NULL) {
   if (is.null(genome) || ! "homer_anno_available" %in% colnames(available_genomes)) {
     # Check all possible genomes
     res <- sapply(available_genomes$UCSC_orgID, function(genome_now) {
-      urlnow <- paste0("http://homer.ucsd.edu/homer/data/genomes/", genome_now, ".v6.4.zip")
+      
+      urlnow <- paste0("http://homer.ucsd.edu/homer/data/genomes/", genome_now,
+                       ".v", c("6.4"  #TODO: Should other versions be allowed?
+                               #"6.0", "5.10", "5.7"
+                               ), ".zip")
+      # TODO: Use curl instead
       RCurl::url.exists(urlnow)
     })
     available_genomes$homer_anno_available <- res
@@ -455,6 +462,7 @@ check_homer_anno <- function(available_genomes, genome = NULL) {
     }
   } else {
     urlnow <- paste0("http://homer.ucsd.edu/homer/data/genomes/", genome, ".v6.4.zip")
+    # TODO: Use curl instead
     res <- RCurl::url.exists(urlnow)
     available_genomes$homer_anno_available[which(available_genomes$UCSC_orgID == genome)] <- res
   }

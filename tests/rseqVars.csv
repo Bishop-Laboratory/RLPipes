@@ -1,0 +1,3 @@
+"","experiment","mode","outdir","cores","genome_home_dir","control","paired_end","effective_genome_size","full_genome_length","genome","downsample","strand_specific","moeity","ip_type","file_type","sample_name","read_length","experiment_orig","control_orig"
+"1","SRR2019278","DRIP","RSeq_out/","30","/home/millerh1/.RSeq_genomes",NA,FALSE,2706186140,3209286105,"hg38",NA,FALSE,"DNA","S9.6","public","SRX1025890_TC32_NT_DRIP",51,"SRR2019278",NA
+"2","SRR2019279","DRIP","RSeq_out/","30","/home/millerh1/.RSeq_genomes",NA,FALSE,2706186140,3209286105,"hg38",NA,FALSE,"DNA","S9.6","public","SRX1025891_TC32_Etop_DRIP",51,"SRR2019279",NA
