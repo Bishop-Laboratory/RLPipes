@@ -3,12 +3,11 @@
 ########################################################################################################################
 
 # Global Configs
-helpers_dir=config['helpers_dir'][0]
+helpers_dir=config['helpers_dir']
 genome_home_dir=config['genome_home_dir'][0]
 cores=config['threads'][0]
 outdir=config['outdir'][0]
 outdir=outdir.strip("/")
-
 
 # Sample info
 mode=config['mode']
@@ -21,22 +20,20 @@ full_genome_length=config['full_genome_length']
 effective_genome_fraction = [x/y for x, y in zip(effective_genome_size, full_genome_length)]
 sample_type=config['file_type']
 sample=config['sample_name']
-experiments=[exp.split(",")[0] for exp in config['experiment']]
-controls=[ctr.split(",")[0] for ctr in config['control'] if ctr != "None"]
+experiments=[exp.split(",") for exp in config['experiment']]
+controls=[ctr.split(",") for ctr in config['control'] if ctr != "None"]
 
-exp_type="experiment" #TODO: Fix
-bam_index_output = expand("{outdir}/bams_unstranded/{sample}.{genome}.{exp_type}.bam.bai", zip,
-                        sample=sample, outdir=[outdir for i in range(len(sample))], genome=genome,
-                        exp_type=[exp_type for i in range(len(sample))] #TODO: Fix
+bam_index_output = expand("{outdir}/bams_unstranded/{sample}.{genome}.bam.bai", zip,
+                        sample=sample, outdir=[outdir for i in range(len(sample))], genome=genome #TODO: Fix
 )
 
 #######################################################################################################################
 ##############################################   Main pipeline    ######################################################
 ########################################################################################################################
 def find_replicates(wildcards):
-    srr_list = [experiments[idx].split(",") for idx, element in enumerate(sample) if element == wildcards.sample]
+    srr_list = [experiments[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     replicates = expand("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq",
-           outdir=wildcards.outdir, srr_acc=srr_list, sample=wildcards.sample[0])
+           outdir=wildcards.outdir, srr_acc=srr_list, sample=wildcards.sample)
     return replicates
 
 def pe_test_fastp(wildcards):
@@ -83,52 +80,63 @@ rule bwa_index:
     input:
         genome_home_dir + "/{genome}/{genome}.fa"
     output:
-         [genome_home_dir + "/{genome}/bwa_index/{genome}.amb",
-          genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-          genome_home_dir + "/{genome}/bwa_index/{genome}.bwt",
-          genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
-          genome_home_dir + "/{genome}/bwa_index/{genome}.sa"],
+        genome_home_dir + "/{genome}/bwa_index/{genome}.amb",
+        genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
+        genome_home_dir + "/{genome}/bwa_index/{genome}.bwt",
+        genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
+        genome_home_dir + "/{genome}/bwa_index/{genome}.sa"
     params:
-        prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
+        prefix=genome_home_dir + "/{genome}/bwa_index/{genome}"
+    conda: helpers_dir + "/envs/bwa.yaml"
     log:
         genome_home_dir + "/{genome}/bwa_index/{genome}_bwa_index.log"
-    wrapper:
-        "0.63.0/bio/bwa/index"
+    shell:"""
+        (bwa index -p {params.prefix} {input}) &> {log}
+    """
 
 rule download_sra:
-    threads:cores,
-    output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}.sra")
-    log: "{outdir}/logs/{sample}_{srr_acc}__download_sra.log"
-    shell: "(prefetch {wildcards.srr_acc} --output-file {output}) &> {log}"
+    output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra")
+    conda: helpers_dir + "/envs/sratools.yaml"
+    log: "{outdir}/logs/download_sra/{sample}__{srr_acc}__download_sra.log"
+    params:
+        output_directory="{outdir}/tmp/sras/{sample}/"
+    shell: """
+    (
+    prefetch {wildcards.srr_acc} -O {params.output_directory}
+    
+    ) &> {log}
+    """
 
 rule sra_to_fastq:
-    input: "{outdir}/tmp/sras/{sample}/{srr_acc}.sra"
+    input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
     output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
+    conda: helpers_dir + "/envs/parallel_fq_dump.yaml"
     threads: cores
-    log: "{outdir}/logs/{sample}_{srr_acc}__sra_to_fastq_pe.log"
+    log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
     shell:
         "(parallel-fastq-dump -t {threads} -O" \
         + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ -s {input}) &> {log}"
 
 rule merge_replicate_reads:
     input: find_replicates
-    output: temp("{outdir}/tmp/fastq/{sample}.{genome}.{exp_type}__raw.fastq")
+    output: temp("{outdir}/tmp/fastq/{sample}.{genome}__raw.fastq")
     shell: "cat {input} > {output}"
 
 # TODO: Pipe this part
 rule fastp:
     input:
-        sample="{outdir}/tmp/fastq/{sample}.{genome}.{exp_type}__raw.fastq"
+        sample="{outdir}/tmp/fastq/{sample}.{genome}__raw.fastq"
     output:
-        trimmed="{outdir}/tmp/fastq/{sample}.{genome}.{exp_type}__trimmed.fastq",
-        html="{outdir}/QC/fastq/{sample}.{genome}.{exp_type}.html",
-        json="{outdir}/QC/fastq/{sample}.{genome}.{exp_type}.json"
-    log: "{outdir}/logs/{sample}.{genome}.{exp_type}__fastp_pe.log"
+        trimmed="{outdir}/tmp/fastq/{sample}.{genome}__trimmed.fastq",
+        html="{outdir}/QC/fastq/{sample}.{genome}.html",
+        json="{outdir}/QC/fastq/{sample}.{genome}.json"
+    conda: helpers_dir + "/envs/fastp.yaml"
+    log: "{outdir}/logs/fastp/{sample}.{genome}__fastp_pe.log"
     params:
         extra=pe_test_fastp
     threads: 6
     shell: """
-    fastp -i {input} -o {output} {params.extra}-w {threads}
+    (fastp -i {input} -o {output} {params.extra}-w {threads} -h {output.html} -j {output.json} ) &> {log}
     """
 
 rule bwa_mem:
@@ -138,14 +146,15 @@ rule bwa_mem:
               genome_home_dir + "/{genome}/bwa_index/{genome}.bwt",
               genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
               genome_home_dir + "/{genome}/bwa_index/{genome}.sa"],
-        reads="{outdir}/tmp/fastq/{sample}.{genome}.{exp_type}__trimmed.fastq"
+        reads="{outdir}/tmp/fastq/{sample}.{genome}__trimmed.fastq"
     output:
-        bam="{outdir}/bams_unstranded/{sample}.{genome}.{exp_type}.bam",
-        bai="{outdir}/bams_unstranded/{sample}.{genome}.{exp_type}.bam.bai"
-    log: "{outdir}/logs/{sample}_{genome}_{exp_type}__bwa_mem.log"
+        bam="{outdir}/bams_unstranded/{sample}.{genome}.bam",
+        bai="{outdir}/bams_unstranded/{sample}.{genome}.bam.bai"
+    conda: helpers_dir + "/envs/bwa_mem.yaml"
+    log: "{outdir}/logs/bwa/{sample}_{genome}__bwa_mem.log"
     params:
         index=genome_home_dir + "/{genome}/bwa_index/{genome}",
-        bwa_extra=r"-R '@RG\tID:{sample}_{exp_type}\tSM:{sample}_{exp_type}'",
+        bwa_extra=r"-R '@RG\tID:{sample}\tSM:{sample}'",
         bwa_interleaved=pe_test_bwa,
         samblaster_extra=pe_test_samblaster,
         samtools_sort_extra="-O BAM"

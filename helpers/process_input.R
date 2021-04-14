@@ -4,10 +4,12 @@ processInput <- function(samples,
                          available_genomes) {
 
   # ### For bug testing ##
-  # samples <- read.csv("tests/sampleSheet_test9.csv", row.names = 1)
+  # samples <- read.csv("tests/manifest_for_RSeq_testing_09092020.csv", fileEncoding="UTF-8-BOM")
   # source("helpers/utils.R")
   # load("helpers/data/available_genomes.rda")
   # ### #####################
+
+  suppressPackageStartupMessages(require(dplyr))
 
   # Additional data
   # TODO: add support for bigWig and bedGraph
@@ -32,8 +34,19 @@ processInput <- function(samples,
   # Unique
   samples <- unique(samples)
 
-  # Check for arguments. If not set, replace with defaults
+  # Collate controls as separate experiments
   if (! "control" %in% colnames(samples)) {samples$control <- NA}
+  samples_ctr <- samples %>%
+    filter(! is.na(control)) %>%
+    mutate(experiment = control) %>%
+    mutate(control = NA)
+  if (length(samples_ctr$experiment)) {
+    samples <- samples %>%
+      dplyr::bind_rows(samples_ctr)
+  }
+
+
+  # Check for arguments. If not set, replace with defaults
   if (! "paired_end" %in% colnames(samples)) {samples$paired_end <- NA}
   if (! "effective_genome_size" %in% colnames(samples)) {samples$effective_genome_size <- NA}
   if (! "full_genome_length" %in% colnames(samples)) {samples$full_genome_length <- NA}
@@ -163,7 +176,7 @@ processInput <- function(samples,
         new_ctr_vec <- c(new_ctr_vec, NA)
       } else {
         new_ctr_vec <- c(new_ctr_vec, as.character(
-          as.character(sra_info_ctr$experiment[which(sra_info_ctr$accessions_original == orig_ctr)])))
+          as.character(sra_info_ctr$sample_name[which(sra_info_ctr$accessions_original == orig_ctr)])))
       }
     }
     samples_public$control <- new_ctr_vec
@@ -172,6 +185,7 @@ processInput <- function(samples,
     # Get info for experimental samples
     samples_public <- samples_public[! is.na(samples_public$experiment),]
 
+    # TODO: More efficient way without rerunning all the control samples
     sra_info_exp <- get_public_run_info(samples_public$experiment)
 
     # -- collate
@@ -244,6 +258,13 @@ processInput <- function(samples,
          paste0(samples$sample_name[duplicated(samples$sample_name)], collapse = ", "))
   }
 
+  # Mark control samples
+  samples %>%
+    mutate(ip_type = case_when(
+      sample_name %in% (samples %>% filter(! is.na(control)) %>% pull(control)) ~ "Input",
+      TRUE ~ ip_type
+    ))
+
   # Get effective genome size
   rownames(available_genomes) <- available_genomes$UCSC_orgID
   available_genome_sizes <- available_genomes[,grep(colnames(available_genomes), pattern = "eff_genome_size")]
@@ -274,7 +295,6 @@ processInput <- function(samples,
   }))
   
   # Finish compiling data
-  suppressPackageStartupMessages(require(dplyr))
   configs <- samples %>%
     mutate(homer_anno_available = genome %in% (available_genomes %>%
                                                  filter(homer_anno_available) %>%
@@ -335,7 +355,7 @@ args <- commandArgs(trailingOnly=TRUE)
 #           "-o", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/tests/RSeq_out9/",
 #           '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/helpers')
 
-# args <- c("-s", "tests/sampleSheet_test9.csv", "-m", "DRIP", "--dryrun",
+# args <- c("-s", "tests/sampleSheet_test9.csv", "-m", "DRIP",  "-S", "dryrun=False", "targets=[asd,", "asdd]",
 #           "-t", "30", "helpers/")
 
 # args <- c('-e', 'GSM4276887', 'GSM4276888', '-c', 'GSM4276889', 'GSM4276890', '-o', 'data/', '-g', 'hg38',
@@ -357,7 +377,7 @@ unrecognized_arguments <- c()
 errors <- c()
 for (i in 1:(length(args))) {
   arg <- args[i]
-  if ((substr(arg, 1, 1) == "-" && ! grepl(substr(arg, 2, 2), pattern = "[0-9]+|[Ii]+")) || 
+  if ((substr(arg, 1, 1) == "-" && ! grepl(substr(arg, 2, 2), pattern = "[0-9]+|[Ii]+")) ||
       grepl(arg, pattern = "RSeq/helpers")) {
     # CASE: it is a flag -- collect following
 
@@ -401,10 +421,41 @@ for (i in 1:(length(args))) {
   }
 }
 
+# TODO: Need better solution to this which can handle arbitrarily-nested dicts/lists
+# Check for list/dict
+if (! is.null(collect_list$snake_args)) {
+  snkarg <- collect_list$snake_args
+  snkarg_final <- c()
+  collect <- FALSE
+  item_list <- NA
+  for (i in seq(snkarg)) {
+    arg <- snkarg[i]
+    if (grepl(arg, pattern = "\\=\\[|\\=\\{")) {
+      collect <- TRUE
+      item_list <- arg
+    } else if (collect) {
+      item_list <- c(item_list, arg)
+    } else {
+      snkarg_final <- c(snkarg_final, arg)
+    }
+
+    if (grepl(arg, pattern = "\\}$|\\]$")) {
+      compiled_item <- paste0(item_list, collapse = " ")
+      compiled_item <- gsub(compiled_item, pattern = "\\[", replacement = "['")
+      compiled_item <- gsub(compiled_item, pattern = "\\]", replacement = "']")
+      compiled_item <- gsub(compiled_item, pattern = "\\{", replacement = "{'")
+      compiled_item <- gsub(compiled_item, pattern = "\\}", replacement = "'}")
+      compiled_item <- gsub(compiled_item, pattern = ", ", replacement = "', '")
+      snkarg_final <- c(snkarg_final, compiled_item)
+      collect <- FALSE
+    }
+  }
+  collect_list$snake_args <- snkarg_final
+}
+
 if (length(unrecognized_arguments)) {
   errors <- c(errors, paste0("Unrecognized argument(s): '",paste0(unrecognized_arguments, collapse = "', '"), "'."))
 }
-
 
 # Exit for usage and version info
 if (! is.null(collect_list$help)) {cat("usage"); quit(status = 0, save = "no")}
