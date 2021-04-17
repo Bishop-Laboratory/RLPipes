@@ -5,7 +5,6 @@
 import json
 import os
 
-
 # Config vars
 helpers_dir=config['helpers_dir'][0]
 mode=config['mode'][0]
@@ -30,6 +29,7 @@ experiments=config['experiments'][0].split(",")[0]
 controls=config['controls'][0]
 if controls != "None":
     controls=controls.split(",")[0]
+
 
 # Set expected output and inputs for merging of technical replicates (assumes public samples)
 output_fastq_experiment_1 = expand("{outdir}/fastqs/{sample_name}_experiment_R1.fastq",

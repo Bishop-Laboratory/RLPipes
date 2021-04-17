@@ -1,6 +1,6 @@
 
 Program: RSeq (R-loop mapping best-practices pipeline)
-Version: 0.9.9 (October 12, 2020)
+Version: 0.9.9 (April 14, 2021)
 Contact: Henry Miller <millerh1@uthscsa.edu>
 
 
@@ -43,13 +43,6 @@ Input options:
                              metadata. If supplied, must match the order of the experiment and control
                              input. Names should not contain special characters or spaces.
 
--d|--downsample       Int    Number of reads to downsample .bam files to following alignment. This is useful when
-                             comparing to other datasets with different read depths. Also, high read depth can produce
-                             false positive peaks (especially for ssDRIP-Seq) and will reduce the quality score.
-                             A recommended value for downsampling is 60 million (-d 60000000) because that is the
-                             value that the samples in RMapDB were downsampled to. By default this
-                             option is NULL (unset) and no downsampling is performed.
-
 -s|--sampleSheet      CSV    CSV file describing the samples. If supplied, -e, -e1, and -e2 are ignored.
                              Convenient way to process large numbers of samples. Columns can include:
 
@@ -83,22 +76,10 @@ Pipeline options:
 
 -t|--threads          INT    Specify number of threads to be used in parallel computations. [default = 1]
 
--S|--snakeArgs        STR    Quoted string containing arguments to pass to snakemake.api. For the full list of
+-S|--snakeArgs        STR    Keyword arguments to pass to snakemake.api. For the full list of
                              arguments: https://snakemake.readthedocs.io/en/stable/api_reference/snakemake.html
-                             E.g., RSeq -e testFile.fq -m DRIP -S "touch=True, report=True, containerize=False"
-
---dryRun                     If specified, RSeq will evaluate user input, generate configuration files,
-                             and then test the pipeline validity. This is recommended prior to running any
-                             larger mapping operation.
-
---dag                        If specified, RSeq will evaluate user input, generate configuration files,
-                             and then build the DAG of pipeline jobs for each sample. It will store the
-                             DAG images in the <outputDir>/dags/ folder.
-
---force                      If specified, RSeq will re-run any previously-completed steps of the pipeline.
-
---reason                     If specified, RSeq will print the reason for each snakemake rule being run.
-                             Useful for debugging rule errors or skipped rules.
+                             By default, use_conda=True. This ensures dependency handeling for the pipeline.
+                             E.g., RSeq -e testFile.fq -m DRIP -S touch=True report=True containerize=False
 
 
 Misc. options:

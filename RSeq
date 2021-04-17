@@ -26,14 +26,9 @@ usage() {
   echo "  -G|--genomeDir         dir           Genome directory. [default = '~/.RSeq_genomes']"
   echo "  -t|--threads           int           Specify number of threads. [default = 1]"
   echo "  -r|--rseqVars          json          rseqVars.json file (above options are ignored)."
-  echo "  -S|--snakeArgs         str           Quoted string containing arguments to pass to snakemake.api"
+  echo "  -S|--snakeArgs         str           Keyword arguments to snakemake.api. [default: use_conda=True]"
   echo "  -v|--version                         Display version info"
   echo "  -h|--help                            Display detailed usage"
-  echo "  --dryRun                             Dry run of analysis pipeline."
-  echo "  --keepTmp                            Keep all temporary files during workflow."
-  echo "  --dag                                Generate workflow DAGs pictures."
-  echo "  --force                              Force the entire workflow to re-run."
-  echo "  --reason                             Print reason for each snakemake rule being run."
   echo
   echo "Examples (see detailed usage for more):"
   echo

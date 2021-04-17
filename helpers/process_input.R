@@ -51,6 +51,7 @@ processInput <- function(samples,
   if (! "effective_genome_size" %in% colnames(samples)) {samples$effective_genome_size <- NA}
   if (! "full_genome_length" %in% colnames(samples)) {samples$full_genome_length <- NA}
   if (! "genome" %in% colnames(samples)) {samples$genome <- NA}
+
   
   # Deal with strand specificity and mode type
   if (! all(samples$mode %in% modes)) {
@@ -82,12 +83,12 @@ processInput <- function(samples,
   if (any(is.null(assembly) | is.na(assembly))) {
     stop("If providing local files/directories, specify the genome assembly for those samples.")
   }
-  # Custom genome.
-  badGenomeSpec <- which(is.na(samples$genome_home_dir) & is.na(samples$genome))
+  # Catch failure to provide genome for local files.
+  badGenomeSpec <- which(is.na(samples$genome) & samples$file_type != "public")
   if (length(badGenomeSpec)) {
-    stop("User must supply a genome directory location under 'genome' or a genomes home folder as 'genome_home_dir'.",
-         " For sample(s) ", samples$experiment[badGenomeSpec], ", the genome supplied is ", samples$genome[badGenomeSpec],
-         " and the genome home directory is ", samples$genome_home_dir[badGenomeSpec], "../..")
+    stop("User must supply a UCSC genome id or genome directory location under 'genome'.",
+         " For sample(s) ", samples$experiment[badGenomeSpec], ", the genome supplied is ",
+         samples$genome[badGenomeSpec])
   }
 
   # Set file type and attempt to set sample_names
@@ -259,30 +260,38 @@ processInput <- function(samples,
   }
 
   # Mark control samples
-  samples %>%
+  samples <- samples %>%
     mutate(ip_type = case_when(
-      sample_name %in% (samples %>% filter(! is.na(control)) %>% pull(control)) ~ "Input",
+      sample_name %in% (samples %>% filter(! is.na(control)) %>%
+                          pull(control)) ~ "Input",
       TRUE ~ ip_type
     ))
 
   # Get effective genome size
   rownames(available_genomes) <- available_genomes$UCSC_orgID
-  available_genome_sizes <- available_genomes[,grep(colnames(available_genomes), pattern = "eff_genome_size")]
+  available_genome_sizes <- available_genomes[,grep(colnames(available_genomes),
+                                                    pattern = "eff_genome_size")]
   sizes <- as.numeric(gsub(colnames(available_genome_sizes),
-                         pattern = "eff_genome_size_([0-9]+)bp",  replacement = "\\1"))
-  samples$effective_genome_size[is.na(samples$effective_genome_size)] <-
-  unlist(lapply(samples$sample_name[is.na(samples$effective_genome_size)], function(sample_now) {
-    len_now <- samples$read_length[samples$sample_name == sample_now]
-    colInd <- which.min(abs(sizes-len_now))
-    genome_now <- samples$genome[samples$sample_name == sample_now]
-    eff_genome_size <- available_genome_sizes[genome_now, colInd]
-    if (is.na(eff_genome_size)) {
-      stop("Genome size is not available for ", genome_now, ". Please manually supply effective genome size as a",
-           "column in 'samples' or variable in 'makeRSeqDataSet'.",
-           " Genome sizes may be calculated with the 'unique-kmers.py script from the khmer package'")
-    }
-    eff_genome_size
-  }))
+                         pattern = "eff_genome_size_([0-9]+)bp", 
+                         replacement = "\\1"))
+  samples$effective_genome_size[is.na(samples$effective_genome_size)] <- unlist(
+      lapply(samples$sample_name[is.na(samples$effective_genome_size)], 
+             function(sample_now) {
+      len_now <- samples$read_length[samples$sample_name == sample_now]
+      colInd <- which.min(abs(sizes-len_now))
+      genome_now <- samples$genome[samples$sample_name == sample_now]
+      eff_genome_size <- available_genome_sizes[genome_now, colInd]
+      if (is.na(eff_genome_size)) {
+        stop("Genome size is not available for ", genome_now,
+             ". Please manually supply effective genome size as a",
+             "column in 'samples' or variable in 'makeRSeqDataSet'.",
+             " Genome sizes may be calculated with the 'unique-kmers.py",
+             " script from the khmer package'")
+      }
+      eff_genome_size
+    })
+  )
+  
   samples$full_genome_length <-
     unlist(lapply(samples$sample_name[is.na(samples$full_genome_length)], function(sample_now) {
     genome_now <- samples$genome[samples$sample_name == sample_now]
@@ -360,6 +369,15 @@ args <- commandArgs(trailingOnly=TRUE)
 
 # args <- c('-e', 'GSM4276887', 'GSM4276888', '-c', 'GSM4276889', 'GSM4276890', '-o', 'data/', '-g', 'hg38',
 #           '-t', '20', '--dryrun', '-m', 'qDRIP', '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/helpers')
+
+# args <- c("-s", "tests/manifest_for_RSeq_testing_09092020.csv",
+#           "-m", "DRIP",
+#           "-t", "30",
+#           "-S", "dryrun=True", "notemp=True", "printreason=True",
+#           "-o", "test4", "helpers")
+
+# args <- c("-s", "tests/manifest_for_RSeq_testing_09092020_small.csv",
+#           "-o", "test5", "helpers")
 
 # Dataframe of mappings between possible arguments and whether they have a value or not
 argument_possibles <- data.frame(
@@ -466,6 +484,7 @@ outdir <- collect_list$outdir
 threads <- collect_list$threads
 genome_home_dir <- collect_list$genome_home_dir
 snake_args <- collect_list$snake_args
+if (is.null(snake_args)) {snake_args <- "use_conda=True"}
 helpers_dir <- args[length(args)]
 # Set defaults
 if (is.null(outdir)) {outdir <- "rseq_out/"}
@@ -512,7 +531,9 @@ if (is.null(configs)) {
   
   # Read in samples if they exist
   if (! is.null(samples)) {
-    samples <- read.csv(samples)
+    # UTF-8-BOM option removes the byte order mark from Windows-generated files
+    # See: https://stackoverflow.com/questions/21624796/read-a-utf-8-text-file-with-bom
+    samples <- read.csv(samples, fileEncoding = "UTF-8-BOM")
     if ("X" %in% colnames(samples)) {
       samples <- samples[, ! colnames(samples) == "X", drop=FALSE]
     }
@@ -547,7 +568,11 @@ if (is.null(configs)) {
   source(file.path(helpers_dir, "utils.R"))
   # Load required data objects
   load(file.path(helpers_dir, "data", "available_genomes.rda"))
-  
+
+  # # # Debug
+  # readr::write_csv(samples, "samples.csv")
+  # samples <- readr::read_csv("samples.csv")
+
   # # Get output JSON
   configs <- processInput(samples = samples,
                           available_genomes = available_genomes)

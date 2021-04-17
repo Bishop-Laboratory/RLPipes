@@ -23,9 +23,10 @@ sample=config['sample_name']
 experiments=[exp.split(",") for exp in config['experiment']]
 controls=[ctr.split(",") for ctr in config['control'] if ctr != "None"]
 
-bam_index_output = expand("{outdir}/bams_unstranded/{sample}.{genome}.bam.bai", zip,
-                        sample=sample, outdir=[outdir for i in range(len(sample))], genome=genome #TODO: Fix
+bam_index_output = expand("{outdir}/bam/{sample}.{genome}.bam.bai", zip,
+                        sample=sample, outdir=[outdir for i in range(len(sample))], genome=genome
 )
+
 
 #######################################################################################################################
 ##############################################   Main pipeline    ######################################################
@@ -46,7 +47,7 @@ def pe_test_fastp(wildcards):
 
 def pe_test_samblaster(wildcards):
     pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample]
-    if pe[0]:
+    if not pe[0]:
         res="--ignoreUnmated "
     else:
         res=""
@@ -94,51 +95,106 @@ rule bwa_index:
         (bwa index -p {params.prefix} {input}) &> {log}
     """
 
+# TODO: Figure out how to use the pipes
+# TODO: Probably need to specify this version of prefetch and/or find alternative to it...
 rule download_sra:
     output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra")
     conda: helpers_dir + "/envs/sratools.yaml"
     log: "{outdir}/logs/download_sra/{sample}__{srr_acc}__download_sra.log"
     params:
         output_directory="{outdir}/tmp/sras/{sample}/"
+    threads: cores*.2 - 1
     shell: """
     (
-    prefetch {wildcards.srr_acc} -O {params.output_directory}
-    
+    cd {params.output_directory}
+    prefetch {wildcards.srr_acc} -f yes
     ) &> {log}
     """
 
+# rule sra_to_fastq:
+#     input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
+#     output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
+#     conda: helpers_dir + "/envs/parallel_fq_dump.yaml"
+#     threads: 8
+#     log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
+#     params:
+#         output_directory="{outdir}/tmp/sras/{sample}/"
+#     shell: """(
+#     cd {params.output_directory}
+#     parallel-fastq-dump -t {threads} --split-3 -Z -s {wildcards.srr_acc} --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' > ../../fastqs_raw/{wildcards.sample}/{wildcards.srr_acc}.fastq
+#     ) &> {log}
+#     """
+
+# This should always produced interleaved fq even if paired end. I don't like this solution, but it should hold.
+# reformat.sh (from BBTools) will interleave the paired-end files
 rule sra_to_fastq:
     input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
     output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
-    conda: helpers_dir + "/envs/parallel_fq_dump.yaml"
-    threads: cores
+    conda: helpers_dir + "/envs/sratools.yaml"
+    threads: 1
     log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
-    shell:
-        "(parallel-fastq-dump -t {threads} -O" \
-        + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ -s {input}) &> {log}"
+    params:
+        output_directory="{outdir}/tmp/sras/{sample}/",
+        fqdump="--skip-technical --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' --split-3 ",
+        debug="",
+        # debug=" -X 10000"
+    shell: """(
+    cd {params.output_directory}
+    fastq-dump{params.debug} {params.fqdump}-O ../../fastqs_raw/{wildcards.sample}/ {wildcards.srr_acc} 
+    cd ../../fastqs_raw/{wildcards.sample}/
+    if test -f {wildcards.srr_acc}_2.fastq; then
+        echo "Paired end -- interleaving"
+        reformat.sh in1={wildcards.srr_acc}_1.fastq in2={wildcards.srr_acc}_2.fastq out={wildcards.srr_acc}.fastq overwrite=true
+        rm {wildcards.srr_acc}_1.fastq && rm {wildcards.srr_acc}_2.fastq
+    else
+        echo "Single end -- finished!"
+    fi
+    ) &> {log}
+    """
+
+# # TODO: Really should be a better way than this...
+# # TODO: Still need to find a situation with un-mated reads -- may need a custom solution for that
+# # Okay, so here's the problem: fastq-dump will create
+# rule sra_to_fastq:
+#     input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
+#     output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
+#     conda: helpers_dir + "/envs/sratools.yaml"
+#     threads: 1
+#     log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
+#     params:
+#         output_directory="{outdir}/tmp/sras/{sample}/"
+#     shell: """(
+#     cd {params.output_directory}
+#     fast-dump -X 100000 --split-3 -O ../../fastqs_raw/{wildcards.sample}/ --skip-technical --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' {wildcards.srr_acc}
+#     ) &> {log}
+#     """
 
 rule merge_replicate_reads:
     input: find_replicates
-    output: temp("{outdir}/tmp/fastq/{sample}.{genome}__raw.fastq")
-    shell: "cat {input} > {output}"
+    output: temp("{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq")
+    params:
+        debug=" | head -n 40000",
+        #debug=""
+    shell: "cat {input}{params.debug} > {output}"
 
 # TODO: Pipe this part
 rule fastp:
     input:
-        sample="{outdir}/tmp/fastq/{sample}.{genome}__raw.fastq"
+        sample="{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq"
     output:
-        trimmed="{outdir}/tmp/fastq/{sample}.{genome}__trimmed.fastq",
-        html="{outdir}/QC/fastq/{sample}.{genome}.html",
-        json="{outdir}/QC/fastq/{sample}.{genome}.json"
+        trimmed="{outdir}/tmp/fastqs_trimmed/{sample}.{genome}__trimmed.fastq",
+        html="{outdir}/QC/fastq/html/{sample}.{genome}.html",
+        json="{outdir}/QC/fastq/json/{sample}.{genome}.json"
     conda: helpers_dir + "/envs/fastp.yaml"
     log: "{outdir}/logs/fastp/{sample}.{genome}__fastp_pe.log"
     params:
         extra=pe_test_fastp
-    threads: 6
+    threads: 4
     shell: """
-    (fastp -i {input} -o {output} {params.extra}-w {threads} -h {output.html} -j {output.json} ) &> {log}
+    (fastp -i {input} --stdout {params.extra}-w {threads} -h {output.html} -j {output.json} > {output} ) &> {log}
     """
 
+# TODO: Try BWA MEM2 (Has stdin option and 1.5-3X speed increase)
 rule bwa_mem:
     input:
         bwa_index_done=[genome_home_dir + "/{genome}/bwa_index/{genome}.amb",
@@ -146,10 +202,10 @@ rule bwa_mem:
               genome_home_dir + "/{genome}/bwa_index/{genome}.bwt",
               genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
               genome_home_dir + "/{genome}/bwa_index/{genome}.sa"],
-        reads="{outdir}/tmp/fastq/{sample}.{genome}__trimmed.fastq"
+        reads="{outdir}/tmp/fastqs_trimmed/{sample}.{genome}__trimmed.fastq"
     output:
-        bam="{outdir}/bams_unstranded/{sample}.{genome}.bam",
-        bai="{outdir}/bams_unstranded/{sample}.{genome}.bam.bai"
+        bam="{outdir}/bam/{sample}.{genome}.bam",
+        bai="{outdir}/bam/{sample}.{genome}.bam.bai"
     conda: helpers_dir + "/envs/bwa_mem.yaml"
     log: "{outdir}/logs/bwa/{sample}_{genome}__bwa_mem.log"
     params:
@@ -158,7 +214,7 @@ rule bwa_mem:
         bwa_interleaved=pe_test_bwa,
         samblaster_extra=pe_test_samblaster,
         samtools_sort_extra="-O BAM"
-    threads: cores
+    threads: 15
     shell: """
         (bwa mem -t {threads} {params.bwa_extra} {params.bwa_interleaved}{params.index} {input.reads} | \
         samblaster {params.samblaster_extra}| \
