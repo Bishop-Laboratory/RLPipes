@@ -380,8 +380,8 @@ args <- commandArgs(trailingOnly=TRUE)
 # args <- c("-s", "tests/manifest_for_RSeq_testing_09092020_small.csv",
 #           "-o", "test5", "helpers")
 
-args <- c("-s", "tests/manifest_for_RSeq_testing_11092020.csv",
-          "-o", "test7", "helpers")
+# args <- c("-s", "tests/manifest_for_RSeq_testing_11092020.csv",
+#           "-o", "test7", "helpers")
 
 # Dataframe of mappings between possible arguments and whether they have a value or not
 argument_possibles <- data.frame(

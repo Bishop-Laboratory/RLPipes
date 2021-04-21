@@ -99,6 +99,7 @@ rule bwa2_index:
 
 # TODO: Figure out how to use the pipes
 # TODO: Probably need to specify this version of prefetch and/or find alternative to it...
+# TODO: Retry if fails due to network error
 rule download_sra:
     output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra")
     conda: helpers_dir + "/envs/sratools.yaml"
@@ -192,6 +193,7 @@ rule fastp:
         json="{outdir}/QC/fastq/json/{sample}.{genome}.json"
     conda: helpers_dir + "/envs/fastp.yaml"
     log: "{outdir}/logs/fastp/{sample}.{genome}__fastp_pe.log"
+    priority: 10
     params:
         extra=pe_test_fastp
     threads: 4
@@ -212,6 +214,7 @@ rule bwa_mem2:
         bam="{outdir}/bam/{sample}/{sample}.{genome}.bam",
         bai="{outdir}/bam/{sample}/{sample}.{genome}.bam.bai"
     conda: helpers_dir + "/envs/bwa_mem.yaml"
+    priority: 15
     log: "{outdir}/logs/bwa/{sample}_{genome}__bwa_mem.log"
     params:
         index=genome_home_dir + "/{genome}/bwa_index/{genome}",
@@ -219,7 +222,7 @@ rule bwa_mem2:
         bwa_interleaved=pe_test_bwa,
         samblaster_extra=pe_test_samblaster,
         samtools_sort_extra="-O BAM"
-    threads: 15
+    threads: 10
     shell: """
         (bwa-mem2 mem -t {threads} {params.bwa_extra} {params.bwa_interleaved}{params.index} {input.reads} | \
         samblaster {params.samblaster_extra}| \
