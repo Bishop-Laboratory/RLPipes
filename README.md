@@ -11,7 +11,7 @@ conda install -c bioconda rseq-cli
 ```
 
 To run the RSeq pipeline you will need R-loop mapping data in either `fastq`,
-`bam`, `bigWig`, or `bedGraph` format. You may also use public data accessions 
+`bam`, `bigWig`, or `bedGraph` format. You may also use public data accessions
 with RSeq, from SRA, GEO, or BioProject (e.g., `SRX8908682`, `GSM4714836`, etc).
 
 To run the basic RSeq workflow:
@@ -25,9 +25,9 @@ This will run the full RSeq pipeline to:
 2. Map the reads to the genome.
 3. Call R-loop peaks and signal tracks
 4. Calculate the quality score of the resulting maps.
-5. Return an analysis report in HTML format. 
+5. Return an analysis report in HTML format.
 
-\* Upon first use, RSeq genomes will not be available and may take some time to be generated. 
+\* Upon first use, RSeq genomes will not be available and may take some time to be generated.
 
 ## Basic Usage
 
@@ -152,3 +152,66 @@ Misc. options:
 
 ```
 
+Here are some details.
+### How to setup a virtual environment with conda
+The conda package and environment manager is included in all versions of
+[Anaconda](https://docs.conda.io/projects/conda/en/latest/glossary.html#anaconda-glossary),
+[Miniconda](https://docs.conda.io/projects/conda/en/latest/glossary.html#miniconda-glossary),
+and [Anaconda Repository](https://docs.continuum.io/anaconda-repository/).
+Here we will go with the lightweight miniconda option.
++ Download the latest [miniconda installer](https://docs.conda.io/en/latest/miniconda.html) for your operating system and run the installer script.
+For example, as of Apr 2021 the latest for MacOS is `Miniconda3-py39_4.9.2-MacOSX-x86_64.sh`. Open a terminal, navigate to the directory where the installer
+ got downloaded, and run the installer with bash:
+```
+bash Miniconda3-py39_4.9.2-MacOSX-x86_64.sh
+```
+You will be prompted to read the user licence agreement which you can skip to
+the end by typing "q". There you will be asked to accept the licence terms.
+Go ahead and initialize Miniconda3 when prompted. You will need to close your
+terminal and open a new one for the changes to take effect. Go ahead and do so.
+By default the conda base environment will be activated whenever you open a new
+terminal. You will know the conda base environment is active because you will
+see a `(base)` prefix in front of your `user@computer` address.
+I prefer to deactivate this default behavior because I have other ongoing
+projects and I don't want to interfere with their python settings. To deactivate
+the default behavior type:
+```
+conda config --set auto_activate_base false
+```
+Next time you open an new terminal you should not see the `(base)` prefix.
+You can activate the conda base environment manually with the command
+```
+conda activate base
+```
+
++ Double check conda is updated.
+```
+conda update -n base conda
+```
++ Create a virtual environment for RSeq with the specified requirements.
+```
+conda create --file requirements.txt -c conda-forge -n Rseq
+```
+When prompted new packages will be installed, procceed by pressing `y`.
++ Activate `Rseq` virtual environment
+```
+conda activate Rseq
+```
++ Update virtual environment (when necessary)
+```
+conda env update -n Rseq -f requirements.txt
+```
++ To deactivate environment, use
+```
+conda deactivate
+```
++ To remove an environment, use
+```
+conda env remove -n Rseq
+```
+
+### Continuous Integration
++ Check for code style and run tests by running the integration script.
+```
+bash integration.sh
+```
