@@ -1,32 +1,3 @@
-#' @rdname RSeq_variables
-#' @export
-setClass("RSeq_variables",
-         slots = list(
-           helpers_dir = "character",
-           sample_name = "character",
-           original_acc = "character",
-           out_dir = "character",
-           mode = "character",
-           genome_home_dir = "character",
-           genome = "character",
-           homer_anno_available = "logical",
-           cores = "integer",
-           full_genome_length = "numeric",
-           effective_genome_size = "numeric",
-           experiments = "character",
-           controls = "character",
-           downsample = "numeric",
-           moeity = "character",
-           ip_type = "character",
-           read_length = "numeric",
-           paired_end = "logical",
-           no_fastp = "logical",
-           no_dedupe = "logical",
-           sample_type = "character",
-           strand_specific = "logical"
-         ))
-
-
 #' Check bam assembly
 #'
 #' Checks bam file header against chrom.sizes for 'assembly' from UCSC. Returns logical.
@@ -83,7 +54,11 @@ get_fastq_read_length <- function(fastq_file) {
 
 # Helper function for querying public data accession, convert to SRA, and return run table
 get_public_run_info <- function(accessions) {
+  suppressWarnings(suppressPackageStartupMessages(require(XML)))
 
+
+  httr::set_config(httr::config(http_version = 2))
+  # set the HTTP version to 1.1 (none, 1.0, 1.1, 2)
   #### Bug testing ##
   #accessions <- c("SRX2481503", "SRX2481504", "GSE134101", "SRP150774", "GSE127329", "SRS1466492")
   #accessions <- c("SRX2918366", "SRX2918367", "GSM3936516", "SRX5129664")
@@ -93,10 +68,15 @@ get_public_run_info <- function(accessions) {
   # accessions <- samples_public$experiment
   # accessions <- public_ctr_accessions
   # accessions <- "SRR3504393"
+  # accessions <- public_ctr_accessions
+  # accessions <- samples_public$experiment
   ###################
 
+
   accessions <- unique(accessions)
-  badMsg <- c("HTTP error: Status 429; Too Many Requests", "HTTP error: Status 500; Internal Server Error")
+  badMsg <- c("HTTP error: Status 429; Too Many Requests",
+              "HTTP error: Status 500; Internal Server Error",
+              "XML parse error: StartTag: invalid element name\n")
 
   # Convert GEO series to BioProject accessions
   acc_gse <- accessions[grep(accessions, pattern = "^GSE[0-9]+$")]
@@ -113,7 +93,6 @@ get_public_run_info <- function(accessions) {
         fail <- FALSE
       }
     }
-
 
     if (length(esearch_gse$errors$errmsg)) {
       stop(paste0(paste0(esearch_gse$errors$errmsg, collapse = ", ")), " not found")
@@ -181,22 +160,35 @@ get_public_run_info <- function(accessions) {
       if (fail_counter > 1) {
         stop("Unable to contact NCBI servers. Please use only local files for now and please contact the package maintainer!")
       }
-      content_sra <- reutils::efetch(esearch_sra)
+      # This is convenient, but might produce an error. 
+      # See: https://github.com/gschofl/reutils/issues/14
+      content_sra <- suppressMessages(reutils::efetch(esearch_sra, retmode = "xml"))
       if (length(as.character(content_sra$errors$error))) {
         if (as.character(content_sra$errors$error) %in% badMsg) {
           fail <- TRUE
-          if (as.character(content_sra$errors$error) == badMsg[2]) {
+          if (as.character(content_sra$errors$error) %in% badMsg[1:2]) {
+            # CASE: Error due to HTTP issue. 
+            # Could be because too many requests or temporary gateway down.
+            # Will continue trying 2 more times + sys.sleep().
+            Sys.sleep(1)
             fail_counter <- fail_counter + 1
+          } else if (as.character(content_sra$errors$error) == badMsg[3]) {
+            # CASE: XML parsing error. 
+            # See: https://github.com/gschofl/reutils/issues/14
+            ct <- XML::xmlToList(esearch_sra$content)
+            ids <- unlist(ct$IdList, use.names = FALSE)
+            url <- paste0("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=",
+                          paste0(ids, collapse = ","))
+            content_sra <- XML::xmlParse(httr::content(httr::GET(url), "text"))
+            fail <- FALSE
           }
-          Sys.sleep(1)
         }
       } else {
         fail <- FALSE
-        content_sra <- content_sra$content
+        content_sra <- reutils::content(content_sra)
       }
     }
-
-    result <- XML::xmlToList(XML::xmlParse(content_sra))
+    result <- XML::xmlToList(content_sra)
 
     # Need to map back to original entries -- very annoying...
     # TODO: Figure out a better way to do this without user error issues
@@ -269,7 +261,6 @@ get_public_run_info <- function(accessions) {
         out_name = out_name,
         read_length = read_length
       )
-
       return(res_now)
     })
 
@@ -277,9 +268,8 @@ get_public_run_info <- function(accessions) {
     map_final <- merge(x = map_merge, y = res_df, by = "sra_experiment", all = TRUE)
   })
 
-  res_df_full <- data.table::rbindlist(res_list_full)
-  res_df_full <- res_df_full[! is.na(res_df_full$experiment)]
-
+  res_df_full <- dplyr::bind_rows(res_list_full)
+  res_df_full <- res_df_full[! is.na(res_df_full$experiment),]
   return(res_df_full)
 }
 
@@ -310,9 +300,9 @@ get_genome_sizes <- function() {
     print(genome_now)
     fasta_file <- paste0("ftp://hgdownload.soe.ucsc.edu/goldenPath/",
                          genome_now, "/bigZips/", genome_now, ".fa.gz")
-    dir.create(file.path(system.file(package = "RSeq"),
+    dir.create(file.path(system.file(package = "../../RSeq"),
                          "../extra/genomes", genome_now), recursive = TRUE, showWarnings = FALSE)
-    out_file <- file.path(system.file(package = "RSeq"),
+    out_file <- file.path(system.file(package = "../../RSeq"),
                           "../extra/genomes", genome_now,
                           paste0(genome_now, ".fa.gz"))
     if (! file.exists(out_file) & ! file.exists(paste0(out_file, "_300.txt"))) {
@@ -467,9 +457,9 @@ check_homer_anno <- function(available_genomes, genome = NULL) {
 get_rlfs <- function() {
   helpers_dir <- paste0(path.expand("~"), "/Bishop.lab/Projects/RSeq/helpers/")
   
-  load(file.path(helpers_dir, "data", "available_genomes.rda"))
-  script <- file.path(helpers_dir, "external", "QmRLFS-finder.py")
-  outdir <- file.path(helpers_dir, "data", "rlfs")
+  load(file.path(helpers_dir, "../data", "available_genomes.rda"))
+  script <- file.path(helpers_dir, "../external", "QmRLFS-finder.py")
+  outdir <- file.path(helpers_dir, "../data", "rlfs")
   dir.create(outdir, showWarnings = FALSE)
   
   genomes <- available_genomes$UCSC_orgID[available_genomes$homer_anno_available]

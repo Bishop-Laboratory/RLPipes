@@ -18,7 +18,7 @@ analysis/
 *data/rlfs*
 rseq/uploads/
 *.Rhistory*
-helpers/export*
+misc/export
 *.pyc
 __pycache__/
 *.ipynb_checkpoints*

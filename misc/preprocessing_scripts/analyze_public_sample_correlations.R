@@ -34,7 +34,7 @@ colData <- rmap_samples %>%
   select(mode)
 colnames(mat) <- rownames(colData)
 all(rownames(colData) == colnames(mat))
-save(mat, colData, file = "../RSeq/helpers/data/gold_standard_bw_coverage.rda")
+save(mat, colData, file = "../../helpers/data/gold_standard_bw_coverage.rda")
 
 corrmat <- cor(mat)
 pheatmap(corrmat, annotation_col = colData, 
