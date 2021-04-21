@@ -69,6 +69,7 @@ get_public_run_info <- function(accessions) {
   # accessions <- public_ctr_accessions
   # accessions <- "SRR3504393"
   # accessions <- public_ctr_accessions
+  # accessions <- samples_public$experiment
   ###################
 
 

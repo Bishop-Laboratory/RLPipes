@@ -2,6 +2,6 @@ channels:
   - bioconda
   - conda-forge
 dependencies:
-  - bwa
+  - bwa-mem2
   - samtools
   - samblaster

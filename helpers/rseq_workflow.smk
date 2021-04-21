@@ -23,9 +23,11 @@ sample=config['sample_name']
 experiments=[exp.split(",") for exp in config['experiment']]
 controls=[ctr.split(",") for ctr in config['control'] if ctr != "None"]
 
-bam_index_output = expand("{outdir}/bam/{sample}.{genome}.bam.bai", zip,
-                        sample=sample, outdir=[outdir for i in range(len(sample))], genome=genome
-)
+bam_index_output = expand("{outdir}/bam/{sample}/{sample}.{genome}.bam.bai", zip,
+                        sample=sample, outdir=[outdir for i in range(len(sample))], genome=genome)
+coverage_output = expand("{outdir}/coverage/{sample}/{sample}.{genome}.bw", zip,
+                        sample=sample, outdir=[outdir for i in range(len(sample))], genome=genome)
+
 
 
 #######################################################################################################################
@@ -63,36 +65,36 @@ def pe_test_bwa(wildcards):
 
 rule output:
     input:
-        bam_index_output
+        bam_index_output,
+        # coverage_output
 
 rule download_fasta:
     output:
         genome_home_dir + "/{genome}/{genome}.fa"
     params:
           prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
-          check=outdir + "/logs/{genome}__download_fasta.log"
+          check=outdir + "/logs/download_fasta/{genome}__download_fasta.log"
     shell: """
         (mkdir -p {params.prefix}
         wget -O {output}.gz ftp://hgdownload.soe.ucsc.edu/goldenPath/{wildcards.genome}/bigZips/{wildcards.genome}.fa.gz
         gunzip {output}.gz && echo "Indexing BAM at {params.prefix} ... This may take some time ...") &> {params.check}
     """
 
-rule bwa_index:
+rule bwa2_index:
     input:
         genome_home_dir + "/{genome}/{genome}.fa"
     output:
-        genome_home_dir + "/{genome}/bwa_index/{genome}.amb",
         genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-        genome_home_dir + "/{genome}/bwa_index/{genome}.bwt",
+        genome_home_dir + "/{genome}/bwa_index/{genome}.bwt.2bit.64",
         genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
-        genome_home_dir + "/{genome}/bwa_index/{genome}.sa"
+        genome_home_dir + "/{genome}/bwa_index/{genome}.amb"
     params:
         prefix=genome_home_dir + "/{genome}/bwa_index/{genome}"
     conda: helpers_dir + "/envs/bwa.yaml"
     log:
         genome_home_dir + "/{genome}/bwa_index/{genome}_bwa_index.log"
     shell:"""
-        (bwa index -p {params.prefix} {input}) &> {log}
+        (bwa-mem2 index -p {params.prefix} {input}) &> {log}
     """
 
 # TODO: Figure out how to use the pipes
@@ -137,7 +139,7 @@ rule sra_to_fastq:
         output_directory="{outdir}/tmp/sras/{sample}/",
         fqdump="--skip-technical --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' --split-3 ",
         debug="",
-        # debug=" -X 10000"
+        #debug=" -X 60000"
     shell: """(
     cd {params.output_directory}
     fastq-dump{params.debug} {params.fqdump}-O ../../fastqs_raw/{wildcards.sample}/ {wildcards.srr_acc} 
@@ -173,16 +175,19 @@ rule merge_replicate_reads:
     input: find_replicates
     output: temp("{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq")
     params:
-        debug=" | head -n 40000",
-        #debug=""
-    shell: "cat {input}{params.debug} > {output}"
+        #debug=" | head -n 40000 -",  # TODO: Why does this throw an error when uncommented?
+        debug=""
+    log: "{outdir}/logs/merge_fastq/{sample}_{genome}__merge_fastq.log"
+    shell: """
+    (cat {input}{params.debug} > {output}) &> {log}
+    """
 
 # TODO: Pipe this part
 rule fastp:
     input:
         sample="{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq"
     output:
-        trimmed="{outdir}/tmp/fastqs_trimmed/{sample}.{genome}__trimmed.fastq",
+        trimmed=temp("{outdir}/tmp/fastqs_trimmed/{sample}.{genome}__trimmed.fastq"),
         html="{outdir}/QC/fastq/html/{sample}.{genome}.html",
         json="{outdir}/QC/fastq/json/{sample}.{genome}.json"
     conda: helpers_dir + "/envs/fastp.yaml"
@@ -195,17 +200,17 @@ rule fastp:
     """
 
 # TODO: Try BWA MEM2 (Has stdin option and 1.5-3X speed increase)
-rule bwa_mem:
+rule bwa_mem2:
     input:
-        bwa_index_done=[genome_home_dir + "/{genome}/bwa_index/{genome}.amb",
+        bwa_index_done=[
               genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-              genome_home_dir + "/{genome}/bwa_index/{genome}.bwt",
+              genome_home_dir + "/{genome}/bwa_index/{genome}.bwt.2bit.64",
               genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
-              genome_home_dir + "/{genome}/bwa_index/{genome}.sa"],
+              genome_home_dir + "/{genome}/bwa_index/{genome}.amb"],
         reads="{outdir}/tmp/fastqs_trimmed/{sample}.{genome}__trimmed.fastq"
     output:
-        bam="{outdir}/bam/{sample}.{genome}.bam",
-        bai="{outdir}/bam/{sample}.{genome}.bam.bai"
+        bam="{outdir}/bam/{sample}/{sample}.{genome}.bam",
+        bai="{outdir}/bam/{sample}/{sample}.{genome}.bam.bai"
     conda: helpers_dir + "/envs/bwa_mem.yaml"
     log: "{outdir}/logs/bwa/{sample}_{genome}__bwa_mem.log"
     params:
@@ -216,12 +221,17 @@ rule bwa_mem:
         samtools_sort_extra="-O BAM"
     threads: 15
     shell: """
-        (bwa mem -t {threads} {params.bwa_extra} {params.bwa_interleaved}{params.index} {input.reads} | \
+        (bwa-mem2 mem -t {threads} {params.bwa_extra} {params.bwa_interleaved}{params.index} {input.reads} | \
         samblaster {params.samblaster_extra}| \
         samtools view -q 10 -b -@ {threads} - | \
         samtools sort {params.samtools_sort_extra} -@ {threads} -o {output.bam} - && \
         samtools index -@ {threads} {output.bam}) &> {log}
      """
+
+
+
+
+
 
 
 #

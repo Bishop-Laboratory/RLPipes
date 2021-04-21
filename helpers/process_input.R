@@ -254,10 +254,11 @@ processInput <- function(samples,
     samples <- rbind(samples_public, samples_private)
   }
 
-  if (any(duplicated(samples$sample_name))) {
-    stop("Sample names must be unique. Please remove duplicates: ",
-         paste0(samples$sample_name[duplicated(samples$sample_name)], collapse = ", "))
-  }
+  # dups <- duplicated(samples$sample_name) & samples$file_type != "public"
+  # if (any(dups)) {
+  #   stop("Sample names must be unique. Please remove duplicates: ",
+  #        paste0(samples$sample_name[dups], collapse = ", "))
+  # }
 
   # Mark control samples
   samples <- samples %>%
@@ -378,6 +379,9 @@ args <- commandArgs(trailingOnly=TRUE)
 
 # args <- c("-s", "tests/manifest_for_RSeq_testing_09092020_small.csv",
 #           "-o", "test5", "helpers")
+
+args <- c("-s", "tests/manifest_for_RSeq_testing_11092020.csv",
+          "-o", "test7", "helpers")
 
 # Dataframe of mappings between possible arguments and whether they have a value or not
 argument_possibles <- data.frame(
