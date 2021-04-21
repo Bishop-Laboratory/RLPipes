@@ -300,9 +300,9 @@ get_genome_sizes <- function() {
     print(genome_now)
     fasta_file <- paste0("ftp://hgdownload.soe.ucsc.edu/goldenPath/",
                          genome_now, "/bigZips/", genome_now, ".fa.gz")
-    dir.create(file.path(system.file(package = "RSeq"),
+    dir.create(file.path(system.file(package = "../../RSeq"),
                          "../extra/genomes", genome_now), recursive = TRUE, showWarnings = FALSE)
-    out_file <- file.path(system.file(package = "RSeq"),
+    out_file <- file.path(system.file(package = "../../RSeq"),
                           "../extra/genomes", genome_now,
                           paste0(genome_now, ".fa.gz"))
     if (! file.exists(out_file) & ! file.exists(paste0(out_file, "_300.txt"))) {
@@ -457,9 +457,9 @@ check_homer_anno <- function(available_genomes, genome = NULL) {
 get_rlfs <- function() {
   helpers_dir <- paste0(path.expand("~"), "/Bishop.lab/Projects/RSeq/helpers/")
   
-  load(file.path(helpers_dir, "data", "available_genomes.rda"))
-  script <- file.path(helpers_dir, "external", "QmRLFS-finder.py")
-  outdir <- file.path(helpers_dir, "data", "rlfs")
+  load(file.path(helpers_dir, "../data", "available_genomes.rda"))
+  script <- file.path(helpers_dir, "../external", "QmRLFS-finder.py")
+  outdir <- file.path(helpers_dir, "../data", "rlfs")
   dir.create(outdir, showWarnings = FALSE)
   
   genomes <- available_genomes$UCSC_orgID[available_genomes$homer_anno_available]

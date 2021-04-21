@@ -91,7 +91,7 @@ prepare_report <- function(input, sample_name, configs) {
   
   # TODO: get number of macs2 and epic2 peaks called. 
   # Make markdown report TODO: Needs to include more info...
-  md_template <- file.path(helpers_dir, "report_template.Rmd")
+  md_template <- file.path(helpers_dir, "../templates/report_template.Rmd")
   output_html <- gsub(output_html, pattern = "//", replacement = "/")
   output_rda <- gsub(output_rda, pattern = "//", replacement = "/")
   
@@ -101,13 +101,13 @@ prepare_report <- function(input, sample_name, configs) {
   show_corr <- ifelse(is.list(corr_data), TRUE, FALSE)
   correct_mode <- configlist$mode %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP')
   if (show_anno & show_corr & correct_mode) {
-    rmap_samples <- file.path(helpers_dir, 'data', 'RMapDB_samples_10_22_2020.csv')
+    rmap_samples <- file.path(helpers_dir, '../data', 'RMapDB_samples_10_22_2020.csv')
     rmap_samples <- read_csv(rmap_samples)
     rmap_samples$mode_group <- ifelse(rmap_samples$mode %in% c("RNH-CnR", "MapR"), "MapR",
                                       ifelse(rmap_samples$mode %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP'), 'DRIP',
                                              ifelse(rmap_samples$mode %in% c("RDIP"), "RDIP", 
                                                     ifelse(rmap_samples$mode %in% c("ssDRIP"), "ssDRIP", 
-                                                           ifelse(rmap_samples$mode %in% c("R-ChIP"), 'R-ChIP', "misc")))))
+                                                           ifelse(rmap_samples$mode %in% c("R-ChIP"), 'R-ChIP', "../../misc")))))
     # Get corr_median
     my_sample <- rownames(corr_data$annoNow)[which(corr_data$annoNow$Source != "RMapDB")]
     corr_median <- data.frame("clean_name" = rownames(corr_data$annoNow), "R" = corr_data$corMat[my_sample,]) %>% 
@@ -138,7 +138,7 @@ prepare_report <- function(input, sample_name, configs) {
     test_x <- apply(test_x, 1:2, as.numeric)
     
     # XGBoost
-    xgb_file <- file.path(helpers_dir, 'data', "xgb_DRIP_group_HS_binary_11_09_2020.model")
+    xgb_file <- file.path(helpers_dir, '../data', "xgb_DRIP_group_HS_binary_11_09_2020.model")
     xgb_feats <- c("corr_median", "TTS__Log2 Ratio (obs/exp)", "SINE__Log2 Ratio (obs/exp)",
                    "Exon__Log2 Ratio (obs/exp)", "Intron__Log2 Ratio (obs/exp)")
     if (any(! xgb_feats %in% colnames(test_x))) {
@@ -150,7 +150,7 @@ prepare_report <- function(input, sample_name, configs) {
       xgbverdict <- ifelse(xgbprob > .5, 'pass', 'fail')
       
       # Linear Regression
-      lm_file <- file.path(helpers_dir, 'data', "lm_DRIP_group_HS_nonbinary_11_09_2020.rda")
+      lm_file <- file.path(helpers_dir, '../data', "lm_DRIP_group_HS_nonbinary_11_09_2020.rda")
       test_x <- as.data.frame(test_x)
       colnames(test_x) <- gsub(colnames(test_x), pattern = " |\\(|\\)|\\/", replacement = "_")
       colnames(test_x) <- gsub(colnames(test_x), pattern = "^([0-9]+)", replacement = "d\\1")

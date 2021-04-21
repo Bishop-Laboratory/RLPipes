@@ -28,7 +28,7 @@ compile_peaks <- function(configs, sample_name, macs2, epic2, output_rda, output
   no_epic <- FALSE
   
   # Initialize empty GR
-  empty_gr <- as.data.frame(t(matrix(c("chrM", "0", "10", "Empty", ".", "*"))))
+  empty_gr <- as.data.frame(t(matrix(c("chrM", "0", "10", "Empty", "..", "*"))))
   colnames(empty_gr) <- c("seqnames", "start", "end", "name", "score", "strand")
   empty_gr <- ChIPpeakAnno::toGRanges(empty_gr)
   
