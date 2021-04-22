@@ -34,4 +34,4 @@ jobs:
       - shell: bash -l {0}
         run: mamba install jupyterlab
       - shell: bash -l {0}
-        run: RSeq -e SRX8908682 -m DRIP
+        run: bash RSeq -e SRX8908682 -m DRIP
