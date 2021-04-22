@@ -1,8 +1,7 @@
 #globals
-options(warn=-1) # Prevent warnings
+#options(warn=-1) # Prevent warnings
 
 #libraries
-#library(magrittr)
 library(tidyverse)
 
 processInput <- function(samples,
@@ -501,6 +500,11 @@ if (is.null(outdir)) {outdir <- "rseq_out/"}
 if (is.null(genome_home_dir)) {genome_home_dir <- file.path(path.expand("~"), ".rseq_genomes")}
 if (is.null(threads)) {threads <- 1} else {threads <- as.numeric(threads)}
 if (is.null(snake_args)) {snake_args <- ""}
+
+#create genome home directory if it does not exist
+dir.create(genome_home_dir, showWarnings = FALSE)
+
+#create output directory and specify path to json output
 dir.create(outdir, showWarnings = FALSE)
 output_json <- file.path(outdir, "config.json")
 output_json <- gsub(output_json, pattern = "//", replacement = "/")
@@ -575,9 +579,9 @@ if (is.null(configs)) {
   }
 
   # Source helpers
-  source(file.path(helpers_dir, "utils.R"))
+  source(file.path(helpers_dir, "scripts", "utils.R"))
   # Load required data objects
-  load(file.path(helpers_dir, "..", "data", "available_genomes.rda"))
+  load(file.path(helpers_dir, "data", "available_genomes.rda"))
 
 
   # # # Debug

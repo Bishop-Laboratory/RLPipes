@@ -3,6 +3,7 @@ pytest
 r-base
 r-reutils
 r-tidyverse
+graphviz
 snakemake
 #numpy
 #matplotlib

@@ -3,7 +3,7 @@
 ########################################################################################################################
 
 # Global Configs
-helpers_dir=config['helpers_dir']
+helpers_dir=config['helpers_dir'][0]
 genome_home_dir=config['genome_home_dir'][0]
 cores=config['threads'][0]
 outdir=config['outdir'][0]
@@ -106,7 +106,7 @@ rule download_sra:
     log: "{outdir}/logs/download_sra/{sample}__{srr_acc}__download_sra.log"
     params:
         output_directory="{outdir}/tmp/sras/{sample}/"
-    threads: cores*.2 - 1
+    threads: cores*2 - 1 #cores*.2 - 1
     shell: """
     (
     cd {params.output_directory}
