@@ -66,7 +66,7 @@ fi
 echo
 echo "Parsing input..."
 echo
-inputJSON=$(Rscript "$helpersDir"/process_input.R "$@" "$helpersDir")
+inputJSON=$(Rscript "$helpersDir"/scripts/process_input.R "$@" "$helpersDir"/scripts)
 
 # Check if version or usage
 if [ "$inputJSON" == "usage" ]; then
@@ -83,7 +83,7 @@ elif [ ! -f "$inputJSON" ]; then
 fi
 
 # Run the pipeline!
-python "$helpersDir"/run_workflow.py "$inputJSON"
+python "$helpersDir"/scripts/run_workflow.py "$inputJSON"
 
 echo
 exit 0

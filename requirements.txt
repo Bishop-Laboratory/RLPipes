@@ -1,5 +1,9 @@
 pylint
 pytest
+r-base
+r-reutils
+r-tidyverse
+snakemake
 #numpy
 #matplotlib
 #scipy
