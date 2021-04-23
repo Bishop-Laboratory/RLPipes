@@ -92,6 +92,7 @@ rule download_fasta:
         genome_home_dir + "/{genome}/{genome}.fa"
     params:
           prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
+    conda: helpers_dir + "/envs/bwa.yaml"
     log: outdir + "/logs/download_fasta/{genome}__download_fasta.log"
     shell: """
         (mkdir -p {params.prefix}
