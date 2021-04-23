@@ -75,10 +75,17 @@ def pe_test_bwa(wildcards):
         res=""
     return res
 
+test_output="my_file.txt"
+
 rule output:
     input:
-        bam_index_output,
+        test_output
+        # bam_index_output,
         # coverage_output
+
+rule make_test:
+    output: test_output
+    shell: "echo Hello world! > {output}"
 
 rule download_fasta:
     output:
@@ -120,14 +127,12 @@ rule download_sra:
     params:
         output_directory="{outdir}/tmp/sras/{sample}/"
     threads: math.ceil(cores*.2 - 1)
-    shell: """echo Hello world!
-    echo Hello world > {output}
+    shell: """
+    (
+    cd {params.output_directory}
+    prefetch {wildcards.srr_acc} -f yes
+    ) &> {log}
     """
-    # (
-    # cd {params.output_directory}
-    # prefetch {wildcards.srr_acc} -f yes
-    # ) &> {log}
-    # """
 
 # rule sra_to_fastq:
 #     input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
