@@ -3,3 +3,4 @@ channels:
   - conda-forge
 dependencies:
   - bwa-mem2
+  - bwa

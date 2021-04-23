@@ -2,12 +2,15 @@
 ##############################################   Parse inputs    #######################################################
 ########################################################################################################################
 
+import math
+
 # Global Configs
 helpers_dir=config['helpers_dir'][0]
 genome_home_dir=config['genome_home_dir'][0]
 cores=config['threads'][0]
 outdir=config['outdir'][0]
 outdir=outdir.strip("/")
+bwa_mem2=config['bwa_mem2'][0]
 
 # Sample info
 mode=config['mode']
@@ -22,13 +25,22 @@ sample_type=config['file_type']
 sample=config['sample_name']
 experiments=[exp.split(",") for exp in config['experiment']]
 controls=[ctr.split(",") for ctr in config['control'] if ctr != "None"]
-
 bam_index_output = expand("{outdir}/bam/{sample}/{sample}.{genome}.bam.bai", zip,
                         sample=sample, outdir=[outdir for i in range(len(sample))], genome=genome)
 coverage_output = expand("{outdir}/coverage/{sample}/{sample}.{genome}.bw", zip,
                         sample=sample, outdir=[outdir for i in range(len(sample))], genome=genome)
 
 
+# Select bwa type
+# BWA MEM2 is still in development and has a particularly problematic habit of over-zealous RAM usage
+# https://github.com/bwa-mem2/bwa-mem2/issues/118
+# User needs to have the option to choose classic BWA
+if bwa_mem2:
+    bwa_cmd="bwa-mem2"
+    bwa_location="bwa_mem2_index"
+else:
+    bwa_cmd="bwa"
+    bwa_location="bwa_index"
 
 #######################################################################################################################
 ##############################################   Main pipeline    ######################################################
@@ -63,38 +75,51 @@ def pe_test_bwa(wildcards):
         res=""
     return res
 
+# For testing the workflow on GitHub
+test_output="my_file.txt"
+test=False
+if test:
+    bam_index_output = test_output
+
+
+
 rule output:
     input:
         bam_index_output,
         # coverage_output
+
+rule make_test:
+    output: test_output
+    conda: helpers_dir + "/envs/bwa.yaml"
+    shell: "echo Hello world! > {output}"
 
 rule download_fasta:
     output:
         genome_home_dir + "/{genome}/{genome}.fa"
     params:
           prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
-          check=outdir + "/logs/download_fasta/{genome}__download_fasta.log"
+    log: outdir + "/logs/download_fasta/{genome}__download_fasta.log"
     shell: """
         (mkdir -p {params.prefix}
         wget -O {output}.gz ftp://hgdownload.soe.ucsc.edu/goldenPath/{wildcards.genome}/bigZips/{wildcards.genome}.fa.gz
-        gunzip {output}.gz && echo "Indexing BAM at {params.prefix} ... This may take some time ...") &> {params.check}
+        gunzip {output}.gz && echo "Indexing BAM at {params.prefix} ... This may take some time ...") &> {log}
     """
 
-rule bwa2_index:
+rule bwa_index:
     input:
         genome_home_dir + "/{genome}/{genome}.fa"
     output:
         genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-        genome_home_dir + "/{genome}/bwa_index/{genome}.bwt.2bit.64",
         genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
         genome_home_dir + "/{genome}/bwa_index/{genome}.amb"
     params:
-        prefix=genome_home_dir + "/{genome}/bwa_index/{genome}"
+        prefix=genome_home_dir + "/{genome}/" + bwa_location + "/{genome}",
+        bwa_cmd=bwa_cmd
     conda: helpers_dir + "/envs/bwa.yaml"
     log:
-        genome_home_dir + "/{genome}/bwa_index/{genome}_bwa_index.log"
+        genome_home_dir + "/{genome}/" + bwa_location + "/{genome}_bwa_index.log"
     shell:"""
-        (bwa-mem2 index -p {params.prefix} {input}) &> {log}
+        ({params.bwa_cmd} index -p {params.prefix} {input}) &> {log}
     """
 
 # TODO: Figure out how to use the pipes
@@ -106,7 +131,7 @@ rule download_sra:
     log: "{outdir}/logs/download_sra/{sample}__{srr_acc}__download_sra.log"
     params:
         output_directory="{outdir}/tmp/sras/{sample}/"
-    threads: cores*2 - 1 #cores*.2 - 1
+    threads: math.ceil(cores*.2 - 1)
     shell: """
     (
     cd {params.output_directory}
@@ -202,11 +227,10 @@ rule fastp:
     """
 
 # TODO: Try BWA MEM2 (Has stdin option and 1.5-3X speed increase)
-rule bwa_mem2:
+rule bwa_mem:
     input:
         bwa_index_done=[
               genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-              genome_home_dir + "/{genome}/bwa_index/{genome}.bwt.2bit.64",
               genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
               genome_home_dir + "/{genome}/bwa_index/{genome}.amb"],
         reads="{outdir}/tmp/fastqs_trimmed/{sample}.{genome}__trimmed.fastq"
@@ -221,19 +245,16 @@ rule bwa_mem2:
         bwa_extra=r"-R '@RG\tID:{sample}\tSM:{sample}'",
         bwa_interleaved=pe_test_bwa,
         samblaster_extra=pe_test_samblaster,
-        samtools_sort_extra="-O BAM"
+        samtools_sort_extra="-O BAM",
+        bwa_cmd=bwa_cmd
     threads: 10
     shell: """
-        (bwa-mem2 mem -t {threads} {params.bwa_extra} {params.bwa_interleaved}{params.index} {input.reads} | \
+        ({params.bwa_cmd} mem -t {threads} {params.bwa_extra} {params.bwa_interleaved}{params.index} {input.reads} | \
         samblaster {params.samblaster_extra}| \
         samtools view -q 10 -b -@ {threads} - | \
         samtools sort {params.samtools_sort_extra} -@ {threads} -o {output.bam} - && \
         samtools index -@ {threads} {output.bam}) &> {log}
      """
-
-
-
-
 
 
 

@@ -17,7 +17,7 @@ with RSeq, from SRA, GEO, or BioProject (e.g., `SRX1025899`, `SRX8908682`, `GSM4
 To run the basic RSeq workflow:
 
 ```
-RSeq -m DRIP -s sampleSheet.csv -o RSeq_out/ -g ~/.RSeq_genomes -t 98
+RSeq -m DRIP -s sampleSheet.csv -o RSeq_out/ -t 98
 ```
 
 This will run the full RSeq pipeline to:
@@ -45,6 +45,7 @@ RSeq [-e experiment] [-c control] [-m mode] [-g genome] [-n name]
   -t|--threads           int           Specify number of threads. [default = 1]
   -r|--rseqVars          json          rseqVars.json file (above options are ignored).
   -S|--snakeArgs         str           Keyword arguments to snakemake.api. [default: use_conda=True]
+  -b|--bwa_mem2                        Align with BWA-MEM2 instead of BWA. (Needs > 70GB RAM)
   -v|--version                         Display version info
   -h|--help                            Display detailed usage
 
@@ -53,6 +54,8 @@ Examples (see detailed usage for more):
 RSeq -e treated.fastq -c untreated.fastq -m DRIP -g mm10 -n my_experiment -o RSeq_out/ -t 20
 
 RSeq -e1 treated_A.R1.fastq treated_B.R1.fastq -e2 treated_A.R2.fastq treated_B.R2.fastq -m R-ChIP -g dm6
+
+RSeq -e SRX1025890 -m DRIP
 
 ```
 
@@ -145,6 +148,11 @@ Pipeline options:
 
 
 Misc. options:
+
+-b|--bwa_mem2                Align reads to the genome with BWA-MEM2 instead of classical BWA. This is a faster
+                             option (1.5-3x) but it requires a considerable memory footprint for most genomes.
+                             Indexing the bwa-mem2 may take > 70 GB of RAM. BWA-MEM2 indices are also not
+                             compatible with classical BWA.
 
 -v|--version                 Display the version info.
 

@@ -250,7 +250,7 @@ processInput <- function(samples,
       }
       public_sample_list[[sample]] <- sra_info_new
     }
-    samples_public <- data.table::rbindlist(public_sample_list)
+    samples_public <- dplyr::bind_rows(public_sample_list)
     samples_private <- samples[samples$file_type != "public",]
     if(! all(colnames(samples_public) == colnames(samples_private))) {
       stop("Bug at public sample collation -- please notify package author. Should be unreachable.")
@@ -387,13 +387,15 @@ args <- commandArgs(trailingOnly=TRUE)
 # args <- c("-s", "tests/manifest_for_RSeq_testing_11092020.csv",
 #           "-o", "test7", "helpers")
 
+# args <- c("-e", "SRX1025890", "-m", "DRIP", "-o", "outfodler", "-b", "/mnt/c/Users/mille/RSeq/helpers")
+
 # Dataframe of mappings between possible arguments and whether they have a value or not
 argument_possibles <- data.frame(
-  short = c("e", "e1", "e2", "c", "c1", "c2", "d", "m", "g", "n", "s", "o", "G", "t", "r", "S", "v", "h"),
+  short = c("e", "e1", "e2", "c", "c1", "c2", "d", "m", "g", "n", "s", "o", "G", "t", "r", "S", "b", "v", "h"),
   long = c("experiment", "experiment_R1", "experiment_R2", "control", "control_R1", "control_R2",
            "downsample",  "mode", "genome", "name", "sampleSheet", "outdir",
-           "genome_home_dir", "threads", "configs", "snake_args", "version", "help"),
-  type = c(rep("valued", 16), rep("valueless", 2)), stringsAsFactors = FALSE
+           "genome_home_dir", "threads", "configs", "snake_args", "bwa_mem2", "version", "help"),
+  type = c(rep("valued", 16), rep("valueless", 3)), stringsAsFactors = FALSE
 )
 
 # Loop for parsing command line shell arguments
@@ -493,6 +495,7 @@ outdir <- collect_list$outdir
 threads <- collect_list$threads
 genome_home_dir <- collect_list$genome_home_dir
 snake_args <- collect_list$snake_args
+bwa_mem2 <- collect_list$bwa_mem2
 if (is.null(snake_args)) {snake_args <- "use_conda=True"}
 helpers_dir <- args[length(args)]
 # Set defaults
@@ -500,10 +503,9 @@ if (is.null(outdir)) {outdir <- "rseq_out/"}
 if (is.null(genome_home_dir)) {genome_home_dir <- file.path(path.expand("~"), ".rseq_genomes")}
 if (is.null(threads)) {threads <- 1} else {threads <- as.numeric(threads)}
 if (is.null(snake_args)) {snake_args <- ""}
-
+if (is.null(bwa_mem2)) {bwa_mem2 <- FALSE}
 #create genome home directory if it does not exist
 dir.create(genome_home_dir, showWarnings = FALSE)
-
 #create output directory and specify path to json output
 dir.create(outdir, showWarnings = FALSE)
 output_json <- file.path(outdir, "config.json")
@@ -596,7 +598,8 @@ if (is.null(configs)) {
     genome_home_dir=genome_home_dir,
     threads=threads,
     helpers_dir=helpers_dir,
-    snake_args=snake_args
+    snake_args=snake_args,
+    bwa_mem2=bwa_mem2
   ))
 
   jsonlite::write_json(configs, path = output_json)
@@ -614,6 +617,7 @@ if (is.null(configs)) {
   configs[['helpers_dir']] <- helpers_dir
   configs[['threads']] <- threads
   configs[['snake_args']] <- snake_args
+  configs[['bwa_mem2']] <- bwa_mem2
   jsonlite::write_json(configs, path = output_json)
 }
 
