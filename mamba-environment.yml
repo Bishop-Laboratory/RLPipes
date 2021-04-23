@@ -1,0 +1,8 @@
+dependencies:
+  - pylint
+  - pytest
+  - r-base
+  - r-reutils
+  - r-tidyverse
+  - snakemake
+  - graphviz

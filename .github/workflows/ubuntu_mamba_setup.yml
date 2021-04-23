@@ -1,0 +1,37 @@
+# This is a basic workflow that is manually triggered
+
+name: ubuntu_mamba_setup
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI
+# or API.
+on:
+  workflow_dispatch:
+
+# Use mamba to handle conda installs in a faster way.
+# mamba-version accepts a version string x.y (including "*").
+# It requires you specify conda-forge as part of the channels, ideally with the highest priority.
+jobs:
+  example-6:
+    name: Ex6 Mamba
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: 3.6
+          mamba-version: "*"
+          channels: conda-forge, bioconda
+          channel-priority: true
+          activate-environment: anaconda-client-env
+          environment-file: mamba-environment.yml
+      - shell: bash -l {0}
+        run: |
+          conda info
+          conda list
+          conda config --show-sources
+          conda config --show
+          printenv | sort
+      - shell: bash -l {0}
+        run: mamba install jupyterlab
+      - shell: bash -l {0}
+        run: bash RSeq -e SRX8908682 -m DRIP
