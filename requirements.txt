@@ -1,0 +1,13 @@
+pylint
+pytest
+r-base
+r-reutils
+r-tidyverse
+graphviz
+snakemake
+#numpy
+#matplotlib
+#scipy
+#opencv
+#tensorflow
+#rstudio

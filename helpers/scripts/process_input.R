@@ -1,4 +1,8 @@
-options(warn=-1) # Prevent warnings
+#globals
+#options(warn=-1) # Prevent warnings
+
+#libraries
+library(tidyverse)
 
 processInput <- function(samples,
                          available_genomes) {
@@ -52,7 +56,7 @@ processInput <- function(samples,
   if (! "full_genome_length" %in% colnames(samples)) {samples$full_genome_length <- NA}
   if (! "genome" %in% colnames(samples)) {samples$genome <- NA}
 
-  
+
   # Deal with strand specificity and mode type
   if (! all(samples$mode %in% modes)) {
     bad_mode <- unique(samples$mode[! samples$mode %in% modes])
@@ -113,8 +117,8 @@ processInput <- function(samples,
       if (! file.exists(samples$experiment[ind])) {stop("Could not find bam file ", samples$experiment[ind])}
       get_bam_read_length(samples$experiment[ind])
     }))
-  
-  
+
+
     # -- create sample_name and condition arguments
     samples$condition[bamInd][is.na(samples$condition[bamInd])] <-
       basename(dirname(samples$experiment[bamInd][is.na(samples$condition[bamInd])]))
@@ -273,10 +277,10 @@ processInput <- function(samples,
   available_genome_sizes <- available_genomes[,grep(colnames(available_genomes),
                                                     pattern = "eff_genome_size")]
   sizes <- as.numeric(gsub(colnames(available_genome_sizes),
-                         pattern = "eff_genome_size_([0-9]+)bp", 
+                         pattern = "eff_genome_size_([0-9]+)bp",
                          replacement = "\\1"))
   samples$effective_genome_size[is.na(samples$effective_genome_size)] <- unlist(
-      lapply(samples$sample_name[is.na(samples$effective_genome_size)], 
+      lapply(samples$sample_name[is.na(samples$effective_genome_size)],
              function(sample_now) {
       len_now <- samples$read_length[samples$sample_name == sample_now]
       colInd <- which.min(abs(sizes-len_now))
@@ -292,7 +296,7 @@ processInput <- function(samples,
       eff_genome_size
     })
   )
-  
+
   samples$full_genome_length <-
     unlist(lapply(samples$sample_name[is.na(samples$full_genome_length)], function(sample_now) {
     genome_now <- samples$genome[samples$sample_name == sample_now]
@@ -303,7 +307,7 @@ processInput <- function(samples,
     }
     genome_length
   }))
-  
+
   # Finish compiling data
   configs <- samples %>%
     mutate(homer_anno_available = genome %in% (available_genomes %>%
@@ -324,7 +328,7 @@ processInput <- function(samples,
   # } else {
   #   vars_now@genome_home_dir <- samples_now$genome_home_dir
   # }
-    
+
   # Generate the JSON output
   return(configs)
 }
@@ -333,7 +337,7 @@ processInput <- function(samples,
 args <- commandArgs(trailingOnly=TRUE)
 # print(paste0(args, collapse = "', '"))
 # print(args)
-# args <- c("-r", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/configs.json", 
+# args <- c("-r", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/configs.json",
 #           '-o', "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/",
 #           '-t', '80', '--dag', "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/helpers")
 
@@ -399,6 +403,7 @@ collect_list <- list()
 name <- NULL
 unrecognized_arguments <- c()
 errors <- c()
+collector <- c()  # init collector
 for (i in 1:(length(args))) {
   arg <- args[i]
   if ((substr(arg, 1, 1) == "-" && ! grepl(substr(arg, 2, 2), pattern = "[0-9]+|[Ii]+")) ||
@@ -407,7 +412,7 @@ for (i in 1:(length(args))) {
 
     # Collect from collector if name isn't in NULL state (collector will be full)
     if (! is.null(name) && length(type) > 0 && type != "valueless") {
-      if (is.null(collector)) { 
+      if (is.null(collector)) {
         # if collector is null, this means a valued flag was given but no value supplied
         errors <- c(errors,  paste0("'", args[i-1], "' was invoked but no value was supplied!"))
         break
@@ -499,6 +504,9 @@ if (is.null(genome_home_dir)) {genome_home_dir <- file.path(path.expand("~"), ".
 if (is.null(threads)) {threads <- 1} else {threads <- as.numeric(threads)}
 if (is.null(snake_args)) {snake_args <- ""}
 if (is.null(bwa_mem2)) {bwa_mem2 <- FALSE}
+#create genome home directory if it does not exist
+dir.create(genome_home_dir, showWarnings = FALSE)
+#create output directory and specify path to json output
 dir.create(outdir, showWarnings = FALSE)
 output_json <- file.path(outdir, "config.json")
 output_json <- gsub(output_json, pattern = "//", replacement = "/")
@@ -506,14 +514,14 @@ output_json <- gsub(output_json, pattern = "//", replacement = "/")
 # Check if configs given -- bypass processing if so
 configs <- collect_list$configs
 if (is.null(configs)) {
-  # Compile experiment and control 
+  # Compile experiment and control
   experiment <- collect_list$experiment
   experiment_R1 <- collect_list$experiment_R1
   experiment_R2 <- collect_list$experiment_R2
   control <- collect_list$control
   control_R1 <- collect_list$control_R1
   control_R2 <- collect_list$control_R2
-  
+
   # Set experiment values
   if (! is.null(experiment_R1)) {
     if (! is.null(experiment_R2)) {
@@ -522,7 +530,7 @@ if (is.null(configs)) {
       errors <- c(errors, "Fastq Experiment R1 provided, but not R2!")
     }
   }
-  
+
   # Set control values
   if (! is.null(control_R1)) {
     if (! is.null(control_R2)) {
@@ -531,12 +539,12 @@ if (is.null(configs)) {
       errors <- c(errors, "Fastq control R1 provided, but not R2!")
     }
   }
-  
+
   # Other variables
   mode <- collect_list$mode
   genome <- collect_list$genome
   samples <- collect_list$sampleSheet
-  
+
   # Read in samples if they exist
   if (! is.null(samples)) {
     # UTF-8-BOM option removes the byte order mark from Windows-generated files
@@ -546,16 +554,16 @@ if (is.null(configs)) {
       samples <- samples[, ! colnames(samples) == "X", drop=FALSE]
     }
   }
-  
-    
+
+
   # Collect errors
   if (is.null(experiment) && is.null(samples$experiment)) {errors <- c(errors, "No experiment or sampleSheet specified!"); experiment <- NA}
   if (is.null(mode) && is.null(samples$mode)) {errors <- c(errors, "No mode specified!"); mode <- NA}
-  
+
   # Compile sampleSheet
   if (is.null(samples)) {samples <- data.frame(experiment)}
   if (is.null(samples$mode)) {samples$mode <- mode}
-  
+
   # Check for control and genome
   if (is.null(samples$control) && ! is.null(control)) {
     if (length(control) != length(samples$experiment)) {
@@ -565,17 +573,18 @@ if (is.null(configs)) {
     }
   }
   if (! is.null(genome)) {samples$genome <- genome}
-  
+
   # Handle any errors and return to shell
   if (length(errors) > 0) {
     cat(paste0("ERROR(s):\n - ", paste0(errors, collapse = " \n - ")))
     quit(status = 1, save = "no")
   }
-  
+
   # Source helpers
   source(file.path(helpers_dir, "scripts", "utils.R"))
   # Load required data objects
   load(file.path(helpers_dir, "data", "available_genomes.rda"))
+
 
   # # # Debug
   # readr::write_csv(samples, "samples.csv")
@@ -592,7 +601,7 @@ if (is.null(configs)) {
     snake_args=snake_args,
     bwa_mem2=bwa_mem2
   ))
-  
+
   jsonlite::write_json(configs, path = output_json)
 } else {
   if (! file.exists(configs)) {

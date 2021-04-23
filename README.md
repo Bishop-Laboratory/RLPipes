@@ -1,18 +1,18 @@
 # RSeq CLI
 
-RSeq CLI is a command-line interface to the RSeq best-practices R-looping mapping pipeline. 
+RSeq CLI is a command-line interface to the RSeq best-practices R-looping mapping pipeline.
 
-## Quickstart
-
-RSeq CLI can be installed using conda:
+In the future the RSeq CLI will be installed using conda:
 
 ```bazaar
 conda install -c bioconda rseq-cli
 ```
 
+## Quickstart
+
 To run the RSeq pipeline you will need R-loop mapping data in either `fastq`,
 `bam`, `bigWig`, or `bedGraph` format. You may also use public data accessions
-with RSeq, from SRA, GEO, or BioProject (e.g., `SRX8908682`, `GSM4714836`, etc).
+with RSeq, from SRA, GEO, or BioProject (e.g., `SRX1025899`, `SRX8908682`, `GSM4714836`, etc).
 
 To run the basic RSeq workflow:
 
@@ -198,7 +198,7 @@ conda update -n base conda
 ```
 + Create a virtual environment for RSeq with the specified requirements.
 ```
-conda create --file requirements.txt -c conda-forge -n Rseq
+conda create --file requirements.txt -c conda-forge -c bioconda -n Rseq
 ```
 When prompted new packages will be installed, procceed by pressing `y`.
 + Activate `Rseq` virtual environment

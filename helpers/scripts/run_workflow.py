@@ -12,8 +12,7 @@ def make_snakes(config_file):
 
     # config_file = "tests/config.json"
     config = json.load(open(config_file))
-    # config['helpers_dir'] = sys.path[0]
-    snake_path = os.path.join(sys.path[0], "../rseq_workflow.smk")
+    snake_path = os.path.join(config['helpers_dir'][0], "rseq_workflow.smk")
     outdir = config['outdir'][0]
     snake_args = config['snake_args']
     threads = config['threads'][0]
@@ -60,5 +59,5 @@ def make_snakes(config_file):
 
 
 if __name__ == "__main__":
-    configs = json.load(open(sys.argv[1]))
+    #configs = json.load(open(sys.argv[1]))
     make_snakes(config_file=sys.argv[1])

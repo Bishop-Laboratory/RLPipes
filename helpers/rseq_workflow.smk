@@ -168,7 +168,7 @@ rule sra_to_fastq:
         #debug=" -X 60000"
     shell: """(
     cd {params.output_directory}
-    fastq-dump{params.debug} {params.fqdump}-O ../../fastqs_raw/{wildcards.sample}/ {wildcards.srr_acc} 
+    fastq-dump{params.debug} {params.fqdump}-O ../../fastqs_raw/{wildcards.sample}/ {wildcards.srr_acc}
     cd ../../fastqs_raw/{wildcards.sample}/
     if test -f {wildcards.srr_acc}_2.fastq; then
         echo "Paired end -- interleaving"
