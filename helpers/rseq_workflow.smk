@@ -75,12 +75,17 @@ def pe_test_bwa(wildcards):
         res=""
     return res
 
+# For testing the workflow on GitHub
 test_output="my_file.txt"
+test=False
+if test:
+    bam_index_output = test_output
+
+
 
 rule output:
     input:
-        test_output
-        # bam_index_output,
+        bam_index_output,
         # coverage_output
 
 rule make_test:
