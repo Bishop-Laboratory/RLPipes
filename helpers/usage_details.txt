@@ -84,6 +84,11 @@ Pipeline options:
 
 Misc. options:
 
+-b|--bwa_mem2                Align reads to the genome with BWA-MEM2 instead of classical BWA. This is a faster
+                             option (1.5-3x) but it requires a considerable memory footprint for most genomes.
+                             Indexing the bwa-mem2 may take > 70 GB of RAM. BWA-MEM2 indices are also not
+                             compatible with classical BWA.
+
 -v|--version                 Display the version info.
 
 -h|--help                    Display detailed usage.

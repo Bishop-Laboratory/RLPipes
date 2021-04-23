@@ -12,7 +12,7 @@ def make_snakes(config_file):
 
     # config_file = "tests/config.json"
     config = json.load(open(config_file))
-    config['helpers_dir'] = sys.path[0]
+    # config['helpers_dir'] = sys.path[0]
     snake_path = os.path.join(sys.path[0], "../rseq_workflow.smk")
     outdir = config['outdir'][0]
     snake_args = config['snake_args']

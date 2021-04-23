@@ -27,6 +27,7 @@ instance/
 .pytest_cache/
 .coverage
 htmlcov/
+rseq_out/
 
 dist/
 build/

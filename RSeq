@@ -27,6 +27,7 @@ usage() {
   echo "  -t|--threads           int           Specify number of threads. [default = 1]"
   echo "  -r|--rseqVars          json          rseqVars.json file (above options are ignored)."
   echo "  -S|--snakeArgs         str           Keyword arguments to snakemake.api. [default: use_conda=True]"
+  echo "  -b|--bwa_mem2                        Align with BWA-MEM2 instead of BWA. (Needs > 70GB RAM)"
   echo "  -v|--version                         Display version info"
   echo "  -h|--help                            Display detailed usage"
   echo
@@ -35,6 +36,8 @@ usage() {
   echo "RSeq -e treated.fastq -c untreated.fastq -m DRIP -g mm10 -n my_experiment -o RSeq_out/ -t 20"
   echo
   echo "RSeq -e1 treated_A.R1.fastq treated_B.R1.fastq -e2 treated_A.R2.fastq treated_B.R2.fastq -m R-ChIP -g dm6"
+  echo
+  echo "RSeq -e SRX1025890 -m DRIP"
   echo
   echo "Thank you for using RSeq. Please cite Bishop-Laboratory/RSeq"
   echo
@@ -66,7 +69,7 @@ fi
 echo
 echo "Parsing input..."
 echo
-inputJSON=$(Rscript "$helpersDir"/process_input.R "$@" "$helpersDir")
+inputJSON=$(Rscript "$helpersDir"/scripts/process_input.R "$@" "$helpersDir")
 
 # Check if version or usage
 if [ "$inputJSON" == "usage" ]; then
@@ -83,7 +86,7 @@ elif [ ! -f "$inputJSON" ]; then
 fi
 
 # Run the pipeline!
-python "$helpersDir"/run_workflow.py "$inputJSON"
+python "$helpersDir"/scripts/run_workflow.py "$inputJSON"
 
 echo
 exit 0

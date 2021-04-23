@@ -264,7 +264,7 @@ get_public_run_info <- function(accessions) {
       return(res_now)
     })
 
-    res_df <- data.table::rbindlist(resList)
+    res_df <- dplyr::bind_rows(resList)
     map_final <- merge(x = map_merge, y = res_df, by = "sra_experiment", all = TRUE)
   })
 
@@ -352,7 +352,7 @@ get_genome_sizes <- function() {
       file.remove(out_file)
     }
   }
-  genome_sizes <- data.table::rbindlist(genome_size_list)
+  genome_sizes <- dplyr::bind_rows(genome_size_list)
   save(genome_sizes, file = "genome_sizes.rda")
   available_genomes <- available_genomes
   available_genome_info <- merge(x = available_genomes, y = genome_sizes, by = "UCSC_orgID")
