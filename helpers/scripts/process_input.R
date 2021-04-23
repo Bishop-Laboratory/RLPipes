@@ -2,8 +2,6 @@
 #options(warn=-1) # Prevent warnings
 
 #libraries
-library(tidyverse)
-
 processInput <- function(samples,
                          available_genomes) {
 
