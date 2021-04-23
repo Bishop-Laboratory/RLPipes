@@ -120,12 +120,14 @@ rule download_sra:
     params:
         output_directory="{outdir}/tmp/sras/{sample}/"
     threads: math.ceil(cores*.2 - 1)
-    shell: """
-    (
-    cd {params.output_directory}
-    prefetch {wildcards.srr_acc} -f yes
-    ) &> {log}
+    shell: """echo Hello world!
+    echo Hello world > {output}
     """
+    # (
+    # cd {params.output_directory}
+    # prefetch {wildcards.srr_acc} -f yes
+    # ) &> {log}
+    # """
 
 # rule sra_to_fastq:
 #     input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
