@@ -2,6 +2,8 @@
 ##############################################   Parse inputs    #######################################################
 ########################################################################################################################
 
+import math
+
 # Global Configs
 helpers_dir=config['helpers_dir'][0]
 genome_home_dir=config['genome_home_dir'][0]
@@ -117,7 +119,7 @@ rule download_sra:
     log: "{outdir}/logs/download_sra/{sample}__{srr_acc}__download_sra.log"
     params:
         output_directory="{outdir}/tmp/sras/{sample}/"
-    threads: cores*.2 - 1
+    threads: math.ceil(cores*.2 - 1)
     shell: """
     (
     cd {params.output_directory}
@@ -217,7 +219,6 @@ rule bwa_mem:
     input:
         bwa_index_done=[
               genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-              genome_home_dir + "/{genome}/bwa_index/{genome}.bwt.2bit.64",
               genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
               genome_home_dir + "/{genome}/bwa_index/{genome}.amb"],
         reads="{outdir}/tmp/fastqs_trimmed/{sample}.{genome}__trimmed.fastq"
