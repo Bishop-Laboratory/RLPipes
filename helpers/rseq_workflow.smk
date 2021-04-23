@@ -110,7 +110,6 @@ rule bwa_index:
         genome_home_dir + "/{genome}/{genome}.fa"
     output:
         genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-        genome_home_dir + "/{genome}/bwa_index/{genome}.bwt.2bit.64",
         genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
         genome_home_dir + "/{genome}/bwa_index/{genome}.amb"
     params:
