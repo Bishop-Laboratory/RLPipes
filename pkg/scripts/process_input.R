@@ -7,8 +7,8 @@ processInput <- function(samples,
 
   # ### For bug testing ##
   # samples <- read.csv("tests/manifest_for_RSeq_testing_09092020.csv", fileEncoding="UTF-8-BOM")
-  # source("helpers/utils.R")
-  # load("helpers/data/available_genomes.rda")
+  # source("RSeq/utils.R")
+  # load("RSeq/data/available_genomes.rda")
   # ### #####################
 
   suppressPackageStartupMessages(require(dplyr))
@@ -337,7 +337,7 @@ args <- commandArgs(trailingOnly=TRUE)
 # print(args)
 # args <- c("-r", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/configs.json",
 #           '-o', "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/",
-#           '-t', '80', '--dag', "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/helpers")
+#           '-t', '80', '--dag', "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq")
 
 # args <- c("-r", "RSeq_out/config.json",
 #           "-o", "outdir2",
@@ -346,7 +346,7 @@ args <- commandArgs(trailingOnly=TRUE)
 # args <- c("--experiment", "tests/qDRIP_R1.fastq",
 #           "-c", "tests/qDRIP_ctr_R1.fastq",
 #          "-g", "mm10", "-n", "my_experiment", "-o", "RSeq_out/", "-t", "20", "-m", "DRIP",
-#          "helpers/")
+#          "RSeq/")
 # args <- c("-e1", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/qDRIP_R1.fastq",
 #           "-2", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/qDRIP_R2.fastq",
 #           "-c1", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/qDRIP_ctr_R1.fastq",
@@ -354,38 +354,38 @@ args <- commandArgs(trailingOnly=TRUE)
 #           "-m", "qDRIP", "-s", "RSeq_CLI/tests/manifest_for_RSeq_testing_09092020_small.csv",
 #           "-g", "hg38", "-n", "my_experiment", "-o", "RSeq_out/", "-t", "20",
 #           "--dryrun", "--keepTmp",
-#           "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/helpers")
+#           "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq_CLI/RSeq")
 # args <- c("-e", "whatevs" , "-c",
-#            "--dag","-t","/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/helpers")
+#            "--dag","-t","/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq")
 # args <- c('-e', 'GSM4276887', 'GSM4276888', '-c', 'GSM4276889', 'GSM4276890', '-o', '../RMapDB/data/', '-g', 'hg38',
-#           '-t', '80', "-d", "10000", '--dryrun', '-m', 'qDRIP', '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/helpers')
+#           '-t', '80', "-d", "10000", '--dryrun', '-m', 'qDRIP', '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq')
 
 # args <- c('-s', '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/rmapsamples_10_05_2020.csv',
-#           '--dryrun', '-o', '../RMapDB/data/', '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/helpers')
+#           '--dryrun', '-o', '../RMapDB/data/', '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq')
 
 # args <- c("-r", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/tests/RSeq_out3/configs.json",
 #           "-o", "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/tests/RSeq_out9/",
-#           '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/helpers')
+#           '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq')
 
 # args <- c("-s", "tests/sampleSheet_test9.csv", "-m", "DRIP",  "-S", "dryrun=False", "targets=[asd,", "asdd]",
-#           "-t", "30", "helpers/")
+#           "-t", "30", "RSeq/")
 
 # args <- c('-e', 'GSM4276887', 'GSM4276888', '-c', 'GSM4276889', 'GSM4276890', '-o', 'data/', '-g', 'hg38',
-#           '-t', '20', '--dryrun', '-m', 'qDRIP', '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/helpers')
+#           '-t', '20', '--dryrun', '-m', 'qDRIP', '/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/RSeq')
 
 # args <- c("-s", "tests/manifest_for_RSeq_testing_09092020.csv",
 #           "-m", "DRIP",
 #           "-t", "30",
 #           "-S", "dryrun=True", "notemp=True", "printreason=True",
-#           "-o", "test4", "helpers")
+#           "-o", "test4", "RSeq")
 
 # args <- c("-s", "tests/manifest_for_RSeq_testing_09092020_small.csv",
-#           "-o", "test5", "helpers")
+#           "-o", "test5", "RSeq")
 
 # args <- c("-s", "tests/manifest_for_RSeq_testing_11092020.csv",
-#           "-o", "test7", "helpers")
+#           "-o", "test7", "RSeq")
 
-# args <- c("-e", "SRX1025890", "-m", "DRIP", "-o", "outfodler", "-b", "/mnt/c/Users/mille/RSeq/helpers")
+# args <- c("-e", "SRX1025890", "-m", "DRIP", "-o", "outfodler", "-b", "/mnt/c/Users/mille/RSeq/RSeq")
 
 # Dataframe of mappings between possible arguments and whether they have a value or not
 argument_possibles <- data.frame(
@@ -578,7 +578,7 @@ if (is.null(configs)) {
     quit(status = 1, save = "no")
   }
 
-  # Source helpers
+  # Source RSeq
   source(file.path(helpers_dir, "scripts", "utils.R"))
   # Load required data objects
   load(file.path(helpers_dir, "data", "available_genomes.rda"))
