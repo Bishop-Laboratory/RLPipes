@@ -6,7 +6,7 @@ correlation_test <- function(input, sample_name, mode, helper_dir) {
 	#input <- "~/Bishop.lab/Projects/RSeq/RSeq_CLI/tests/RSeq_out16/SRX113812_Ntera2_DNA/QC/SRX113812_Ntera2_DNA.hg38.gold_standard_bin_scores.tab"
 	#sample_name <- "SRX113812_Ntera2_DNA"
 	#mode <- "DRIP"
-	#helper_dir <- "~/Bishop.lab/Projects/RSeq/RSeq_CLI/helpers/"
+	#helper_dir <- "~/Bishop.lab/Projects/RSeq/RSeq_CLI/RSeq/"
   ############
 
 	public_vals <- paste0(helper_dir, "/data/gold_standard_bw_coverage.rda")
