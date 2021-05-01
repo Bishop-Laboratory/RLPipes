@@ -1,1 +1,1 @@
-recursive-include pkg *
+recursive-include src *

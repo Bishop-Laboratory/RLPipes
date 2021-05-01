@@ -131,7 +131,7 @@ rule download_sra:
     log: "{outdir}/logs/download_sra/{sample}__{srr_acc}__download_sra.log"
     params:
         output_directory="{outdir}/tmp/sras/{sample}/"
-    threads: math.ceil(cores*.2 - 1)
+    threads: math.ceil(cores*.2)
     shell: """
     (
     cd {params.output_directory}

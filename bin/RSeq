@@ -1,6 +1,17 @@
 #!/bin/bash
-# shellcheck source=/dev/null
-helpersDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/helpers
+
+# From https://stackoverflow.com/questions/59895/how-can-i-get-the-source-directory-of-a-bash-script-from-within-the-script-itsel
+# This solution works for direct paths and symlinks alike
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+BINDIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+
+# Print a file from the source directory
+SRCDIR="$BINDIR"/../src
 
 # Usage info
 usage() {
@@ -47,15 +58,15 @@ usage() {
 usageDetail() {
   # From: https://stackoverflow.com/questions/7314044/use-bash-to-read-line-by-line-and-keep-space
   IFS=''
-  while read lines; do
+  while read -r lines; do
     echo "$lines"
-  done < "$helpersDir"/usage_details.txt
+  done < "$SRCDIR"/usage_details.txt
 
 }
 
 version() {
   echo
-  echo "RSeq v0.9.9 (c) 2021 Bishop Laboratory"
+  echo "RSeq v0.0.1"
   echo
 }
 
@@ -69,7 +80,7 @@ fi
 echo
 echo "Parsing input..."
 echo
-inputJSON=$(Rscript "$helpersDir"/scripts/process_input.R "$@" "$helpersDir")
+inputJSON=$(Rscript "$SRCDIR"/scripts/process_input.R "$@" "$SRCDIR")
 
 # Check if version or usage
 if [ "$inputJSON" == "usage" ]; then
@@ -86,7 +97,7 @@ elif [ ! -f "$inputJSON" ]; then
 fi
 
 # Run the pipeline!
-python "$helpersDir"/scripts/run_workflow.py "$inputJSON"
+python "$SRCDIR"/scripts/run_workflow.py "$inputJSON"
 
 echo
 exit 0

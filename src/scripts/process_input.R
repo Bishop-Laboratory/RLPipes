@@ -1,7 +1,6 @@
 #globals
 #options(warn=-1) # Prevent warnings
 
-#libraries
 processInput <- function(samples,
                          available_genomes) {
 
@@ -115,7 +114,6 @@ processInput <- function(samples,
       if (! file.exists(samples$experiment[ind])) {stop("Could not find bam file ", samples$experiment[ind])}
       get_bam_read_length(samples$experiment[ind])
     }))
-
 
     # -- create sample_name and condition arguments
     samples$condition[bamInd][is.na(samples$condition[bamInd])] <-
@@ -385,7 +383,11 @@ args <- commandArgs(trailingOnly=TRUE)
 # args <- c("-s", "tests/manifest_for_RSeq_testing_11092020.csv",
 #           "-o", "test7", "RSeq")
 
-# args <- c("-e", "SRX1025890", "-m", "DRIP", "-o", "outfodler", "-b", "/mnt/c/Users/mille/RSeq/RSeq")
+# args <- c("-e", "SRX1025890", "-m", "DRIP", "/mnt/c/Users/mille/RSeq/bin/../src")
+
+# print(args)
+
+
 
 # Dataframe of mappings between possible arguments and whether they have a value or not
 argument_possibles <- data.frame(
@@ -405,7 +407,7 @@ collector <- c()  # init collector
 for (i in 1:(length(args))) {
   arg <- args[i]
   if ((substr(arg, 1, 1) == "-" && ! grepl(substr(arg, 2, 2), pattern = "[0-9]+|[Ii]+")) ||
-      grepl(arg, pattern = "RSeq/helpers")) {
+      grepl(arg, pattern = "bin/../src")) {
     # CASE: it is a flag -- collect following
 
     # Collect from collector if name isn't in NULL state (collector will be full)
@@ -417,7 +419,7 @@ for (i in 1:(length(args))) {
       }
       collect_list[[name]] <- collector
     }
-    if (grepl(arg, pattern = "RSeq/helpers")) {break}
+    if (grepl(arg, pattern = "bin/../src")) {break}
     collector <- c()  # re-init collector
 
     # Get the flag text (could be short-form or long-form flag)
