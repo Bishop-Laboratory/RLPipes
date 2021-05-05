@@ -20,8 +20,15 @@ cd RSeq/
 conda install -c conda-forge mamba -y
 mamba env create -f mamba-environment.yml --force
 conda activate rseq
-conda mambabuild bioconda-recipe-testing/ -c bioconda -c conda-forge
-conda install ~/miniconda3/envs/rseq/conda-bld/<your_os>/rseq-0.0.1-0.tar.bz2
+conda mambabuild bioconda-recipe-testing/ -c bioconda -c conda-forge |& tee build.log
+BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
+conda install $BINARY_PATH
+```
+
+Testing:
+
+```
+RSeq -e SRX1025890 -m DRIP -S dryrun=True
 ```
 
 To run the RSeq pipeline you will need R-loop mapping data in either `fastq`,
