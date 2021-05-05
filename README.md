@@ -10,6 +10,20 @@ conda install -c bioconda rseq-cli
 
 ## Quickstart
 
+First, you need to build and install the package from source:
+
+(This requires `git` and `miniconda3` to work)
+
+```
+git clone https://github.com/Bishop-Laboratory/RSeq.git
+cd RSeq/
+conda install -c conda-forge mamba -y
+mamba env create -f mamba-environment.yml --force
+conda activate rseq
+conda mambabuild bioconda-recipe-testing/ -c bioconda -c conda-forge
+conda install ~/miniconda3/envs/rseq/conda-bld/<your_os>/rseq-0.0.1-0.tar.bz2
+```
+
 To run the RSeq pipeline you will need R-loop mapping data in either `fastq`,
 `bam`, `bigWig`, or `bedGraph` format. You may also use public data accessions
 with RSeq, from SRA, GEO, or BioProject (e.g., `SRX1025899`, `SRX8908682`, `GSM4714836`, etc).
