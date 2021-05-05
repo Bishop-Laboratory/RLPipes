@@ -12,4 +12,5 @@ dependencies:
   - bioconductor-rsamtools
   - r-xml
   - snakemake
+  - conda-build
   - graphviz

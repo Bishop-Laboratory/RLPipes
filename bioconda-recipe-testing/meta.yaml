@@ -1,15 +1,16 @@
 {% set name = "RSeq" %}
 {% set version = "0.0.1" %}
 
+
 package:
   name: {{ name|lower }}
   version: {{ version }}
 
 source:
-#  path: ../../RSeq
-  git_url: https://github.com/Bishop-Laboratory/RSeq.git
-  git_rev: v0.0.1
-  git_depth: 8
+  path: ../../RSeq
+#  git_url: https://github.com/Bishop-Laboratory/RSeq.git
+#  git_rev: v0.0.1
+#  git_depth: 8
 
 requirements:
   run:
@@ -23,7 +24,6 @@ requirements:
 
 test:
   commands:
-    - RSeq
     - RSeq -e SRX1025890 -m DRIP -S dryrun=True
 
 
