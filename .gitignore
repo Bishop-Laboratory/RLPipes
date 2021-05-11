@@ -29,6 +29,8 @@ instance/
 htmlcov/
 rseq_out/
 
+build.log
+
 dist/
 build/
 *.egg-info/

@@ -10,7 +10,7 @@ from contextlib import redirect_stdout
 
 def make_snakes(config_file):
 
-    # config_file = "tests/config.json"
+    # config_file = "rseq_out/config.json"
     config = json.load(open(config_file))
     snake_path = os.path.join(config['helpers_dir'][0], "rseq_workflow.smk")
     outdir = config['outdir'][0]
