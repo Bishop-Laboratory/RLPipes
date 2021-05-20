@@ -24,12 +24,22 @@ effective_genome_fraction = [x/y for x, y in zip(effective_genome_size, full_gen
 sample_type=config['file_type']
 sample=config['sample_name']
 experiments=[exp.split(",") for exp in config['experiment']]
-controls=[ctr.split(",") for ctr in config['control'] if ctr != "None"]
-bam_index_output = expand("{outdir}/bam/{sample}/{sample}.{genome}.bam.bai", zip,
-                        sample=sample, outdir=[outdir for i in range(len(sample))], genome=genome)
-coverage_output = expand("{outdir}/coverage/{sample}/{sample}.{genome}.bw", zip,
-                        sample=sample, outdir=[outdir for i in range(len(sample))], genome=genome)
+controls=[ctr if ctr != "None" else None for ctr in config['control']]
 
+
+report_output = expand("{outdir}/reports/{sample}.{genome}.html",zip,
+            sample=sample,outdir=[outdir for i in range(len(sample))],genome=genome)
+
+# For testing the workflow on GitHub
+test_output="my_file.txt"
+test=False
+if test:
+    report_output = test_output
+
+    rule make_test:
+        output: test_output
+        conda: helpers_dir + "/envs/bwa.yaml"
+        shell: "echo Hello world! > {output}"
 
 # Select bwa type
 # BWA MEM2 is still in development and has a particularly problematic habit of over-zealous RAM usage
@@ -52,178 +62,138 @@ def find_replicates(wildcards):
     return replicates
 
 def pe_test_fastp(wildcards):
-    pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample]
-    if pe[0]:
+    pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    if pe:
         res="--interleaved_in "
     else:
         res=""
     return res
 
 def pe_test_samblaster(wildcards):
-    pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample]
-    if not pe[0]:
+    pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    if not pe:
         res="--ignoreUnmated "
     else:
         res=""
     return res
 
 def pe_test_bwa(wildcards):
-    pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample]
-    if pe[0]:
+    pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    if pe:
         res="-p "
     else:
         res=""
     return res
 
-# For testing the workflow on GitHub
-test_output="my_file.txt"
-test=False
-if test:
-    bam_index_output = test_output
+def input_test_callpeak(wildcards):
+    input = [controls[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    # print(input)
+    if input is not None:
+        return_dict = {
+            'treatment': wildcards.outdir + "/bam/" + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam",
+            'control': wildcards.outdir + "/bam/" + input + "/" + input + "." + wildcards.genome + ".bam",
+            'index_treatment': wildcards.outdir + "/bam/" + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam.bai",
+            'index_control': wildcards.outdir + "/bam/" + input + "/" + input + "." + wildcards.genome + ".bam.bai"
+        }
+    else:
+        return_dict = {
+            'treatment': wildcards.outdir + "/bam/" + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam",
+            'control': wildcards.outdir + "/bam/" + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam",
+            'index_treatment': wildcards.outdir + "/bam/" + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam.bai",
+            'index_control': wildcards.outdir + "/bam/" + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam.bai"
+        }
+
+    return return_dict
 
 
 
 rule output:
     input:
-        bam_index_output,
-        # coverage_output
+        report_output
 
-rule make_test:
-    output: test_output
-    conda: helpers_dir + "/envs/bwa.yaml"
-    shell: "echo Hello world! > {output}"
-
-rule download_fasta:
-    output:
-        genome_home_dir + "/{genome}/{genome}.fa"
-    params:
-          prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
-    log: outdir + "/logs/download_fasta/{genome}__download_fasta.log"
-    shell: """
-        (mkdir -p {params.prefix}
-        wget -O {output}.gz ftp://hgdownload.soe.ucsc.edu/goldenPath/{wildcards.genome}/bigZips/{wildcards.genome}.fa.gz
-        gunzip {output}.gz && echo "Indexing BAM at {params.prefix} ... This may take some time ...") &> {log}
-    """
-
-rule bwa_index:
+rule prepare_report:
     input:
-        genome_home_dir + "/{genome}/{genome}.fa"
+        rlfs_enrichment="{outdir}/RLFS_analysis/{sample}_{genome}__rlfs_enrichment.rda"
     output:
-        genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-        genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
-        genome_home_dir + "/{genome}/bwa_index/{genome}.amb"
+        html="{outdir}/reports/{sample}.{genome}.html"
+    conda: helpers_dir + "/envs/prepare_report.yaml"
     params:
-        prefix=genome_home_dir + "/{genome}/" + bwa_location + "/{genome}",
-        bwa_cmd=bwa_cmd
-    conda: helpers_dir + "/envs/bwa.yaml"
-    log:
-        genome_home_dir + "/{genome}/" + bwa_location + "/{genome}_bwa_index.log"
-    shell:"""
-        ({params.bwa_cmd} index -p {params.prefix} {input}) &> {log}
+        helpers_dir=helpers_dir,
+        configs = "{outdir}/rseqVars.json",
+        final_report_dict_file = "{outdir}/rseqVars.json" # TODO: Fix this
+    log: "{outdir}/logs/prepare_report/{sample}_{genome}__prepare_report.log"
+    shell:
+     """
+     (Rscript {params.helpers_dir}/prepare_report.R {params.final_report_dict_file} {wildcards.sample} {params.configs}) &> {log}
+     """
+
+rule rlfs_enrichment:
+    input:
+         peaks="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.bed",
+         rlfs=genome_home_dir + "/{genome}/rloop_predictions/{genome}.rlfs.bed"
+    output: "{outdir}/RLFS_analysis/{sample}_{genome}__rlfs_enrichment.rda"
+    params:
+        helpers_dir=helpers_dir
+    threads: 5
+    log: "{outdir}/logs/rlfs_enrichment/{sample}_{genome}__rlfs_enrichment.log"
+    shell: """
+     (Rscript {params.helpers_dir}/rlfs_perm_test.R {threads} {wildcards.genome} {input.peaks} {input.rlfs} {output}) &> {log}
+     """
+
+rule download_rlfs_annotations:
+    output:
+        bed=genome_home_dir + "/{genome}/rloop_predictions/{genome}.rlfs.bed"
+    shell: """
+    wget -O {output} https://rmapdb-data.s3.us-east-2.amazonaws.com/rlfs-beds/{wildcards.genome}.rlfs.bed
     """
 
-# TODO: Figure out how to use the pipes
-# TODO: Probably need to specify this version of prefetch and/or find alternative to it...
-# TODO: Retry if fails due to network error
-rule download_sra:
-    output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra")
-    conda: helpers_dir + "/envs/sratools.yaml"
-    log: "{outdir}/logs/download_sra/{sample}__{srr_acc}__download_sra.log"
+rule compile_peaks:
+    input:
+        macs2="{outdir}/peaks/{sample}/macs2/{sample}_{genome}__peaks_macs2.broadPeak",
+        epic2="{outdir}/peaks/{sample}/epic2/{sample}_{genome}__peaks_macs2.bed"
+    output:
+        peaks="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.bed"
     params:
-        output_directory="{outdir}/tmp/sras/{sample}/"
-    threads: math.ceil(cores*.2)
+        helpers_dir=helpers_dir
+    log: "{outdir}/logs/compile_peaks/{sample}_{genome}__compile_peaks.log"
     shell: """
     (
-    cd {params.output_directory}
-    prefetch {wildcards.srr_acc} -f yes
+    Rscript {params.helpers_dir}/compile_peaks.R {wildcards.sample} {input.macs2} {input.epic2} {output.peaks}
     ) &> {log}
     """
 
-# rule sra_to_fastq:
-#     input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
-#     output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
-#     conda: helpers_dir + "/envs/parallel_fq_dump.yaml"
-#     threads: 8
-#     log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
-#     params:
-#         output_directory="{outdir}/tmp/sras/{sample}/"
-#     shell: """(
-#     cd {params.output_directory}
-#     parallel-fastq-dump -t {threads} --split-3 -Z -s {wildcards.srr_acc} --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' > ../../fastqs_raw/{wildcards.sample}/{wildcards.srr_acc}.fastq
-#     ) &> {log}
-#     """
-
-# This should always produced interleaved fq even if paired end. I don't like this solution, but it should hold.
-# reformat.sh (from BBTools) will interleave the paired-end files
-rule sra_to_fastq:
-    input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
-    output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
-    conda: helpers_dir + "/envs/sratools.yaml"
+rule macs2:
+    input: unpack(input_test_callpeak)
+    output: "{outdir}/peaks/{sample}/macs2/{sample}_{genome}__peaks_macs2.broadPeak"
+    log: "{outdir}/logs/macs2/{sample}_{genome}__macs2.log"
     threads: 1
-    log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
-    params:
-        output_directory="{outdir}/tmp/sras/{sample}/",
-        fqdump="--skip-technical --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' --split-3 ",
-        debug="",
-        #debug=" -X 60000"
-    shell: """(
-    cd {params.output_directory}
-    fastq-dump{params.debug} {params.fqdump}-O ../../fastqs_raw/{wildcards.sample}/ {wildcards.srr_acc}
-    cd ../../fastqs_raw/{wildcards.sample}/
-    if test -f {wildcards.srr_acc}_2.fastq; then
-        echo "Paired end -- interleaving"
-        reformat.sh in1={wildcards.srr_acc}_1.fastq in2={wildcards.srr_acc}_2.fastq out={wildcards.srr_acc}.fastq overwrite=true
-        rm {wildcards.srr_acc}_1.fastq && rm {wildcards.srr_acc}_2.fastq
-    else
-        echo "Single end -- finished!"
-    fi
-    ) &> {log}
-    """
-
-# # TODO: Really should be a better way than this...
-# # TODO: Still need to find a situation with un-mated reads -- may need a custom solution for that
-# # Okay, so here's the problem: fastq-dump will create
-# rule sra_to_fastq:
-#     input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
-#     output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
-#     conda: helpers_dir + "/envs/sratools.yaml"
-#     threads: 1
-#     log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
-#     params:
-#         output_directory="{outdir}/tmp/sras/{sample}/"
-#     shell: """(
-#     cd {params.output_directory}
-#     fast-dump -X 100000 --split-3 -O ../../fastqs_raw/{wildcards.sample}/ --skip-technical --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' {wildcards.srr_acc}
-#     ) &> {log}
-#     """
-
-rule merge_replicate_reads:
-    input: find_replicates
-    output: temp("{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq")
-    params:
-        #debug=" | head -n 40000 -",  # TODO: Why does this throw an error when uncommented?
-        debug=""
-    log: "{outdir}/logs/merge_fastq/{sample}_{genome}__merge_fastq.log"
     shell: """
-    (cat {input}{params.debug} > {output}) &> {log}
+        (
+        if [ {input.control} == {input.treatment} ]; then
+            echo "No Control file detected -- running MACS2 without a control"
+            macs2 callpeak -t {input.treatment} -n called_peaks/{wildcards.sample}
+        else
+            echo "Control file detected -- running MACS2 with control"
+            macs2 callpeak -t {input.treatment} -c {input.control} -n called_peaks/{wildcards.sample}
+        fi
+        ) &> {log}
     """
 
-# TODO: Pipe this part
-rule fastp:
+rule epic_callpeaks:
     input:
-        sample="{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq"
+        #info="{outdir}/info/{sample}.{genome}.experiment_predictd.txt",
+        unpack(input_test_callpeak)
     output:
-        trimmed=temp("{outdir}/tmp/fastqs_trimmed/{sample}.{genome}__trimmed.fastq"),
-        html="{outdir}/QC/fastq/html/{sample}.{genome}.html",
-        json="{outdir}/QC/fastq/json/{sample}.{genome}.json"
-    conda: helpers_dir + "/envs/fastp.yaml"
-    log: "{outdir}/logs/fastp/{sample}.{genome}__fastp_pe.log"
-    priority: 10
-    params:
-        extra=pe_test_fastp
-    threads: 4
+        "{outdir}/peaks/{sample}/epic2/{sample}_{genome}__peaks_macs2.bed"
+    log: "{outdir}/logs/epic2/{sample}_{genome}__epic2_callpeaks.log"
     shell: """
-    (fastp -i {input} --stdout {params.extra}-w {threads} -h {output.html} -j {output.json} > {output} ) &> {log}
+        if [ {input.control} == {input.treatment} ]; then
+            echo "No Control file detected -- running MACS2 without a control"
+            epic2 -t {input.treatment} -gn {wildcards.genome} -o {output}
+        else
+            echo "Control file detected -- running MACS2 with control"
+            macs2 callpeak -t {input.treatment} -c {input.control} -gn {wildcards.genome} -o {output}
+        fi
     """
 
 # TODO: Try BWA MEM2 (Has stdin option and 1.5-3X speed increase)
@@ -257,123 +227,168 @@ rule bwa_mem:
      """
 
 
+rule bwa_index:
+    input:
+        genome_home_dir + "/{genome}/{genome}.fa"
+    output:
+        genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
+        genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
+        genome_home_dir + "/{genome}/bwa_index/{genome}.amb"
+    params:
+        prefix=genome_home_dir + "/{genome}/" + bwa_location + "/{genome}",
+        bwa_cmd=bwa_cmd
+    conda: helpers_dir + "/envs/bwa.yaml"
+    log:
+        genome_home_dir + "/{genome}/" + bwa_location + "/{genome}_bwa_index.log"
+    shell:"""
+        ({params.bwa_cmd} index -p {params.prefix} {input}) &> {log}
+    """
 
-#
-#
-#
-# if sample_type != "bam" and sample_type != "bigWig" and sample_type != "bedGraph":
-#     if sample_type == "public":
-#
-#
-#     if paired_end:
-#         if sample_type == "public":
-#             # TODO: fastq merging only works with public samples at the moment. This should also work with local samples.
-#             rule sra_to_fastq_pe:
-#                 input:
-#                     "{outdir}/tmp/sras/{sample}/{srr_acc}.sra"
-#                 output:
-#                     temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}_1.fastq"),
-#                     temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}_2.fastq")
-#                 threads: threads
-#                 log: "{outdir}/logs/{sample}_{srr_acc}__sra_to_fastq_pe.log"
-#                 shell:
-#                     "(parallel-fastq-dump -t {threads} --split-files -O" \
-#                     + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ -s {input}) &> {log}"
-#
-#         rule merge_fastq_pe_experiment:
-#             input:
-#                 R1=merge_input_experiment_1,
-#                 R2=merge_input_experiment_2
-#             output:
-#                 R1=temp("{outdir}/tmp/fastqs_dup/{sample}_experiment_R1.fastq"),
-#                 R2=temp("{outdir}/tmp/fastqs_dup/{sample}_experiment_R2.fastq")
-#             log: "{outdir}/logs/{sample}_merge_fastq_pe_experiment.log"
-#             shell: """
-#                 ( cat {input.R1} > {output.R1}
-#                 cat {input.R2} > {output.R2} ) &> {log}
-#             """
-#
-#         if controls != "None":
-#             rule merge_fastq_pe_control:
-#                 input:
-#                     R1=merge_input_control_1,
-#                     R2=merge_input_control_2
-#                 output:
-#                     R1=temp("{outdir}/tmp/fastqs_dup/{sample}_control_R1.fastq"),
-#                     R2=temp("{outdir}/tmp/fastqs_dup/{sample}_control_R2.fastq")
-#                 log: "{outdir}/logs/{sample}_merge_fastq_pe_control.log"
-#                 shell: """
-#                     ( cat {input.R1} > {output.R1}
-#                     cat {input.R2} > {output.R2} ) &> {log}
-#                 """
-#
-#         if not no_fastp:
-#             rule fastp_pe:
-#                 input:
-#                     sample=["{outdir}/tmp/fastqs_dup/{sample}_{exp_type}_R1.fastq",
-#                             "{outdir}/tmp/fastqs_dup/{sample}_{exp_type}_R2.fastq"]
-#                 output:
-#                     trimmed=[temp("{outdir}/fastqs/{sample}_{exp_type}_R1.fastq"),
-#                              temp("{outdir}/fastqs/{sample}_{exp_type}_R2.fastq")],
-#                     html="{outdir}/QC/fastq/{sample}.{exp_type}.html",
-#                     json="{outdir}/QC/fastq/{sample}.{exp_type}.json"
-#                 log: "{outdir}/logs/{sample}_{exp_type}__fastp_pe.log"
-#                 params:
-#                     extra=""
-#                 threads: threads
-#                 wrapper:
-#                     "0.63.0/bio/fastp"
-#
-#     else:
-#         if sample_type == "public":
-#             rule sra_to_fastq_se:
-#                 input: "{outdir}/tmp/sras/{sample}/{srr_acc}.sra"
-#                 output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}_1.fastq")
-#                 threads: threads
-#                 log: "{outdir}/logs/{sample}_{srr_acc}__sra_to_fastq_se.log"
-#                 shell:
-#                     "(parallel-fastq-dump -t {threads} --split-files -O" \
-#                     + " {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ -s {input}) &> {log}"
-#
-#         rule merge_fastq_se_experiment:
-#             input: merge_input_experiment
-#             output: temp("{outdir}/tmp/fastqs_dup/{sample}_experiment.fastq")
-#             log: "{outdir}/logs/{sample}_merge_fastq_se_experiment.log"
-#             shell: "(cat {input} > {output}) &> {log}"
-#
-#         if controls != "None":
-#             rule merge_fastq_se_control:
-#                 input: merge_input_control
-#                 output: temp("{outdir}/tmp/fastqs_dup/{sample}_control.fastq")
-#                 log: "{outdir}/logs/{sample}_merge_fastq_se_control.log"
-#                 shell: "(cat {input} > {output}) &> {log}"
-#
-#         if not no_fastp:
-#             rule fastp_se:
-#                 input:
-#                      sample=["{outdir}/tmp/fastqs_dup/{sample}_{exp_type}.fastq"]
-#                 output:
-#                     trimmed=temp("{outdir}/fastqs/{sample}_{exp_type}.fastq"),
-#                     html="{outdir}/QC/fastq/{sample}.{exp_type}.html",
-#                     json="{outdir}/QC/fastq/{sample}.{exp_type}.json"
-#                 log: "{outdir}/logs/{sample}_{exp_type}__fastp_se.log"
-#                 params:
-#                     extra=""
-#                 threads: threads
-#                 wrapper:
-#                     "0.63.0/bio/fastp"
-#
-#     rule download_fasta:
-#         output:
-#             genome_home_dir + "/{genome}/{genome}.fa"
-#         params:
-#               prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
-#               check=outdir + "/logs/" + sample_name + "_{genome}__download_fasta.log"
-#         shell: """
-#             (mkdir -p {params.prefix}
-#             wget -O {output}.gz ftp://hgdownload.soe.ucsc.edu/goldenPath/{wildcards.genome}/bigZips/{wildcards.genome}.fa.gz
-#             gunzip {output}.gz && echo "Indexing BAM at {params.prefix} ... This may take some time ...") &> {params.check}
-#         """
+rule download_fasta:
+    output:
+        genome_home_dir + "/{genome}/{genome}.fa"
+    params:
+          prefix=genome_home_dir + "/{genome}/bwa_index/{genome}",
+    log: outdir + "/logs/download_fasta/{genome}__download_fasta.log"
+    shell: """
+        (mkdir -p {params.prefix}
+        wget -O {output}.gz ftp://hgdownload.soe.ucsc.edu/goldenPath/{wildcards.genome}/bigZips/{wildcards.genome}.fa.gz
+        gunzip {output}.gz && echo "Indexing BAM at {params.prefix} ... This may take some time ...") &> {log}
+    """
+
+# TODO: Pipe this part
+rule fastp:
+    input:
+        sample="{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq"
+    output:
+        trimmed=temp("{outdir}/tmp/fastqs_trimmed/{sample}.{genome}__trimmed.fastq"),
+        html="{outdir}/QC/fastq/html/{sample}.{genome}.html",
+        json="{outdir}/QC/fastq/json/{sample}.{genome}.json"
+    conda: helpers_dir + "/envs/fastp.yaml"
+    log: "{outdir}/logs/fastp/{sample}.{genome}__fastp_pe.log"
+    priority: 10
+    params:
+        extra=pe_test_fastp
+    threads: 4
+    shell: """
+    (fastp -i {input} --stdout {params.extra}-w {threads} -h {output.html} -j {output.json} > {output} ) &> {log}
+    """
+
+rule merge_replicate_reads:
+    input: find_replicates
+    output: temp("{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq")
+    params:
+        #debug=" | head -n 40000 -",  # TODO: Why does this throw an error when uncommented?
+        debug=""
+    log: "{outdir}/logs/merge_fastq/{sample}_{genome}__merge_fastq.log"
+    shell: """
+    (cat {input}{params.debug} > {output}) &> {log}
+    """
+
+
+# This should always produced interleaved fq even if paired end. I don't like this solution, but it should hold.
+# reformat.sh (from BBTools) will interleave the paired-end files
+rule sra_to_fastq:
+    input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
+    output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
+    conda: helpers_dir + "/envs/sratools.yaml"
+    threads: 1
+    log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
+    params:
+        output_directory="{outdir}/tmp/sras/{sample}/",
+        fqdump="--skip-technical --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' --split-3 ",
+        debug="",
+        #debug=" -X 60000"
+    shell: """(
+    cd {params.output_directory}
+    fastq-dump{params.debug} {params.fqdump}-O ../../fastqs_raw/{wildcards.sample}/ {wildcards.srr_acc}
+    cd ../../fastqs_raw/{wildcards.sample}/
+    if test -f {wildcards.srr_acc}_2.fastq; then
+        echo "Paired end -- interleaving"
+        reformat.sh in1={wildcards.srr_acc}_1.fastq in2={wildcards.srr_acc}_2.fastq out={wildcards.srr_acc}.fastq overwrite=true
+        rm {wildcards.srr_acc}_1.fastq && rm {wildcards.srr_acc}_2.fastq
+    else
+        echo "Single end -- finished!"
+    fi
+    ) &> {log}
+    """
+
+# TODO: Figure out how to use the pipes
+# TODO: Probably need to specify this version of prefetch and/or find alternative to it...
+# TODO: Retry if fails due to network error
+rule download_sra:
+    output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra")
+    conda: helpers_dir + "/envs/sratools.yaml"
+    log: "{outdir}/logs/download_sra/{sample}__{srr_acc}__download_sra.log"
+    params:
+        output_directory = "{outdir}/tmp/sras/{sample}/"
+    threads: math.ceil(cores * .2)
+    shell: """
+            (
+            cd {params.output_directory}
+            prefetch {wildcards.srr_acc} -f yes
+            ) &> {log}
+            """
+
+# rule download_homer_anno:
+#     output:
+#         gene_anno=genome_home_dir + "/{genome}/homer_anno.txt"
+#     params:
+#         out_dir=genome_home_dir + "/{genome}/homer_anno",
+#         check=outdir + "/logs/" + sample_name + "_{genome}__download_homer_anno.log"
+#     shell: """
+#         (wget -O {params.out_dir}.zip http://homer.ucsd.edu/homer/data/genomes/{wildcards.genome}.v6.4.zip
+#         unzip -d {params.out_dir} {params.out_dir}.zip
+#         mv {params.out_dir}/data/genomes/{wildcards.genome}/{wildcards.genome}.full.annotation {output}
+#         rm -rf {params.out_dir} && rm -rf {params.out_dir}.zip) &> {params.check}
+#     """
+
+
+
+
+
+
+# rule sra_to_fastq:
+#     input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
+#     output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
+#     conda: helpers_dir + "/envs/parallel_fq_dump.yaml"
+#     threads: 8
+#     log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
+#     params:
+#         output_directory="{outdir}/tmp/sras/{sample}/"
+#     shell: """(
+#     cd {params.output_directory}
+#     parallel-fastq-dump -t {threads} --split-3 -Z -s {wildcards.srr_acc} --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' > ../../fastqs_raw/{wildcards.sample}/{wildcards.srr_acc}.fastq
+#     ) &> {log}
+#     """
+
+
+
+# # TODO: Really should be a better way than this...
+# # TODO: Still need to find a situation with un-mated reads -- may need a custom solution for that
+# # Okay, so here's the problem: fastq-dump will create
+# rule sra_to_fastq:
+#     input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
+#     output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
+#     conda: helpers_dir + "/envs/sratools.yaml"
+#     threads: 1
+#     log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
+#     params:
+#         output_directory="{outdir}/tmp/sras/{sample}/"
+#     shell: """(
+#     cd {params.output_directory}
+#     fast-dump -X 100000 --split-3 -O ../../fastqs_raw/{wildcards.sample}/ --skip-technical --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' {wildcards.srr_acc}
+#     ) &> {log}
+#     """
+
+
+
+
+
+
+
+
+
 #
 #     rule download_homer_anno:
 #         output:
@@ -825,63 +840,6 @@ rule bwa_mem:
 #         (assignGenomeAnnotation {input.peaks} {input.gene_anno} > {output.stats_out}) &> {log}
 #     """
 #
-#
-# rule prepare_report:
-#     input: final_report_input
-#     output:
-#         html="{outdir}/{sample}_{genome}.QC_report.html",
-#         rda="{outdir}/{sample}_{genome}.QC_report.rda"
-#     params:
-#         helpers_dir=helpers_dir,
-#         sample_name=sample_name,
-#         configs=outdirorig + "/rseqVars.json",
-#         final_report_dict_file=final_report_dict_file[0]
-#     log: "{outdir}/logs/{sample}_{genome}__prepare_report.log"
-#     shell:
-#      """
-#      (echo {output}
-#      Rscript {params.helpers_dir}/prepare_report.R {params.final_report_dict_file} {params.sample_name} {params.configs}
-#      rm {params.final_report_dict_file}) &> {log}
-#      """
-#
-#
-# # rule run_QmRLFS_finder:
-# #     # Packaged with RSeq from: https://github.com/piroonj/QmRLFS-finder (Oct 12 2020)
-# #     input: genome_home_dir + "/{genome}/{genome}.fa"
-# #     output:
-# #         table=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.txt",
-# #         bed=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.bed"
-# #     params:
-# #         helpers_dir=helpers_dir,
-# #         bed=genome_home_dir + "/{genome}/rloop_predictions/RLFS.{genome}.out.table.raw.bed",
-# #         genome_home_dir=genome_home_dir
-# #     shell: """
-# #     python {params.helpers_dir}/external/QmRLFS-finder.py -i {input} \
-# #     -o {params.genome_home_dir}/{wildcards.genome}/rloop_predictions/RLFS.{wildcards.genome}
-# #     awk '{{OFS="\t";print($1,$4,$14,$3,0,$21)}}' {output.table} > {params.bed}
-# #     bedtools sort -i {params.bed} | mergeBed -i stdin -s | awk '{{OFS="\t";print($1,$2,$3,".",".",$4)}}' > {output.bed}
-# #     """
-#
-# rule download_rlfs_annotations:
-#     output:
-#         bed=genome_home_dir + "/{genome}/rloop_predictions/{genome}.rlfs.bed"
-#     shell: """
-#     wget -O {output} https://rmapdb-data.s3.us-east-2.amazonaws.com/rlfs-beds/{wildcards.genome}.rlfs.bed
-#     """
-#
-#
-# rule rlfs_enrichment:
-#     input:
-#          peaks="{outdir}/peaks_final_unstranded/{sample}_{genome}.unstranded.bed",
-#          rlfs=genome_home_dir + "/{genome}/rloop_predictions/{genome}.rlfs.bed"
-#     output: "{outdir}/QC/{sample}_{genome}.rlfs_enrichment.rda"
-#     params:
-#         helpers_dir=helpers_dir
-#     threads: threads
-#     log: "{outdir}/logs/{sample}_{genome}__rlfs_enrichment.log"
-#     shell: """
-#      (Rscript {params.helpers_dir}/rlfs_perm_test.R {threads} {wildcards.genome} {input.peaks} {input.rlfs} {output}) &> {log}
-#      """
 #
 #
 # rule compile_peaks:
