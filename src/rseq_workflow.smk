@@ -41,6 +41,12 @@ if test:
         conda: helpers_dir + "/envs/bwa.yaml"
         shell: "echo Hello world! > {output}"
 
+debug=True
+if debug:
+    debug_param=" -X 60000"
+else:
+    debug_param=""
+
 # Select bwa type
 # BWA MEM2 is still in development and has a particularly problematic habit of over-zealous RAM usage
 # https://github.com/bwa-mem2/bwa-mem2/issues/118
@@ -381,8 +387,7 @@ rule sra_to_fastq:
     params:
         output_directory="{outdir}/tmp/sras/{sample}/",
         fqdump="--skip-technical --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' --split-3 ",
-        debug="",
-        #debug=" -X 60000"
+        debug=debug_param,
     shell: """(
     cd {params.output_directory}
     fastq-dump{params.debug} {params.fqdump}-O ../../fastqs_raw/{wildcards.sample}/ {wildcards.srr_acc}
