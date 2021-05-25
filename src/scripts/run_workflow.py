@@ -54,6 +54,14 @@ def make_snakes(config_file):
         print("'use_conda' is set to False by user. It is expected that user has all dependencies installed.")
         time.sleep(4)
 
+    # Set conda_frontend='mamba' if not supplied
+    if 'conda_frontend' not in kwargs.keys():
+        kwargs['conda_frontend'] = 'mamba'
+    elif kwargs['conda_frontend'] == 'conda':
+        print("'conda_frontend' is set to 'conda' by user. This will lead to slower operations, consider using "
+              "'mamba' instead.")
+        time.sleep(4)
+
     # Run snakemake
     snk.snakemake(snake_path, config=config, cores=threads, **kwargs)
 
