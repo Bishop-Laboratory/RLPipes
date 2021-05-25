@@ -43,7 +43,7 @@ if test:
 
 debug=True
 if debug:
-    debug_param=" -X 60000"
+    debug_param=" -X 1200000"
 else:
     debug_param=""
 
@@ -88,6 +88,12 @@ def pe_test_bwa(wildcards):
     else:
         res=""
     return res
+
+def get_effective_genome_size(wildcards):
+    return [effective_genome_size[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+
+def get_mode(wildcards):
+    return [mode[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
 
 def input_test_callpeak(wildcards):
     input = [controls[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
@@ -143,12 +149,12 @@ rule correlation_analysis:
         data="{outdir}/correlation_analysis/{sample}/{sample}_{genome}__correlation_analysis.rda"
     params:
         helpers_dir = helpers_dir,
-        mode = mode
+        mode = get_mode
     conda: helpers_dir + "/envs/correlation_analysis.yaml"
     log: "{outdir}/logs/correlation_analysis/{sample}_{genome}__correlation_analysis.log"
     shell:
          """
-         (Rscript {params.helpers_dir}/correlation_test.R {input} {wildcards.sample} {params.mode} {params.helpers_dir}) &> {log}
+         (Rscript {params.helpers_dir}/scripts/correlation_test.R {input} {wildcards.sample} {params.mode} {params.helpers_dir} {output.image} {output.data}) &> {log}
          """
 
 rule calculate_bin_scores:
@@ -174,12 +180,13 @@ rule calculate_coverage:
     output: "{outdir}/coverage/{sample}/{sample}_{genome}__coverage.bw"
     threads: cores
     conda: helpers_dir + "/envs/deeptools.yaml"
-    log: "{outdir}/logs/{sample}_{genome}__deeptools_coverage.log"
+    log: "{outdir}/logs/coverage/{sample}_{genome}__deeptools_coverage.log"
     params:
+        effective_genome_size=get_effective_genome_size,
         extra="--ignoreForNormalization chrX chrY chrM --minMappingQuality" \
-              + " 20 --binSize 10 --effectiveGenomeSize " + str(effective_genome_size)
+              + " 20 --binSize 10 --effectiveGenomeSize "
     shell: """
-        (bamCoverage -b {input.bam} -p {threads} {params.extra} -o {output}) &> {log}
+        (bamCoverage -b {input.bam} -p {threads} {params.extra}{params.effective_genome_size} -o {output}) &> {log}
     """
 
 rule assign_genome_annotations:
@@ -239,8 +246,8 @@ rule download_rlfs_annotations:
 
 rule compile_peaks:
     input:
-        macs2="{outdir}/peaks/{sample}/macs2/{sample}_{genome}__peaks_macs2.broadPeak",
-        epic2="{outdir}/peaks/{sample}/epic2/{sample}_{genome}__peaks_macs2.bed"
+        macs2="{outdir}/peaks/{sample}/macs2/{sample}_{genome}__peaks.xls",
+        epic2="{outdir}/peaks/{sample}/epic2/{sample}_{genome}__peaks_epic2.bed"
     output:
         peaks="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.bed"
     params:
@@ -248,44 +255,47 @@ rule compile_peaks:
     log: "{outdir}/logs/compile_peaks/{sample}_{genome}__compile_peaks.log"
     shell: """
     (
-    Rscript {params.helpers_dir}/compile_peaks.R {wildcards.sample} {input.macs2} {input.epic2} {output.peaks}
+    Rscript {params.helpers_dir}/scripts/compile_peaks.R {wildcards.sample} {input.macs2} {input.epic2} {output.peaks}
     ) &> {log}
     """
 
 rule macs:
     input: unpack(input_test_callpeak)
-    output: "{outdir}/peaks/{sample}/macs2/{sample}_{genome}__peaks_macs2.broadPeak"
+    output: "{outdir}/peaks/{sample}/macs2/{sample}_{genome}__peaks.xls"
     log: "{outdir}/logs/macs2/{sample}_{genome}__macs2.log"
     threads: 1
     conda: helpers_dir + "/envs/macs.yaml"
+    params:
+        prefix="{outdir}/peaks/{sample}/macs2/{sample}_{genome}_"
     shell: """
         (
         if [ {input.control} == {input.treatment} ]; then
             echo "No Control file detected -- running MACS2 without a control"
-            macs2 callpeak -t {input.treatment} -n called_peaks/{wildcards.sample}
+            macs2 callpeak -t {input.treatment} -n {params.prefix}
         else
             echo "Control file detected -- running MACS2 with control"
-            macs2 callpeak -t {input.treatment} -c {input.control} -n called_peaks/{wildcards.sample}
+            macs2 callpeak -t {input.treatment} -c {input.control} -n {params.prefix}
         fi
         ) &> {log}
     """
 
 rule epic:
     input:
-        #info="{outdir}/info/{sample}.{genome}.experiment_predictd.txt",
         unpack(input_test_callpeak)
     output:
-        "{outdir}/peaks/{sample}/epic2/{sample}_{genome}__peaks_macs2.bed"
+        "{outdir}/peaks/{sample}/epic2/{sample}_{genome}__peaks_epic2.bed"
     log: "{outdir}/logs/epic2/{sample}_{genome}__epic2_callpeaks.log"
     conda: helpers_dir + "/envs/epic.yaml"
     shell: """
+        (
         if [ {input.control} == {input.treatment} ]; then
-            echo "No Control file detected -- running MACS2 without a control"
+            echo "No Control file detected -- running EPIC2 without a control"
             epic2 -t {input.treatment} -gn {wildcards.genome} -o {output}
         else
-            echo "Control file detected -- running MACS2 with control"
-            macs2 callpeak -t {input.treatment} -c {input.control} -gn {wildcards.genome} -o {output}
+            echo "Control file detected -- running EPIC2 with control"
+            epic2 -t {input.treatment} -c {input.control} -gn {wildcards.genome} -o {output}
         fi
+        ) &> {log}
     """
 
 # TODO: Try BWA MEM2 (Has stdin option and 1.5-3X speed increase)
