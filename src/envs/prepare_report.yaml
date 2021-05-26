@@ -1,5 +1,17 @@
 channels:
   - bioconda
   - conda-forge
+  - r
 dependencies:
-  - parallel-fastq-dump
+  - r-tidyverse
+  - r-rmarkdown
+  - r-knitr
+  - r-kableextra
+  - r-pheatmap
+  - r-xgboost
+  - r-ggpubr
+  - r-rcolorbrewer
+  - bioconductor-chippeakanno
+  - bioconductor-regioner
+  - r-plotly
+  - r-fitdistrplus

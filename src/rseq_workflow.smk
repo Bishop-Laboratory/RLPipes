@@ -27,7 +27,9 @@ experiments=[exp.split(",") for exp in config['experiment']]
 controls=[ctr if ctr != "None" else None for ctr in config['control']]
 
 # Generate the output file names
-report_output = expand("{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.html",zip,
+report_html = expand("{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.html",zip,
+            sample=sample,outdir=[outdir for i in range(len(sample))],genome=genome)
+report_data = expand("{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.rda",zip,
             sample=sample,outdir=[outdir for i in range(len(sample))],genome=genome)
 
 # For testing the workflow on GitHub
@@ -124,7 +126,8 @@ def input_test_callpeak(wildcards):
 
 rule output:
     input:
-        report_output
+        html=report_html,
+        data=report_data
 
 rule prepare_report:
     input:
@@ -132,9 +135,12 @@ rule prepare_report:
         bam_stats="{outdir}/bam_stats/{sample}/{sample}_{genome}__bam_stats.txt",
         homer_annotations="{outdir}/homer_annotations/{sample}/{sample}_{genome}__feature_overlaps.txt",
         correlation_analysis="{outdir}/correlation_analysis/{sample}/{sample}_{genome}__correlation_analysis.rda",
-        read_qc_data="{outdir}/QC/fastq/json/{sample}.{genome}.json"
+        read_qc_data="{outdir}/QC/fastq/json/{sample}.{genome}.json",
+        peak_compilation_data="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.rda",
+        peaks="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.bed"
     output:
-        html="{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.html"
+        html="{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.html",
+        data="{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.rda"
     conda: helpers_dir + "/envs/prepare_report.yaml"
     params:
         helpers_dir=helpers_dir,
@@ -142,7 +148,9 @@ rule prepare_report:
     log: "{outdir}/logs/prepare_report/{sample}_{genome}__prepare_report.log"
     shell:
      """
-     (Rscript {params.helpers_dir}/scripts/prepare_report.R {params.helpers_dir} {params.configs} {output} {input}) &> {log}
+     (Rscript {params.helpers_dir}/scripts/prepare_report.R {params.helpers_dir} {params.configs} {wildcards.sample} \
+     {output.html} {output.data} {input.rlfs_enrichment} {input.bam_stats} {input.homer_annotations} \
+     {input.correlation_analysis} {input.read_qc_data} {input.peak_compilation_data} {input.peaks}) &> {log}
      """
 
 rule correlation_analysis:

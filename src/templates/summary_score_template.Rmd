@@ -66,7 +66,7 @@ verdictcolor <- ifelse(xgbverdict == 'pass', 'green', 'red')
 test_x <- as.data.frame(test_x)
 colnames(test_x) <- gsub(colnames(test_x), pattern = " |\\(|\\)|\\/", replacement = "_")
 colnames(test_x) <- gsub(colnames(test_x), pattern = "^([0-9]+)", replacement = "d\\1")
-load(lm_file)
+suppressWarnings(load(lm_file))
 lmscore <- predict(lmfit, newdata = test_x) * 100
 # lmscore <- ifelse(lmscore > 100, 100,
 #                   ifelse(lmscore < 0, 0, lmscore))
@@ -111,7 +111,7 @@ plt <- ggplot(data = full_quality, aes(x = rank, y = lmscore,
   scale_size_manual(values = c(2, 4), guide=FALSE)
 pltg <- ggplotly(plt, tooltip="text")
 # From https://stackoverflow.com/questions/49133395/strange-formatting-of-legend-in-ggplotly-in-r
-for (i in 1:length(pltg$x$data)){
+for (i in seq(length(pltg$x$data))){
   if (!is.null(pltg$x$data[[i]]$name)){
     pltg$x$data[[i]]$name =  gsub("\\(","",str_split(pltg$x$data[[i]]$name,",")[[1]][1])
   }

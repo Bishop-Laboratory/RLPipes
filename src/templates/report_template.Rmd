@@ -9,15 +9,16 @@ params:
   corr_data: "placeholder"
   anno_data: "placeholder"
   rlfs_data: "placeholder"
-  rlcons_data: "placeholder"
   bam_stats: "placeholder"
   peak_ol: "placeholder"
-  summary_scores: "placeholder"
   read_qc_data: "placeholder"
   configlist: "placeholder"
+  helper_dir: "placeholder"
+  total_peaks: "placeholder"
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
+# Need to refactor to call libraries from namespace ::
 library(knitr)
 library(kableExtra)
 library(pheatmap)
@@ -40,7 +41,7 @@ if (show_anno) {
   }
 }
 sample_name <- configlist$sample_name
-control <- ifelse(configlist$controls == "None", FALSE, TRUE)
+control <- ifelse(configlist$control == "None", FALSE, TRUE)
 mode_now <- configlist$mode
 current_time <- date()
 pe <- configlist$paired_end
@@ -49,16 +50,16 @@ strand <- configlist$strand_specific
 strandedness <- ifelse(strand, "stranded", "unstranded")
 moiety <- configlist$moeity
 ip_type <- configlist$ip_type
-rmap_samples <- file.path(helpers_dir, '../data', 'RMapDB_samples_11_13_2020.csv')
+rmap_samples <- file.path(helper_dir, 'data', 'RMapDB_samples_11_13_2020.csv')
 rmap_samples <- read_csv(rmap_samples)
 rmap_samples$mode_group <- ifelse(rmap_samples$mode %in% c("RNH-CnR", "MapR"), "MapR",
                                   ifelse(rmap_samples$mode %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP'), 'DRIP',
-                                         ifelse(rmap_samples$mode %in% c("RDIP"), "RDIP", 
-                                                ifelse(rmap_samples$mode %in% c("ssDRIP"), "ssDRIP", 
+                                         ifelse(rmap_samples$mode %in% c("RDIP"), "RDIP",
+                                                ifelse(rmap_samples$mode %in% c("ssDRIP"), "ssDRIP",
                                                       ifelse(rmap_samples$mode %in% c("R-ChIP"), 'R-ChIP', "../../misc")))))
-xgb_file <- file.path(helpers_dir, '../data', "xgb_DRIP_group_HS_binary_11_17_2020.model")
-lm_file <- file.path(helpers_dir, '../data', "lm_DRIP_group_HS_nonbinary_11_17_2020.rda")
-rmap_quality <- file.path(helpers_dir, '../data', 'rmap_quality_DRIP_11_17_2020.csv')
+xgb_file <- file.path(helper_dir, 'data', "xgb_DRIP_group_HS_binary_11_17_2020.model")
+lm_file <- file.path(helper_dir, 'data', "lm_DRIP_group_HS_nonbinary_11_17_2020.rda")
+rmap_quality <- file.path(helper_dir, 'data', 'rmap_quality_DRIP_11_17_2020.csv')
 ```
 
 <br>
@@ -104,27 +105,23 @@ opt2 <- " the EPIC2 peaks were considered the 'final' peakset by RSeq."
 
 if (mode_now %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP', 'RDIP', 'ssDRIP', 'S1-DRIP')) {
   if (control) {
-    outbed <- peak_ol$overlappingPeaks$`MACS2///EPIC2`
-    outbedgr <- toGRanges(outbed[,c(2:4, 7, 6)])
     opt <- opt1
   } else {
-    outbedgr <- peak_ol$all.peaks$EPIC2
     opt <- opt2
   }
 } else if (mode_now %in% c("R-ChIP", "RR-ChIP", "RNH-CnR", "MapR", 'DRIVE')) {
-  outbed <- peak_ol$overlappingPeaks$`MACS2///EPIC2`
-  outbedgr <- toGRanges(outbed[,c(2:4, 7, 6)])
   opt <- opt1
 }
-peak_protocol <- paste0("Because the mode was <strong>", mode_now, "</strong> and there ", controlstr, 
+peak_protocol <- paste0("Because the mode was <strong>", mode_now, "</strong> and there ", controlstr,
                         " a control sample (e.g., genomic input), ", opt)
-total_peaks <- length(outbedgr)
+
+# TODO: What should this number be? Can we arrive at a more robust estimate?
 total_peaks_color <- ifelse(total_peaks < 3000, 'red', ifelse(total_peaks < 6000, 'orange', 'green'))
 ```
 
-The peak callers `macs2` and `epic2` were used to call <strong>`r strandedness`</strong> peaks from the bam files. `r peak_protocol` 
+The peak callers `macs2` and `epic2` were used to call <strong>`r strandedness`</strong> peaks from the bam files. `r peak_protocol`
 
-Please see the <a href="https://github.com/millerh1/RSeq"  target="_blank">RSeq documentation</a> for a full explanation of the peak analysis approach. 
+Please see the <a href="https://github.com/millerh1/RSeq"  target="_blank">RSeq documentation</a> for a full explanation of the peak analysis approach.
 
 Number of peaks in final RSeq peakset: <strong style="color: `r total_peaks_color`">`r total_peaks`</strong>
 
@@ -167,10 +164,10 @@ read_qc <- tibble(
   "attribute" = namestable,
   "Before filtering" = before_filter,
   "After filtering" = after_filter
-) %>% 
+) %>%
   mutate_at(.vars = c("Before filtering", "After filtering"), function(x) {
     ifelse(x > 1000000, x / 1000000, x)
-  }) %>% tibble::column_to_rownames(var = "attribute") 
+  }) %>% tibble::column_to_rownames(var = "attribute")
 reads_before <- read_qc$`Before filtering`[1]
 reads_after <- read_qc$`After filtering`[1]
 percent_passing <- round(100*(reads_after/reads_before), digits = 1)
@@ -216,9 +213,3 @@ Percent of reads duplicated: <strong style="color: `r pct_duplicated_color`">`r 
 <p style="text-align: center;">RSeq maintainer: <span style="color: #808080;"><em>millerh1@uthscsa.edu</em></span></p>
 
 &nbsp;
-
-
-
-
-
-
