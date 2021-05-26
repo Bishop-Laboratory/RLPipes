@@ -1,13 +1,16 @@
 #' Calculate enrichment of peaks at RLFS
 perm_test <- function(cores, genome, peaks, rlfs, outfile) {
-  
-  # cores = 80
-  # genome = "mm10"
-  # peaks = "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX1674681_3T3_DRIPc-seq/peaks_final_stranded/SRX1674681_3T3_DRIPc-seq_mm10.stranded.bed"
-  # rlfs = "~/.RSeq_genomes/mm10/rloop_predictions/mm10.rlfs.bed"
-  
-  peaks <- regioneR::toGRanges(peaks)
+
+  peaks <- readr::read_tsv(peaks)
+  colnames(peaks)[1] <- gsub(colnames(peaks)[1], pattern = "^#", replacement = "")
+  peaks <- regioneR::toGRanges(as.data.frame(peaks))
+  # Prevents errors due to reserved column names in mcols
+  GenomicRanges::mcols(peaks) <- GenomicRanges::mcols(peaks)[,
+    ! colnames(GenomicRanges::mcols(peaks)) %in% c("seqnames", "ranges",
+    "strand", "seqlevels", "seqlengths", "isCircular", "start", "end",
+    "width", "element")]
   rlfs <- regioneR::toGRanges(rlfs)
+
   # Prevent stranded assignment
   GenomicRanges::strand(rlfs) <- "*"
   rlfs <- GenomicRanges::reduce(rlfs)

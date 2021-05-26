@@ -95,6 +95,9 @@ def get_effective_genome_size(wildcards):
 def get_mode(wildcards):
     return [mode[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
 
+def get_control(wildcards):
+    return [controls[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+
 def input_test_callpeak(wildcards):
     input = [controls[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     # print(input)
@@ -127,7 +130,7 @@ rule prepare_report:
     input:
         rlfs_enrichment="{outdir}/RLFS_analysis/{sample}/{sample}_{genome}__rlfs_enrichment.rda",
         bam_stats="{outdir}/bam_stats/{sample}/{sample}_{genome}__bam_stats.txt",
-        homer_annotations="{outdir}/homer_annotations/{sample}_{genome}__feature_overlaps.txt",
+        homer_annotations="{outdir}/homer_annotations/{sample}/{sample}_{genome}__feature_overlaps.txt",
         correlation_analysis="{outdir}/correlation_analysis/{sample}/{sample}_{genome}__correlation_analysis.rda",
         read_qc_data="{outdir}/QC/fastq/json/{sample}.{genome}.json"
     output:
@@ -139,7 +142,7 @@ rule prepare_report:
     log: "{outdir}/logs/prepare_report/{sample}_{genome}__prepare_report.log"
     shell:
      """
-     (Rscript {params.helpers_dir}/prepare_report.R {params.helpers_dir} {params.configs} {output} {input}) &> {log}
+     (Rscript {params.helpers_dir}/scripts/prepare_report.R {params.helpers_dir} {params.configs} {output} {input}) &> {log}
      """
 
 rule correlation_analysis:
@@ -195,7 +198,7 @@ rule assign_genome_annotations:
         gene_anno=genome_home_dir + "/{genome}/homer_anno.txt",
         peaks="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.bed"
     output:
-        stats_out="{outdir}/homer_annotations/{sample}_{genome}__feature_overlaps.txt"
+        stats_out="{outdir}/homer_annotations/{sample}/{sample}_{genome}__feature_overlaps.txt"
     log: "{outdir}/logs/homer_annotations/{sample}_{genome}__homer_annotations.log"
     conda: helpers_dir + "/envs/homer.yaml"
     shell: """
@@ -234,7 +237,7 @@ rule rlfs_enrichment:
     conda: helpers_dir + "/envs/rlfs_enrichment.yaml"
     log: "{outdir}/logs/rlfs_enrichment/{sample}_{genome}__rlfs_enrichment.log"
     shell: """
-     (Rscript {params.helpers_dir}/rlfs_perm_test.R {threads} {wildcards.genome} {input.peaks} {input.rlfs} {output}) &> {log}
+     (Rscript {params.helpers_dir}/scripts/rlfs_perm_test.R {threads} {wildcards.genome} {input.peaks} {input.rlfs} {output}) &> {log}
      """
 
 rule download_rlfs_annotations:
@@ -246,22 +249,27 @@ rule download_rlfs_annotations:
 
 rule compile_peaks:
     input:
-        macs2="{outdir}/peaks/{sample}/macs2/{sample}_{genome}__peaks.xls",
+        macs2="{outdir}/peaks/{sample}/macs2/{sample}_{genome}__peaks.broadPeak",
         epic2="{outdir}/peaks/{sample}/epic2/{sample}_{genome}__peaks_epic2.bed"
     output:
-        peaks="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.bed"
+        peaks="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.bed",
+        rda="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.rda"
+    conda: helpers_dir + "/envs/compile_peaks.yaml"
     params:
-        helpers_dir=helpers_dir
+        helpers_dir=helpers_dir,
+        control=get_control,
+        mode=get_mode,
+        ouput_prefix="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks"
     log: "{outdir}/logs/compile_peaks/{sample}_{genome}__compile_peaks.log"
     shell: """
     (
-    Rscript {params.helpers_dir}/scripts/compile_peaks.R {wildcards.sample} {input.macs2} {input.epic2} {output.peaks}
+    Rscript {params.helpers_dir}/scripts/compile_peaks.R {params.mode} {params.control} {input.macs2} {input.epic2} {params.ouput_prefix}
     ) &> {log}
     """
 
 rule macs:
     input: unpack(input_test_callpeak)
-    output: "{outdir}/peaks/{sample}/macs2/{sample}_{genome}__peaks.xls"
+    output: "{outdir}/peaks/{sample}/macs2/{sample}_{genome}__peaks.broadPeak"
     log: "{outdir}/logs/macs2/{sample}_{genome}__macs2.log"
     threads: 1
     conda: helpers_dir + "/envs/macs.yaml"
@@ -271,10 +279,10 @@ rule macs:
         (
         if [ {input.control} == {input.treatment} ]; then
             echo "No Control file detected -- running MACS2 without a control"
-            macs2 callpeak -t {input.treatment} -n {params.prefix}
+            macs2 callpeak --broad -t {input.treatment} -n {params.prefix}
         else
             echo "Control file detected -- running MACS2 with control"
-            macs2 callpeak -t {input.treatment} -c {input.control} -n {params.prefix}
+            macs2 callpeak --broad -t {input.treatment} -c {input.control} -n {params.prefix}
         fi
         ) &> {log}
     """

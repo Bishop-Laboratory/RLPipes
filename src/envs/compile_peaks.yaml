@@ -1,8 +1,9 @@
 channels:
+  - r
   - bioconda
   - conda-forge
-  - r
 dependencies:
-  - bioconductor-regioner
+  - bioconductor-chippeakanno
+  - r-jsonlite
   - r-readr
-  - bioconductor-genomicranges
+  - r-dplyr
