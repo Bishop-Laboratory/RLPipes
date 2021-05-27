@@ -14,7 +14,7 @@ First, you need to build and install the package from source:
 
 (This requires `git` and `miniconda3` to work)
 
-```
+```shell
 git clone https://github.com/Bishop-Laboratory/RSeq.git
 cd RSeq/
 conda install -c conda-forge mamba -y
@@ -22,12 +22,13 @@ mamba env create -f mamba-environment.yml --force
 conda activate rseq
 conda mambabuild bioconda-recipe-testing/ -c bioconda -c conda-forge |& tee build.log
 BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
+conda remove rseq  # Remove previous version
 conda install $BINARY_PATH
 ```
 
 Testing:
 
-```
+```shell
 RSeq -e SRX1025890 -m DRIP -S dryrun=True
 ```
 
@@ -37,7 +38,7 @@ with RSeq, from SRA, GEO, or BioProject (e.g., `SRX1025899`, `SRX8908682`, `GSM4
 
 To run the basic RSeq workflow:
 
-```
+```shell
 RSeq -m DRIP -s sampleSheet.csv -o RSeq_out/ -t 98
 ```
 
@@ -52,7 +53,7 @@ This will run the full RSeq pipeline to:
 
 ## Basic Usage
 
-```
+```shell
 RSeq [-e experiment] [-c control] [-m mode] [-g genome] [-n name]
 
   -e|--experiment        fq/bam/SRA    Experiment(s). Use -e1, -e2 for paired-end fq files.
@@ -84,7 +85,7 @@ RSeq -e SRX1025890 -m DRIP
 
 Output from `RSeq -h`:
 
-```
+```shell
 Program: RSeq (R-loop mapping best-practices pipeline)
 Version: 0.9.9 (April 14, 2021)
 Contact: Henry Miller <millerh1@uthscsa.edu>
@@ -191,7 +192,7 @@ Here we will go with the lightweight miniconda option.
 + Download the latest [miniconda installer](https://docs.conda.io/en/latest/miniconda.html) for your operating system and run the installer script.
 For example, as of Apr 2021 the latest for MacOS is `Miniconda3-py39_4.9.2-MacOSX-x86_64.sh`. Open a terminal, navigate to the directory where the installer
  got downloaded, and run the installer with bash:
-```
+```shell
 bash Miniconda3-py39_4.9.2-MacOSX-x86_64.sh
 ```
 You will be prompted to read the user licence agreement which you can skip to
@@ -204,43 +205,43 @@ see a `(base)` prefix in front of your `user@computer` address.
 I prefer to deactivate this default behavior because I have other ongoing
 projects and I don't want to interfere with their python settings. To deactivate
 the default behavior type:
-```
+```shell
 conda config --set auto_activate_base false
 ```
 Next time you open an new terminal you should not see the `(base)` prefix.
 You can activate the conda base environment manually with the command
-```
+```shell
 conda activate base
 ```
 
 + Double check conda is updated.
-```
+```shell
 conda update -n base conda
 ```
 + Create a virtual environment for RSeq with the specified requirements.
-```
+```shell
 conda create --file requirements.txt -c conda-forge -c bioconda -n Rseq
 ```
 When prompted new packages will be installed, procceed by pressing `y`.
 + Activate `Rseq` virtual environment
-```
+```shell
 conda activate Rseq
 ```
 + Update virtual environment (when necessary)
-```
+```shell
 conda env update -n Rseq -f requirements.txt
 ```
 + To deactivate environment, use
-```
+```shell
 conda deactivate
 ```
 + To remove an environment, use
-```
+```shell
 conda env remove -n Rseq
 ```
 
 ### Continuous Integration
 + Check for code style and run tests by running the integration script.
-```
+```shell
 bash integration.sh
 ```
