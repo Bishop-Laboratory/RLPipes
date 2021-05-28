@@ -37,7 +37,6 @@ jobs:
           conda activate rseq
           conda mambabuild bioconda-recipe-testing/ -c bioconda -c conda-forge -c r |& tee build.log
           BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
-          mamba remove rseq  # Remove previous version if exists
           mamba install $BINARY_PATH
           RSeq -h
       - name: Run pipeline tests
