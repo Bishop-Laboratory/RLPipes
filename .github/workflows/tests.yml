@@ -32,9 +32,9 @@ jobs:
           printenv | sort
       - shell: bash -l {0}
         run: mamba install jupyterlab
-      - name: Install RSeq and run short tests
+      - shell: /usr/bin/bash -l {0}
+        name: Install RSeq and run short tests
         run: |
-          conda init bash
           conda activate rseq
           conda mambabuild bioconda-recipe-testing/ -c bioconda -c conda-forge -c r |& tee build.log
           BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
