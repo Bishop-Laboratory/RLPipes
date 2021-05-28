@@ -2,6 +2,9 @@
 #' Generate final RMarkdown Report
 prepare_report <- function(helper_dir, configs, sample_name, output_html, output_data, rlfs_enrichment, bam_stats,
                            homer_annotations, correlation_analysis, read_qc_data, peak_compilation_data, final_peaks) {
+
+  print(c(helper_dir, configs, sample_name, output_html, output_data, rlfs_enrichment, bam_stats,
+                           homer_annotations, correlation_analysis, read_qc_data, peak_compilation_data, final_peaks))
   
   # # Bug testing
   # helper_dir <- "/home/millerh1/PycharmProjects/RSeq/bin/../src"
@@ -27,6 +30,7 @@ prepare_report <- function(helper_dir, configs, sample_name, output_html, output
       fig
     )
   })
+  print(configlist)
 
   suppressWarnings(suppressPackageStartupMessages(library(tidyverse)))
 
@@ -38,10 +42,8 @@ prepare_report <- function(helper_dir, configs, sample_name, output_html, output
   # Get homer annotations
   anno_data <- suppressMessages(read_tsv(homer_annotations)) %>%
       dplyr::filter(! grepl(Annotation, pattern = "\\?"))
-  
-  # Parse QC data file
-  read_qc_data <- jsonlite::read_json(read_qc_data, simplifyVector = TRUE)
-  
+
+  print("AFTER")
   # Parse RLFS data
   load(rlfs_enrichment)
   rlfs_data <- list(pt, lz)
@@ -54,11 +56,17 @@ prepare_report <- function(helper_dir, configs, sample_name, output_html, output
   # Parse bam stats
   bam_stats_raw <- suppressMessages(read_lines(bam_stats))
   bam_stats <- list(
-    "total_reads" = read_qc_data$filtering_result$passed_filter_reads,
     "reads_aligned" = as.numeric(gsub(bam_stats_raw[1], pattern = "^([0-9]+) \\+ .+", replacement = "\\1")),
     "duplicate_reads" = as.numeric(gsub(bam_stats_raw[4], pattern = "^([0-9]+) \\+ .+", replacement = "\\1"))
   )
-  
+
+  # Parse QC data file
+  print(configlist$file_type)
+  if (! configlist$file_type %in% c("bam", "peak_coverage")) {
+    read_qc_data <- jsonlite::read_json(read_qc_data, simplifyVector = TRUE)
+    bam_stats[["total_reads"]] <- read_qc_data$filtering_result$passed_filter_reads
+  }
+
   # TODO: get number of macs2 and epic2 peaks called. 
   # Make markdown report TODO: Needs to include more info...
   md_template <- file.path(helper_dir, "templates/report_template.Rmd")
@@ -88,15 +96,16 @@ prepare_report <- function(helper_dir, configs, sample_name, output_html, output
 arg <- commandArgs(trailingOnly=TRUE)
 
 # Get output JSON
+print(arg)
 suppressMessages(prepare_report(helper_dir = arg[1],
                                 configs = arg[2],
                                 sample_name = arg[3],
                                 output_html = arg[4],
                                 output_data = arg[5],
-                                rlfs_enrichment = arg[6],
-                                bam_stats = arg[7],
-                                homer_annotations = arg[8],
-                                correlation_analysis = arg[9],
-                                read_qc_data = arg[10],
-                                peak_compilation_data = arg[11],
-                                final_peaks = arg[12]))
+                                rlfs_enrichment = arg[stringr::str_which(arg, pattern = "__rlfs_enrichment\\.rda$")],
+                                bam_stats = arg[stringr::str_which(arg, pattern = "__bam_stats\\.txt$")],
+                                homer_annotations = arg[stringr::str_which(arg, pattern = "__feature_overlaps\\.txt$")],
+                                correlation_analysis = arg[stringr::str_which(arg, pattern = "__correlation_analysis\\.rda$")],
+                                read_qc_data = arg[stringr::str_which(arg, pattern = ".*/QC/fastq/*\\.json$")],
+                                peak_compilation_data = arg[stringr::str_which(arg, pattern = "__compiled_peaks\\.rda$")],
+                                final_peaks = arg[stringr::str_which(arg, pattern = "__compiled_peaks\\.bed$")]))

@@ -28,26 +28,12 @@ controls=[ctr if ctr != "None" else None for ctr in config['control']]
 
 # Generate the output file names
 report_html = expand("{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.html",zip,
-            sample=sample,outdir=[outdir for i in range(len(sample))],genome=genome)
+            sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
 report_data = expand("{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.rda",zip,
-            sample=sample,outdir=[outdir for i in range(len(sample))],genome=genome)
+            sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
 
-# For testing the workflow on GitHub
-test_output="my_file.txt"
-test=False
-if test:
-    report_output = test_output
-
-    rule make_test:
-        output: test_output
-        conda: helpers_dir + "/envs/bwa.yaml"
-        shell: "echo Hello world! > {output}"
-
+# For testing the workflow
 debug=True
-if debug:
-    debug_param=" -X 1200000"
-else:
-    debug_param=""
 
 # Select bwa type
 # BWA MEM2 is still in development and has a particularly problematic habit of over-zealous RAM usage
@@ -100,25 +86,64 @@ def get_mode(wildcards):
 def get_control(wildcards):
     return [controls[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
 
+def get_sample_bam(wildcards):
+    return [experiments[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+
 def input_test_callpeak(wildcards):
     input = [controls[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
-    # print(input)
+    st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+
+    # This is a hack that changes the expected bam location to switch between the bwamem rule and bam wrangle rule
+    if st_now != "bam":
+        bam_type = "/bam/"
+    else:
+        bam_type = "/wrangled_bam/"
+
+    # Set the expected samples for peak calling
     if input is not None:
+        if st_now != "public":
+            # If not public, input will be a file. Need input sample name instead.
+            input = [sample[idx] for idx, element in enumerate(experiments) if element[0] == input][0]
         return_dict = {
-            'treatment': wildcards.outdir + "/bam/" + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam",
-            'control': wildcards.outdir + "/bam/" + input + "/" + input + "." + wildcards.genome + ".bam",
-            'index_treatment': wildcards.outdir + "/bam/" + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam.bai",
-            'index_control': wildcards.outdir + "/bam/" + input + "/" + input + "." + wildcards.genome + ".bam.bai"
+            'treatment': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam",
+            'control': wildcards.outdir + bam_type + input + "/" + input + "." + wildcards.genome + ".bam",
+            'index_treatment': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam.bai",
+            'index_control': wildcards.outdir + bam_type + input + "/" + input + "." + wildcards.genome + ".bam.bai"
         }
     else:
         return_dict = {
-            'treatment': wildcards.outdir + "/bam/" + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam",
-            'control': wildcards.outdir + "/bam/" + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam",
-            'index_treatment': wildcards.outdir + "/bam/" + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam.bai",
-            'index_control': wildcards.outdir + "/bam/" + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam.bai"
+            'treatment': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam",
+            'control': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam",
+            'index_treatment': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam.bai",
+            'index_control': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam.bai"
         }
 
     return return_dict
+
+def get_report_inputs(wildcards):
+    return_dict = {
+        'rlfs_enrichment': wildcards.outdir + '/RLFS_analysis/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__rlfs_enrichment.rda",
+        'homer_annotations': wildcards.outdir + '/homer_annotations/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__feature_overlaps.txt",
+        'correlation_analysis': wildcards.outdir + '/correlation_analysis/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__correlation_analysis.rda",
+        'peak_compilation_data': wildcards.outdir + '/peaks/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__compiled_peaks.rda",
+        'peaks': wildcards.outdir + '/peaks/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__compiled_peaks.bed"
+    }
+    st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    if st_now in ['fastq', 'public', 'bam']:
+        return_dict['bam_stats'] = wildcards.outdir + '/bam_stats/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__bam_stats.txt"
+    elif st_now in ['fastq', 'public']:
+        return_dict['read_qc_data'] = wildcards.outdir + '/QC/fastq/json/' + wildcards.sample + "." + wildcards.genome + ".json"
+
+    return return_dict
+
+def choose_bam_type(wildcards):
+    st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    if st_now != "bam":
+        bam_type = "/bam/"
+    else:
+        bam_type = "/wrangled_bam/"
+    return wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam"
+
 
 #######################################################################################################################
 ##############################################   Main pipeline    ######################################################
@@ -130,14 +155,7 @@ rule output:
         data=report_data
 
 rule prepare_report:
-    input:
-        rlfs_enrichment="{outdir}/RLFS_analysis/{sample}/{sample}_{genome}__rlfs_enrichment.rda",
-        bam_stats="{outdir}/bam_stats/{sample}/{sample}_{genome}__bam_stats.txt",
-        homer_annotations="{outdir}/homer_annotations/{sample}/{sample}_{genome}__feature_overlaps.txt",
-        correlation_analysis="{outdir}/correlation_analysis/{sample}/{sample}_{genome}__correlation_analysis.rda",
-        read_qc_data="{outdir}/QC/fastq/json/{sample}.{genome}.json",
-        peak_compilation_data="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.rda",
-        peaks="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.bed"
+    input: unpack(get_report_inputs)
     output:
         html="{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.html",
         data="{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.rda"
@@ -149,8 +167,7 @@ rule prepare_report:
     shell:
      """
      (Rscript {params.helpers_dir}/scripts/prepare_report.R {params.helpers_dir} {params.configs} {wildcards.sample} \
-     {output.html} {output.data} {input.rlfs_enrichment} {input.bam_stats} {input.homer_annotations} \
-     {input.correlation_analysis} {input.read_qc_data} {input.peak_compilation_data} {input.peaks}) &> {log}
+     {output.html} {output.data} {input}) &> {log}
      """
 
 rule correlation_analysis:
@@ -185,9 +202,7 @@ rule calculate_bin_scores:
         """
 
 rule calculate_coverage:
-    input:
-        bam="{outdir}/bam/{sample}/{sample}.{genome}.bam",
-        bai="{outdir}/bam/{sample}/{sample}.{genome}.bam.bai"
+    input: choose_bam_type
     output: "{outdir}/coverage/{sample}/{sample}_{genome}__coverage.bw"
     threads: cores
     conda: helpers_dir + "/envs/deeptools.yaml"
@@ -197,7 +212,7 @@ rule calculate_coverage:
         extra="--ignoreForNormalization chrX chrY chrM --minMappingQuality" \
               + " 20 --binSize 10 --effectiveGenomeSize "
     shell: """
-        (bamCoverage -b {input.bam} -p {threads} {params.extra}{params.effective_genome_size} -o {output}) &> {log}
+        (bamCoverage -b {input} -p {threads} {params.extra}{params.effective_genome_size} -o {output}) &> {log}
     """
 
 rule assign_genome_annotations:
@@ -227,7 +242,7 @@ rule download_homer_anno:
     """
 
 rule bam_stats:
-    input: "{outdir}/bam/{sample}/{sample}.{genome}.bam"
+    input: choose_bam_type
     output: "{outdir}/bam_stats/{sample}/{sample}_{genome}__bam_stats.txt"
     threads: 4
     conda: helpers_dir + "/envs/samtools.yaml"
@@ -314,6 +329,28 @@ rule epic:
         ) &> {log}
     """
 
+# This will be the rule that this executed if user provides bam file input
+rule wrangle_bam:
+    input: get_sample_bam
+    output:
+        bam = "{outdir}/wrangled_bam/{sample}/{sample}.{genome}.bam",
+        bai = "{outdir}/wrangled_bam/{sample}/{sample}.{genome}.bam.bai"
+    conda: helpers_dir + "/envs/bwa_mem.yaml"
+    priority: 15
+    log: "{outdir}/logs/wrangle_bam/{sample}_{genome}__wrangle_bam.log"
+    params:
+        bwa_extra=r"-R '@RG\tID:{sample}\tSM:{sample}'",
+        bwa_interleaved=pe_test_bwa,
+        samblaster_extra=pe_test_samblaster,
+        samtools_sort_extra="-O BAM"
+    threads: 10
+    shell: """
+        (samtools view -h -@ {threads} -q 10 {input} | \
+        samblaster {params.samblaster_extra}| \
+        samtools sort {params.samtools_sort_extra} -@ {threads} -O bam -o {output.bam} - && \
+        samtools index -@ {threads} {output.bam}) &> {log}
+     """
+
 # TODO: Try BWA MEM2 (Has stdin option and 1.5-3X speed increase)
 rule bwa_mem:
     input:
@@ -394,39 +431,59 @@ rule fastp:
 rule merge_replicate_reads:
     input: find_replicates
     output: temp("{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq")
-    params:
-        #debug=" | head -n 40000 -",  # TODO: Why does this throw an error when uncommented?
-        debug=""
     log: "{outdir}/logs/merge_fastq/{sample}_{genome}__merge_fastq.log"
     shell: """
-    (cat {input}{params.debug} > {output}) &> {log}
+    (cat {input} > {output}) &> {log}
     """
 
-# This should always produced interleaved fq even if paired end. I don't like this solution, but it should hold.
-# reformat.sh (from BBTools) will interleave the paired-end files
-rule sra_to_fastq:
-    input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
-    output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
-    conda: helpers_dir + "/envs/sratools.yaml"
-    threads: 1
-    log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
-    params:
-        output_directory="{outdir}/tmp/sras/{sample}/",
-        fqdump="--skip-technical --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' --split-3 ",
-        debug=debug_param,
-    shell: """(
-    cd {params.output_directory}
-    fastq-dump{params.debug} {params.fqdump}-O ../../fastqs_raw/{wildcards.sample}/ {wildcards.srr_acc}
-    cd ../../fastqs_raw/{wildcards.sample}/
-    if test -f {wildcards.srr_acc}_2.fastq; then
-        echo "Paired end -- interleaving"
-        reformat.sh in1={wildcards.srr_acc}_1.fastq in2={wildcards.srr_acc}_2.fastq out={wildcards.srr_acc}.fastq overwrite=true
-        rm {wildcards.srr_acc}_1.fastq && rm {wildcards.srr_acc}_2.fastq
-    else
-        echo "Single end -- finished!"
-    fi
-    ) &> {log}
-    """
+# If debugging, will use a less stable but much faster version of this rule which outputs a small fastq file
+if debug:
+    rule sra_to_fastq:
+        # input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
+        output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
+        conda: helpers_dir + "/envs/sratools.yaml"
+        threads: 1
+        log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
+        params:
+            output_directory="{outdir}/tmp/sras/{sample}/",
+            fqdump="--skip-technical --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' --split-3 "
+        shell: """(
+        fastq-dump -X 500000 {params.fqdump}-O {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/ {wildcards.srr_acc}
+        cd {wildcards.outdir}/tmp/fastqs_raw/{wildcards.sample}/
+        if test -f {wildcards.srr_acc}_2.fastq; then
+            echo "Paired end -- interleaving"
+            reformat.sh in1={wildcards.srr_acc}_1.fastq in2={wildcards.srr_acc}_2.fastq out={wildcards.srr_acc}.fastq overwrite=true
+            rm {wildcards.srr_acc}_1.fastq && rm {wildcards.srr_acc}_2.fastq
+        else
+            echo "Single end -- finished!"
+        fi
+        ) &> {log}
+        """
+else:
+    # This should always produced interleaved fq even if paired end. I don't like this solution, but it should hold.
+    # reformat.sh (from BBTools) will interleave the paired-end files
+    rule sra_to_fastq:
+        # input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
+        output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
+        conda: helpers_dir + "/envs/sratools.yaml"
+        threads: 1
+        log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
+        params:
+            output_directory="{outdir}/tmp/sras/{sample}/",
+            fqdump="--skip-technical --defline-seq '@$ac.$si.$sg/$ri' --defline-qual '+' --split-3 "
+        shell: """(
+        cd {params.output_directory}
+        fastq-dump {params.fqdump}-O ../../fastqs_raw/{wildcards.sample}/ {wildcards.srr_acc}
+        cd ../../fastqs_raw/{wildcards.sample}/
+        if test -f {wildcards.srr_acc}_2.fastq; then
+            echo "Paired end -- interleaving"
+            reformat.sh in1={wildcards.srr_acc}_1.fastq in2={wildcards.srr_acc}_2.fastq out={wildcards.srr_acc}.fastq overwrite=true
+            rm {wildcards.srr_acc}_1.fastq && rm {wildcards.srr_acc}_2.fastq
+        else
+            echo "Single end -- finished!"
+        fi
+        ) &> {log}
+        """
 
 # TODO: Figure out how to use the pipes
 # TODO: Probably need to specify this version of prefetch and/or find alternative to it...

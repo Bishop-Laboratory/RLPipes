@@ -32,6 +32,7 @@ library(plotly)
 show_anno <- ifelse(tibble::is_tibble(anno_data), TRUE, FALSE)
 show_corr <- ifelse(is.list(corr_data), TRUE, FALSE)
 show_rlfs <- ifelse(is.list(rlfs_data), TRUE, FALSE)
+show_readqc <- ifelse(is.list(read_qc_data), TRUE, FALSE)
 correct_mode <- configlist$mode %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP')
 show_summary <- show_anno & show_corr & correct_mode
 if (show_anno) {
@@ -40,6 +41,10 @@ if (show_anno) {
     show_summary <- FALSE
   }
 }
+if (! show_readqc) {
+  show_summary <- FALSE
+}
+
 sample_name <- configlist$sample_name
 control <- ifelse(configlist$control == "None", FALSE, TRUE)
 mode_now <- configlist$mode
@@ -75,7 +80,7 @@ Time finished: <strong>`r current_time`</strong>
 
 ***
 
-```{r child='summary_score_template.Rmd', eval=show_summary}
+```{r summaryShow, child='summary_score_template.Rmd', eval=show_summary}
 ```
 
 
@@ -84,21 +89,21 @@ Time finished: <strong>`r current_time`</strong>
 <hr>
 
 
-```{r child='annotation_template.Rmd', eval=show_anno}
+```{r annoShow, child='annotation_template.Rmd', eval=show_anno}
 ```
 
 
-```{r child='rlfs_template.Rmd', eval=show_rlfs}
+```{r rlfsShow, child='rlfs_template.Rmd', eval=show_rlfs}
 ```
 
 
-```{r child='correlation_template.Rmd', eval=show_corr}
+```{r correlationShow, child='correlation_template.Rmd', eval=show_corr}
 ```
 
 
 ### Peak calling
 
-```{r}
+```{r totalPeaks}
 controlstr <- ifelse(control, "was", "was <strong style='color: red'>not</strong>")
 opt1 <- " the MACS2 peaks which overlapped with EPIC2 peaks were considered the 'final' peakset by RSeq."
 opt2 <- " the EPIC2 peaks were considered the 'final' peakset by RSeq."
@@ -127,13 +132,13 @@ Number of peaks in final RSeq peakset: <strong style="color: `r total_peaks_colo
 
 #### Peak MACS2 and EPIC2 overlap statistics
 
-```{r}
+```{r peakVenn}
 res <- suppressMessages(suppressWarnings(makeVennDiagram(peak_ol, ignore.strand = FALSE, margin = .05,
                                          fill = c('skyblue', 'firebrick'))))
 ```
 
 
-```{r}
+```{r peakCompare}
 venn_counts <- res$vennCounts
 peak_stats <- data.frame(
   "MACS2" = venn_counts[c(3:4),c(4)],
@@ -149,53 +154,37 @@ kable(peak_stats) %>%
 
 ***
 
-### Read quality
-
-From `fastp` report:
-
-```{r}
-before_filter <- unlist(read_qc_data$summary$before_filtering)
-after_filter <- unlist(read_qc_data$summary$after_filtering)
-namestable <- gsub(names(after_filter), pattern = "_", replacement = " ")
-namestable <- stringr::str_to_title(namestable)
-namestable <- gsub(namestable, pattern = "Gc", replacement = "GC")
-namestable[1:4] <- paste0(namestable[1:4], " (millions)")
-read_qc <- tibble(
-  "attribute" = namestable,
-  "Before filtering" = before_filter,
-  "After filtering" = after_filter
-) %>%
-  mutate_at(.vars = c("Before filtering", "After filtering"), function(x) {
-    ifelse(x > 1000000, x / 1000000, x)
-  }) %>% tibble::column_to_rownames(var = "attribute")
-reads_before <- read_qc$`Before filtering`[1]
-reads_after <- read_qc$`After filtering`[1]
-percent_passing <- round(100*(reads_after/reads_before), digits = 1)
-read_qc_color <- ifelse(percent_passing > 90, "green", ifelse(percent_passing > 80, "orange", "red"))
-kable(read_qc) %>%
-  kable_styling(full_width = FALSE, position = "left", bootstrap_options = "striped")
+```{r readQC, child='read_qc.Rmd', eval=show_readqc}
 ```
-
-Percent reads passing filter: <strong style="color: `r read_qc_color`">`r percent_passing`</strong>
-
-***
 
 ### Mapping quality
 
-```{r}
-total_reads <- bam_stats$total_reads / 1e6
+```{r mapping quality}
 reads_aligned <- bam_stats$reads_aligned / 1e6
 duplicate_reads <- bam_stats$duplicate_reads / 1e6
-pct_aligned <- round(100*(reads_aligned/total_reads), digits = 2)
-pct_align_color <- ifelse(pct_aligned > 80, "green", ifelse(pct_aligned > 60, "orange", "red"))
-pct_duplicated <- round(100*(duplicate_reads/total_reads), digits = 2)
-pct_duplicated_color <- ifelse(pct_duplicated < 35, "green", ifelse(pct_aligned < 50, "orange", "red"))
+
+if (show_readqc) {
+  total_reads <- bam_stats$total_reads / 1e6
+  total_reads_color <- "black"
+  pct_aligned <- round(100*(reads_aligned/total_reads), digits = 2)
+  pct_align_color <- ifelse(pct_aligned > 80, "green", ifelse(pct_aligned > 60, "orange", "red"))
+  pct_duplicated <- round(100*(duplicate_reads/total_reads), digits = 2)
+  pct_duplicated_color <- ifelse(pct_duplicated < 35, "green", ifelse(pct_aligned < 50, "orange", "red"))
+} else {
+  total_reads <- "N/A"
+  total_reads_color <- "grey"
+  pct_aligned <- "N/A"
+  pct_align_color <- "grey"
+  pct_duplicated <- "N/A"
+  pct_duplicated_color <- "grey"
+}
+
 genome <- configlist$genome
 ```
 
 Reads were aligned to **`r genome`** with `bwa mem`. 
 
-Total reads (millions): **`r total_reads`**
+Total reads (millions): <strong style="color: `r total_reads_color`">`r total_reads`</strong>
 
 Aligned reads (millions): **`r reads_aligned`**
 
@@ -209,7 +198,7 @@ Percent of reads duplicated: <strong style="color: `r pct_duplicated_color`">`r 
 
 &nbsp;
 <hr />
-<p style="text-align: center;">RSeq © 2020, <a href="https://gccri.bishop-lab.uthscsa.edu/"  target="_blank">Bishop Lab</a>, UT Health San Antonio</p>
+<p style="text-align: center;">RSeq © 2021, <a href="https://gccri.bishop-lab.uthscsa.edu/"  target="_blank">Bishop Lab</a>, UT Health San Antonio</p>
 <p style="text-align: center;">RSeq maintainer: <span style="color: #808080;"><em>millerh1@uthscsa.edu</em></span></p>
 
 &nbsp;

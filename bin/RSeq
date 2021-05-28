@@ -98,6 +98,5 @@ fi
 
 # Run the pipeline!
 python "$SRCDIR"/scripts/run_workflow.py "$inputJSON"
+exit $?
 
-echo
-exit 0
