@@ -21,8 +21,8 @@ jobs:
           mamba-version: "*"
           channels: conda-forge, bioconda, r
           channel-priority: true
-          activate-environment: anaconda-client-env
           environment-file: mamba-environment.yml
+          activate-environment: rseq
       - shell: bash -l {0}
         run: |
           conda info
