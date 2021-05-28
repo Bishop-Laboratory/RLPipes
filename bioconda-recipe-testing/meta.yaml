@@ -24,6 +24,6 @@ requirements:
 
 test:
   commands:
-    - RSeq -e SRX1025890 -m DRIP -S dryrun=True
+    - RSeq -h
 
 

@@ -1,18 +1,17 @@
 # This is a basic workflow that is manually triggered
 
-name: ubuntu_mamba_setup
+name: Install-and-test
 
 # Controls when the action will run. Workflow runs when manually triggered using the UI
 # or API.
-on:
-  workflow_dispatch:
+on: push
 
 # Use mamba to handle conda installs in a faster way.
 # mamba-version accepts a version string x.y (including "*").
 # It requires you specify conda-forge as part of the channels, ideally with the highest priority.
 jobs:
-  example-6:
-    name: Ex6 Mamba
+  install-and-test:
+    name: Install and Test
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v2
@@ -20,7 +19,7 @@ jobs:
         with:
           python-version: 3.6
           mamba-version: "*"
-          channels: conda-forge, bioconda
+          channels: conda-forge, bioconda, r
           channel-priority: true
           activate-environment: anaconda-client-env
           environment-file: mamba-environment.yml
@@ -33,5 +32,17 @@ jobs:
           printenv | sort
       - shell: bash -l {0}
         run: mamba install jupyterlab
-      - shell: bash -l {0}
-        run: bash RSeq -e SRX8908682 -m DRIP
+      - name: Install RSeq and run short tests
+        run: |
+          conda activate rseq
+          conda mambabuild bioconda-recipe-testing/ -c bioconda -c conda-forge -c r |& tee build.log
+          BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
+          mamba remove rseq  # Remove previous version if exists
+          mamba install $BINARY_PATH
+          RSeq -h
+      - name: Run pipeline tests
+        run: |
+          cd tests/
+          wget https://rseq-testing.s3-us-west-2.amazonaws.com/bam-files/SRX1025890_TC32_NT_DRIP.hg38.bam
+          wget https://rseq-testing.s3-us-west-2.amazonaws.com/bam-files/SRX1025893_TC32_Input.hg38.bam
+          ./tests.sh
