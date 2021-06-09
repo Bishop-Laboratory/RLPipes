@@ -1,9 +1,6 @@
 # Datasets used in tests
-These datasets are large enough for proper pipeline testing, but still small enough to fit on GitHub. For fastq files, 
-they are gzipped at the highest compression level available using `gzip -9 <some_file>`. Here is the list of datasets:
+The datasets are in the `rseq-testing` bucket on AWS.
 
-1. `SRR393964__drip_s96_single_end.fastq.gz` - fastq file containing 100,000 DRIP-Seq single-end reads from an S9.6 sample
-   (ie. should be mapping R-loops)
-2. `SRR5137197__drip_input_paired_end.fastq` - fastq file containing 100,000 DRIP-Seq paired-end reads from an input sample
-   (ie. should NOT be mapping R-loops, negative control used in peak calling)
-3. 
+For example the TC32 hg38 DRIP-Seq bam file is here:
+https://rseq-testing.s3-us-west-2.amazonaws.com/bam-files/SRX1025890_TC32_NT_DRIP.hg38.bam
+

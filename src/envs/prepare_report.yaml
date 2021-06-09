@@ -1,0 +1,17 @@
+channels:
+  - bioconda
+  - conda-forge
+  - r
+dependencies:
+  - r-tidyverse
+  - r-rmarkdown
+  - r-knitr
+  - r-kableextra
+  - r-pheatmap
+  - r-xgboost
+  - r-ggpubr
+  - r-rcolorbrewer
+  - bioconductor-chippeakanno
+  - bioconductor-regioner
+  - r-plotly
+  - r-fitdistrplus

@@ -1,0 +1,30 @@
+### Read quality
+
+From `fastp` report:
+
+```{r}
+before_filter <- unlist(read_qc_data$summary$before_filtering)
+after_filter <- unlist(read_qc_data$summary$after_filtering)
+namestable <- gsub(names(after_filter), pattern = "_", replacement = " ")
+namestable <- stringr::str_to_title(namestable)
+namestable <- gsub(namestable, pattern = "Gc", replacement = "GC")
+namestable[1:4] <- paste0(namestable[1:4], " (millions)")
+read_qc <- tibble(
+  "attribute" = namestable,
+  "Before filtering" = before_filter,
+  "After filtering" = after_filter
+) %>%
+  mutate_at(.vars = c("Before filtering", "After filtering"), function(x) {
+    ifelse(x > 1000000, x / 1000000, x)
+  }) %>% tibble::column_to_rownames(var = "attribute")
+reads_before <- read_qc$`Before filtering`[1]
+reads_after <- read_qc$`After filtering`[1]
+percent_passing <- round(100*(reads_after/reads_before), digits = 1)
+read_qc_color <- ifelse(percent_passing > 90, "green", ifelse(percent_passing > 80, "orange", "red"))
+kable(read_qc) %>%
+  kable_styling(full_width = FALSE, position = "left", bootstrap_options = "striped")
+```
+
+Percent reads passing filter: <strong style="color: `r read_qc_color`">`r percent_passing`</strong>
+
+***

@@ -1,29 +1,16 @@
 # Compile peaks from MACS2 and EPIC2 based on mode of sequencing
-compile_peaks <- function(configs, sample_name, macs2, epic2, output_rda, output_bed) {
-  # configs <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/rseqVars.json"
-  # sample_name <- 'SRX2675003_HKE293-D210N-V5ChIP-Rep1'
-  # # macs2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX113813_Ntera2_DNA/peaks_macs_unstranded/SRX113813_Ntera2_DNA_hg38.unstranded.broadPeak"
-  # # epic2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX113813_Ntera2_DNA/peaks_epic_unstranded/SRX113813_Ntera2_DNA_hg38.unstranded.bed"
-  # # macs2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX6427717_DMSO_qDRIP-seq_1/peaks_macs_stranded/SRX6427717_DMSO_qDRIP-seq_1_hg38.stranded.broadPeak"
-  # # epic2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX6427717_DMSO_qDRIP-seq_1/peaks_epic_stranded/SRX6427717_DMSO_qDRIP-seq_1_hg38.stranded.bed"  # output <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RSeq/tests/RSeq_out3/qDRIP/peaks_final_unstranded/qDRIP_hg38.bed"
-  # # macs2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX2675009_HKE293-WKKD-V5ChIP/peaks_macs_unstranded/SRX2675009_HKE293-WKKD-V5ChIP_hg38.unstranded.broadPeak"
-  # # epic2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX2675009_HKE293-WKKD-V5ChIP/peaks_epic_unstranded/SRX2675009_HKE293-WKKD-V5ChIP_hg38.unstranded.bed"
-  # macs2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX5547605_Replicate_1_RR-ChIP_seq_D210N/peaks_macs_stranded/SRX5547605_Replicate_1_RR-ChIP_seq_D210N_hg38.stranded.broadPeak"
-  # epic2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX5547605_Replicate_1_RR-ChIP_seq_D210N/peaks_epic_stranded/SRX5547605_Replicate_1_RR-ChIP_seq_D210N_hg38.stranded.bed"
-  # macs2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX1761639_UNKNOWN/peaks_macs_unstranded/SRX1761639_UNKNOWN_sacCer3.unstranded.broadPeak"
-  # epic2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX1761639_UNKNOWN/peaks_epic_unstranded/SRX1761639_UNKNOWN_sacCer3.unstranded.bed"
-  # 
-  # macs2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX2675003_HKE293-D210N-V5ChIP-Rep1/peaks_macs_unstranded/SRX2675003_HKE293-D210N-V5ChIP-Rep1_hg38.unstranded.broadPeak"
-  # epic2 <- "/home/UTHSCSA/millerh1/Bishop.lab/Projects/RMapDB/data/SRX2675003_HKE293-D210N-V5ChIP-Rep1/peaks_epic_unstranded/SRX2675003_HKE293-D210N-V5ChIP-Rep1_hg38.unstranded.bed"
-  # 
-  
-  configs <- gsub(configs, pattern = "//", replacement = "/")
-  configlist <- jsonlite::read_json(configs, simplifyVector = TRUE)
-  configlist <- configlist[[sample_name]]
-  
-  mode <- configlist$mode
-  control <- ifelse(configlist$controls == 'None', FALSE, TRUE)
-  
+compile_peaks <- function(mode, control, macs2, epic2, output_prefix) {
+
+  # mode <- "DRIP"
+  # control <- "None"
+  # macs2 <- "rseq_out_input/peaks/SRX1025893_TC32_Input/macs2/SRX1025893_TC32_Input_hg38__peaks.broadPeak"
+  # epic2 <- "rseq_out_input/peaks/SRX1025893_TC32_Input/epic2/SRX1025893_TC32_Input_hg38__peaks_epic2.bed"
+  # output_prefix <- "rseq_out_input/peaks/SRX1025890_TC32_NT_DRIP/SRX1025890_TC32_NT_DRIP_hg38__compiled_peaks"
+
+  # TODO: Need to revisit this approach. Simpler would be to just ouput all macs2 that ol with epic2
+  # TODO: We could also test to see the # of peaks called by each approach on input samples and estimate error rate
+  # TODO: Should output pval as same format for macs2 and epic2
+  control <- control != "None"
   no_macs <- FALSE
   no_epic <- FALSE
   
@@ -32,89 +19,105 @@ compile_peaks <- function(configs, sample_name, macs2, epic2, output_rda, output
   colnames(empty_gr) <- c("seqnames", "start", "end", "name", "score", "strand")
   empty_gr <- ChIPpeakAnno::toGRanges(empty_gr)
   
-  macs2 <- readr::read_tsv(macs2, col_names = c("seqnames", "start", "end", "name", "score", "strand"))
+  macs2 <- readr::read_tsv(macs2, col_names = c("seqnames", "start", "end", "name", "score", "strand",
+                                                "signalValue", "pValue", "qValue"))
   if (! length(colnames(macs2))) {
     no_macs <- TRUE
-    MACS2 <- empty_gr
+    macs2 <- empty_gr
     warning("No MACS2 peaks found!")
   } else {
     macs2 <- dplyr::filter(macs2, start < end & ! is.na(score))
-    MACS2 <- ChIPpeakAnno::toGRanges(as.data.frame(macs2))
-    MACS2$score <- as.numeric(MACS2$score)
+    macs2 <- ChIPpeakAnno::toGRanges(as.data.frame(macs2))
+    macs2$score <- as.numeric(macs2$score)
   }
-  
-  
-  epic2 <- readr::read_tsv(epic2, col_names = c("seqnames", "start", "end", "name", "score", "strand"))
+  epic2 <- readr::read_tsv(epic2)
+
+  if (control) {
+    colnames(epic2) <- c("seqnames", "start", "end", "pValue", "score", "strand",
+                                                "ChIPCount", "InputCount", "FDR", "log2FoldChange")
+  } else {
+    colnames(epic2) <- c("seqnames", "start", "end", "ChIPCount", "score", "strand")
+  }
+
   if (! length(colnames(epic2))) {
     no_epic <- TRUE
-    EPIC2 <- empty_gr
+    epic2 <- empty_gr
     warning("No EPIC2 peaks found!")
   } else {
-    epic2$name <- seq(length(epic2$name))
+    epic2$name <- seq(length(epic2$start))
     epic2 <- dplyr::filter(epic2, start < end & ! is.na(score))
-    EPIC2 <- ChIPpeakAnno::toGRanges(as.data.frame(epic2))
-    EPIC2$score <- as.numeric(EPIC2$score)
+    epic2 <- ChIPpeakAnno::toGRanges(as.data.frame(epic2))
+    epic2$score <- as.numeric(epic2$score)
   }
   
-  # Both peaksets available
-  peak_ol <- ChIPpeakAnno::findOverlapsOfPeaks(MACS2, EPIC2, ignore.strand = FALSE)
-  save(peak_ol, file = output_rda)
-  
+  # Overlap and save in RData file
+  peak_ol <- ChIPpeakAnno::findOverlapsOfPeaks(macs2, epic2, ignore.strand = FALSE)
+  save(peak_ol, file = paste0(output_prefix, ".rda"))
+  outbed <- peak_ol$overlappingPeaks$`macs2///epic2`
+
   if (no_macs & no_epic) {
     warning("No peaks found! Outputting empty range set.")
-    rtracklayer::export(empty_gr, con = output_bed)
+    output <- "epic"
   } else if (no_macs) {
     warning("Outputting epic2 ranges only.")
-    rtracklayer::export(EPIC2, con = output_bed)
+    output <- "epic"
   } else if (no_epic) {
     warning("Outputting macs2 ranges only.")
-    rtracklayer::export(MACS2, con = output_bed)
+    output <- "macs"
   } else {
     if (mode %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP', 'RDIP', 'ssDRIP', 'S1-DRIP')) {
+      # CASE: DRIP family / S9.6 based
       if (control) {
-        outbed <- peak_ol$overlappingPeaks$`MACS2///EPIC2`
+        # CASE: Control sample is available -- using the overlap
         if (! length(outbed$peaks1)) {
-          rtracklayer::export(MACS2, con = output_bed)
+          # CASE No overlapping peaks
+          output <- "macs"
         } else {
-          outbedgr <- ChIPpeakAnno::toGRanges(outbed[,c(2:4, 7, 6)])
-          rtracklayer::export(outbedgr, con = output_bed)
+          # CASE: Both peaksets available, taking macs2 that overlaps with epic2 and saving
+          output <- "filtered_macs"
         }
       } else {
-        rtracklayer::export(EPIC2, con = output_bed)
+        # CASE: No contol, using EPIC2 only
+        output <- "epic"
       }
     } else if (mode %in% c("R-ChIP", "RR-ChIP", "RNH-CnR", "MapR", 'DRIVE')) {
-      outbed <- peak_ol$overlappingPeaks$`MACS2///EPIC2`
+      # CASE: RNH1 family of modes
       if (! length(outbed$peaks1)) {
-        rtracklayer::export(MACS2, con = output_bed)
+        output <- "macs"
       } else {
-        outbedgr <- ChIPpeakAnno::toGRanges(outbed[,c(2:4, 7, 6)])
-        rtracklayer::export(outbedgr, con = output_bed)
+        # CASE: epic2 and macs2 available, select macs2 peaks that overlap with epic2
+        output <- "filtered_macs"
       }
     }
   }
-  
-  # Shell method of overlapping ranges.
-  # bed_awk <- "awk ' NR>1 {print $1\"\t\"$2\"\t\"$3\"\t\"\".\"\"\t\"\".\"\"\t\"$6} '"  # Gives the file in bed6 format
-  # if (mode %in% c("DRIP", "DRIPc", "sDRIP", 'qDRIP', 'RDIP', 'ssDRIP')) {
-  #   if (control) {
-  #     cmd <- paste0("bedtools intersect -a ", macs2, " -b ", epic2, " | ", bed_awk, " > ", output)
-  #   } else {
-  #     cmd <- paste0(bed_awk, " ", epic2, " > ", output)
-  #   }
-  # } else if (mode %in% c("R-ChIP", "RR-ChIP", "RNH-CnR", "MapR", 'DRIVE')) {
-  #   cmd <- paste0("bedtools intersect -a ", macs2, " -b ", epic2, " | ", bed_awk, " > ", output)
-  # }
-  # system(cmd)
-}
 
+  if (output == "filtered_macs") {
+    outbedgr <- as.data.frame(macs2[names(macs2) %in% outbed$peaks1,])
+    colnames(outbedgr)[1] <- paste0("#", colnames(outbedgr)[1])
+    outbedgr$name <- paste0("peak_", seq(outbedgr$width))
+    outbedgr <- outbedgr[,c("#seqnames", "start", "end", "name", "score", "strand", "signalValue", "pValue", "qValue")]
+    readr::write_tsv(outbedgr, file = paste0(output_prefix, ".bed"))
+  } else if (output == "macs") {
+    macs2 <- as.data.frame(macs2)
+    colnames(macs2)[1] <- paste0("#", colnames(macs2)[1])
+    macs2$name <- paste0("peak_", seq(macs2$width))
+    macs2 <- macs2[,c("#seqnames", "start", "end", "name", "score", "strand", "signalValue", "pValue", "qValue")]
+    readr::write_tsv(macs2, file = paste0(output_prefix, ".bed"))
+  } else if (output == "epic") {
+    epic2 <- as.data.frame(epic2)
+    colnames(epic2)[1] <- paste0("#", colnames(epic2)[1])
+    epic2$name <- paste0("peak_", seq(epic2$width))
+    epic2 <- epic2[,c("#seqnames", "start", "end", "name", "score", "strand", "ChIPCount")]
+    readr::write_tsv(epic2, file = paste0(output_prefix, ".bed"))
+  }
+}
 
 # Parse shell args
 arg <- commandArgs(trailingOnly=TRUE)
 # print(arg)
 
-suppressMessages(compile_peaks(configs = arg[1],
-                               sample_name = arg[2],
+suppressMessages(compile_peaks(mode = arg[1],
+                               control = arg[2],
                                macs2 = arg[3],
                                epic2 = arg[4],
-                               output_rda = arg[5],
-                               output_bed = arg[6]))
+                               output_prefix = arg[5]))
