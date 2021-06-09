@@ -14,8 +14,15 @@ First, you need to build and install the package from source:
 
 (This requires `git` and `miniconda3` to work)
 
+Clone the repo:
+
 ```shell
 git clone https://github.com/Bishop-Laboratory/RSeq.git
+```
+
+Install: 
+
+```shell
 cd RSeq/
 conda install -c conda-forge mamba -y
 mamba env create -f mamba-environment.yml --force
