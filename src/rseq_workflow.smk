@@ -47,11 +47,30 @@ else:
     bwa_location="bwa_index"
 
 ### Helper functions for pipeline ###
-def find_replicates(wildcards):
+def find_sra_replicates(wildcards):
     srr_list = [experiments[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     replicates = expand("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq",
            outdir=wildcards.outdir, srr_acc=srr_list, sample=wildcards.sample)
     return replicates
+
+def find_fq(wildcards):
+    fq = [experiments[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    return fq
+
+def check_type_fq(wildcards):
+    file_type = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    if file_type == "fastq":
+        fq = [experiments[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0][0]
+        if fq[-3:] == ".gz":
+            # CASE: Fastq GZ available
+            return "{outdir}/tmp/fastqs_gunzip/{sample}.{genome}__gunzip.fastq"
+        else:
+            # CASE: normal Fastq
+            return "{outdir}/tmp/fastqs_cp/{sample}.{genome}__cp.fastq"
+    else:
+        # CASE: Public data accession
+        return "{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq"
+    
 
 def pe_test_fastp(wildcards):
     pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
@@ -412,8 +431,7 @@ rule download_fasta:
 
 # TODO: Pipe this part
 rule fastp:
-    input:
-        sample="{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq"
+    input: check_type_fq
     output:
         trimmed=temp("{outdir}/tmp/fastqs_trimmed/{sample}.{genome}__trimmed.fastq"),
         html="{outdir}/QC/fastq/html/{sample}.{genome}.html",
@@ -429,12 +447,32 @@ rule fastp:
     """
 
 rule merge_replicate_reads:
-    input: find_replicates
+    input: find_sra_replicates
     output: temp("{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq")
     log: "{outdir}/logs/merge_fastq/{sample}_{genome}__merge_fastq.log"
     shell: """
     (cat {input} > {output}) &> {log}
     """
+    
+    
+rule cp_fq:
+    input: find_fq
+    output: temp("{outdir}/tmp/fastqs_cp/{sample}.{genome}__cp.fastq")
+    log: "{outdir}/logs/cp_fastq/{sample}_{genome}__cp_fastq.log"
+    shell: """
+        (cp {input} {output}) &> {log}
+    """
+    
+
+rule gunzip_fq:
+    input: find_fq
+    output: temp("{outdir}/tmp/fastqs_gunzip/{sample}.{genome}__gunzip.fastq")
+    log: "{outdir}/logs/gunzip_fastq/{sample}_{genome}__gunzip_fastq.log"
+    shell: """
+        (cp {input} {output}.gz
+        gunzip {output}.gz) &> {log}
+    """
+
 
 # If debugging, will use a less stable but much faster version of this rule which outputs a small fastq file
 if debug:

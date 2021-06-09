@@ -5,7 +5,7 @@ processInput <- function(samples,
                          available_genomes) {
 
   # ### For bug testing ##
-  # samples <- read.csv("tests/manifest_for_RSeq_testing_09092020.csv", fileEncoding="UTF-8-BOM")
+  # samples <- read.csv("../projects/rloops_and_splicing/data/DRIPSeq-E7-TC32-MSC/New/sampleSheet.csv")
   # source("RSeq/utils.R")
   # load("RSeq/data/available_genomes.rda")
   # ### #####################
@@ -14,11 +14,11 @@ processInput <- function(samples,
 
   # Additional data
   # TODO: add support for bigWig and bedGraph
-  read_align_pattern <- "\\.bam$|\\.f[ast]*q$"
+  read_align_pattern <- "\\.bam$|\\.f[ast]*q[\\.gz]*$"
   public_pattern <- paste0("^[ES]R[RAXSP][0-9]+$|^GS[EM][0-9]+$|^PRJNA[0-9]+$|^SAMN[0-9]+$")
-  R1_pattern <- "[\\._]+[rR]*1\\.f[ast]*q$"
-  R2_pattern <- "[\\._]+[rR]*2\\.f[ast]*q$"
-  fq_end_pattern <- paste0(R1_pattern, "|", R2_pattern, "|[\\._]+[rR]*\\*.f[ast]*q$|\\.f[ast]*q$")
+  R1_pattern <- "[\\._]+[rR]*1\\.f[ast]*q[\\.gz]*$"
+  R2_pattern <- "[\\._]+[rR]*2\\.f[ast]*q[\\.gz]*$"
+  fq_end_pattern <- paste0(R1_pattern, "|", R2_pattern, "|[\\._]+[rR]*\\*.f[ast]*q[\\.gz]*$|\\.f[ast]*q[\\.gz]*$")
 
   mode_df <- data.frame(
     mode = c("DRIP", "ssDRIP", "qDRIP",
@@ -43,7 +43,8 @@ processInput <- function(samples,
     mutate(control = NA)
   if (length(samples_ctr$experiment)) {
     samples <- samples %>%
-      dplyr::bind_rows(samples_ctr)
+      dplyr::bind_rows(samples_ctr) %>%
+      unique()
   }
 
 
@@ -96,7 +97,7 @@ processInput <- function(samples,
   samples$file_type <- NA
   samples$file_type[publicIndExp] <- "public"
   samples$file_type[fileIndExp][grep(samples$experiment[fileIndExp],
-                                   pattern = "\\.f[ast]*q$")] <- "fastq"
+                                   pattern = "\\.f[ast]*q[\\.gz]*$")] <- "fastq"
   samples$file_type[fileIndExp][grep(samples$experiment[fileIndExp],
                                    pattern = "\\.bam$")] <- "bam"
   if (! "sample_name" %in% colnames(samples)) {
@@ -127,10 +128,10 @@ processInput <- function(samples,
   fqInd <- which(samples$file_type == "fastq")
   for (ind in fqInd) {
     fqNow <- samples$experiment[ind]
-    plus_bool <- grepl(fqNow[1], pattern = "\\.f[ast]*q(\\+)")
+    plus_bool <- grepl(fqNow[1], pattern = "\\.f[ast]*q[\\.gz]*(\\+)")
     if (plus_bool) {
-      fastq_1 <- gsub(fqNow, pattern = "(.+\\.f[ast]*q)\\+(.+\\.f[ast]*q)", replacement = "\\1")
-      fastq_2 <- gsub(fqNow, pattern = "(.+\\.f[ast]*q)\\+(.+\\.f[ast]*q)", replacement = "\\2")
+      fastq_1 <- gsub(fqNow, pattern = "(.+\\.f[ast]*q[\\.gz]*)\\+(.+\\.f[ast]*q[\\.gz]*)", replacement = "\\1")
+      fastq_2 <- gsub(fqNow, pattern = "(.+\\.f[ast]*q[\\.gz]*)\\+(.+\\.f[ast]*q[\\.gz]*)", replacement = "\\2")
       if (! file.exists(fastq_1) | ! file.exists(fastq_2)) {stop("Could not find fastq files ", fastq_1, " ", fastq_2)}
       if (is.na(samples$sample_name)) {
         samples$sample_name[ind] <- gsub(basename(fastq_1),
@@ -384,6 +385,9 @@ args <- commandArgs(trailingOnly=TRUE)
 #           "-o", "test7", "RSeq")
 
 # args <- c("-e", "SRX1025890", "-m", "DRIP", "/mnt/c/Users/mille/RSeq/bin/../src")
+# 
+# args <- c("-s", "data/DRIPSeq-E7-TC32-MSC/New/sampleSheet.csv", "-m",
+#           "DRIP", "-g", "hg38", "../../RSeq/bin/../src/")
 
 # print(args)
 
@@ -430,7 +434,7 @@ for (i in 1:(length(args))) {
     if (! length(name)) {
       name <- nameRaw
     }
-
+    
     # Get the argument type
     type <- argument_possibles$type[which(argument_possibles$short == name)]
     if (! length(type)) {

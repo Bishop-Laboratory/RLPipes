@@ -45,9 +45,16 @@ get_bam_read_length <- function(bam_file) {
 get_fastq_read_length <- function(fastq_file) {
   ## Bug testing #
   #fastq_file <- "~/Bishop.lab/Preprocessing/DRIP_Seq/GSE145964_Developmental_Context_ChIP_DRIP/Data/Raw_Reads/SRR11185284_1.fastq"
-
-  cmd <- paste0("head -n 40000 ", fastq_file,
-                " | awk '{if(NR%4==2) print length($1)}'")
+  if (grepl(pattern = "\\.gz$", x = fastq_file)) {
+    # CASE: .gz fastq file
+    cmd <- paste0("(zcat -f ", fastq_file,
+                  " ) 2> /dev/null | head -n 40000" ,
+                  " | awk '{if(NR%4==2) print length($1)}'")
+  } else {
+    # CASE: Plain text fastq file
+    cmd <- paste0("head -n 40000 ", fastq_file,
+                  " | awk '{if(NR%4==2) print length($1)}'")
+  }
   lens <- as.numeric(system(cmd, intern = TRUE))
   return(mean(lens))
 }
