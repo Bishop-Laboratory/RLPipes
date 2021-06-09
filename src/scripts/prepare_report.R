@@ -62,6 +62,7 @@ prepare_report <- function(helper_dir, configs, sample_name, output_html, output
 
   # Parse QC data file
   print(configlist$file_type)
+  print(read_qc_data)
   if (! configlist$file_type %in% c("bam", "peak_coverage")) {
     read_qc_data <- jsonlite::read_json(read_qc_data, simplifyVector = TRUE)
     bam_stats[["total_reads"]] <- read_qc_data$filtering_result$passed_filter_reads
@@ -106,6 +107,6 @@ suppressMessages(prepare_report(helper_dir = arg[1],
                                 bam_stats = arg[stringr::str_which(arg, pattern = "__bam_stats\\.txt$")],
                                 homer_annotations = arg[stringr::str_which(arg, pattern = "__feature_overlaps\\.txt$")],
                                 correlation_analysis = arg[stringr::str_which(arg, pattern = "__correlation_analysis\\.rda$")],
-                                read_qc_data = arg[stringr::str_which(arg, pattern = ".*/QC/fastq/*\\.json$")],
+                                read_qc_data = arg[stringr::str_which(arg, pattern = ".*/QC/fastq/.*\\.json$")],
                                 peak_compilation_data = arg[stringr::str_which(arg, pattern = "__compiled_peaks\\.rda$")],
                                 final_peaks = arg[stringr::str_which(arg, pattern = "__compiled_peaks\\.bed$")]))

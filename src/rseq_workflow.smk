@@ -9,7 +9,7 @@ helpers_dir=config['helpers_dir'][0]
 genome_home_dir=config['genome_home_dir'][0]
 cores=config['threads'][0]
 outdir=config['outdir'][0]
-outdir=outdir.strip("/")
+outdir=outdir.removesuffix("/")
 bwa_mem2=config['bwa_mem2'][0]
 
 # Sample info
@@ -150,9 +150,8 @@ def get_report_inputs(wildcards):
     st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     if st_now in ['fastq', 'public', 'bam']:
         return_dict['bam_stats'] = wildcards.outdir + '/bam_stats/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__bam_stats.txt"
-    elif st_now in ['fastq', 'public']:
-        return_dict['read_qc_data'] = wildcards.outdir + '/QC/fastq/json/' + wildcards.sample + "." + wildcards.genome + ".json"
-
+        if st_now in ['fastq', 'public']:
+            return_dict['read_qc_data'] = wildcards.outdir + '/QC/fastq/json/' + wildcards.sample + "." + wildcards.genome + ".json"
     return return_dict
 
 def choose_bam_type(wildcards):

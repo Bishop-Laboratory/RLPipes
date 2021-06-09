@@ -386,8 +386,10 @@ args <- commandArgs(trailingOnly=TRUE)
 
 # args <- c("-e", "SRX1025890", "-m", "DRIP", "/mnt/c/Users/mille/RSeq/bin/../src")
 # 
-# args <- c("-s", "data/DRIPSeq-E7-TC32-MSC/New/sampleSheet.csv", "-m",
-#           "DRIP", "-g", "hg38", "../../RSeq/bin/../src/")
+# args <- c("-s", "/home/millerh1/projects/rloops_and_splicing/data/DRIPSeq-E7-TC32-MSC/New/sampleSheet.csv", "-m",
+#           "DRIP", "-g", "hg38",
+#           "-o", "/home/millerh1/projects/rloops_and_splicing/data/DRIPSeq-E7-TC32-MSC/New/rseq_out/",
+#           "../RSeq/bin/../src/")
 
 # print(args)
 
