@@ -6,7 +6,7 @@ name: Install-and-test2
 # or API.
 on: 
   push:
-    - branch: [ main ]
+    branches: [ pipeline_rewrite ]
 
 # Use mamba to handle conda installs in a faster way.
 # mamba-version accepts a version string x.y (including "*").
@@ -43,4 +43,5 @@ jobs:
           echo $FIRST_NAME
           echo $LAST_NAME
           Rscript -e "remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GITHUB_TOKEN')"
+ 
  
