@@ -397,11 +397,11 @@ args <- commandArgs(trailingOnly=TRUE)
 
 # Dataframe of mappings between possible arguments and whether they have a value or not
 argument_possibles <- data.frame(
-  short = c("e", "e1", "e2", "c", "c1", "c2", "d", "m", "g", "n", "s", "o", "G", "t", "r", "S", "b", "v", "h"),
+  short = c("e", "e1", "e2", "c", "c1", "c2", "d", "m", "g", "n", "s", "o", "G", "t", "r", "S", "b", "M", "v", "h"),
   long = c("experiment", "experiment_R1", "experiment_R2", "control", "control_R1", "control_R2",
            "downsample",  "mode", "genome", "name", "sampleSheet", "outdir",
-           "genome_home_dir", "threads", "configs", "snake_args", "bwa_mem2", "version", "help"),
-  type = c(rep("valued", 16), rep("valueless", 3)), stringsAsFactors = FALSE
+           "genome_home_dir", "threads", "configs", "snake_args", "bwa_mem2", "macs3", "version", "help"),
+  type = c(rep("valued", 16), rep("valueless", 4)), stringsAsFactors = FALSE
 )
 
 # Loop for parsing command line shell arguments
@@ -502,6 +502,7 @@ threads <- collect_list$threads
 genome_home_dir <- collect_list$genome_home_dir
 snake_args <- collect_list$snake_args
 bwa_mem2 <- collect_list$bwa_mem2
+macs3 <- collect_list$macs3
 if (is.null(snake_args)) {snake_args <- "use_conda=True"}
 helpers_dir <- args[length(args)]
 # Set defaults
@@ -510,6 +511,8 @@ if (is.null(genome_home_dir)) {genome_home_dir <- file.path(path.expand("~"), ".
 if (is.null(threads)) {threads <- 1} else {threads <- as.numeric(threads)}
 if (is.null(snake_args)) {snake_args <- ""}
 if (is.null(bwa_mem2)) {bwa_mem2 <- FALSE}
+if (is.null(macs3)) {macs3 <- FALSE}
+
 #create genome home directory if it does not exist
 dir.create(genome_home_dir, showWarnings = FALSE)
 #create output directory and specify path to json output
@@ -605,7 +608,8 @@ if (is.null(configs)) {
     threads=threads,
     helpers_dir=helpers_dir,
     snake_args=snake_args,
-    bwa_mem2=bwa_mem2
+    bwa_mem2=bwa_mem2,
+    macs3=macs3
   ))
 
   jsonlite::write_json(configs, path = output_json)
@@ -624,6 +628,7 @@ if (is.null(configs)) {
   configs[['threads']] <- threads
   configs[['snake_args']] <- snake_args
   configs[['bwa_mem2']] <- bwa_mem2
+  configs[['macs3']] <- macs3
   jsonlite::write_json(configs, path = output_json)
 }
 

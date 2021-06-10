@@ -1,10 +1,16 @@
 #' Prepare Report
 #' Generate final RMarkdown Report
-prepare_report <- function(helper_dir, configs, sample_name, output_html, output_data, rlfs_enrichment, bam_stats,
-                           homer_annotations, correlation_analysis, read_qc_data, peak_compilation_data, final_peaks) {
+prepare_report <- function(helper_dir, configs, sample_name, output_html, 
+                           output_data, rlfs_enrichment, bam_stats,
+                           homer_annotations, correlation_analysis,
+                           read_qc_data, peaks, peaks_overInput,
+                           fingerprint) {
 
-  print(c(helper_dir, configs, sample_name, output_html, output_data, rlfs_enrichment, bam_stats,
-                           homer_annotations, correlation_analysis, read_qc_data, peak_compilation_data, final_peaks))
+  print(c(helper_dir, configs, sample_name, output_html, output_data,
+          rlfs_enrichment, bam_stats, 
+          homer_annotations, correlation_analysis,
+          read_qc_data, peaks, peaks_overInput,
+          fingerprint))
   
   # # Bug testing
   # helper_dir <- "/home/millerh1/PycharmProjects/RSeq/bin/../src"
@@ -43,26 +49,30 @@ prepare_report <- function(helper_dir, configs, sample_name, output_html, output
   anno_data <- suppressMessages(read_tsv(homer_annotations)) %>%
       dplyr::filter(! grepl(Annotation, pattern = "\\?"))
 
-  print("AFTER")
   # Parse RLFS data
   load(rlfs_enrichment)
   rlfs_data <- list(pt, lz)
 
-  # Parse peak_compile data
-  load(peak_compilation_data)
-  final_peaks <- suppressMessages(readr::read_tsv(final_peaks))
-  total_peaks <- length(final_peaks$end)
-
+  # Parse peak data
+  if (length(peaks) > 1) {
+    # CASE: If input supplied, name ambiguity might be an issue
+    # This resolves that by ensuring no peaks same as peaks_overInput
+    peaks <- peaks[! peaks %in% peaks_overInput]
+  }
+  peaks <- suppressMessages(ChIPpeakAnno::toGRanges(peaks))
+  total_peaks <- length(names(peaks))
+  if (length(peaks_overInput) > 0) {
+    peaks_overInput <- suppressMessages(ChIPpeakAnno::toGRanges(peaks_overInput))
+    total_peaks <- length(names(peaks))
+  }
+  
   # Parse bam stats
   bam_stats_raw <- suppressMessages(read_lines(bam_stats))
   bam_stats <- list(
     "reads_aligned" = as.numeric(gsub(bam_stats_raw[1], pattern = "^([0-9]+) \\+ .+", replacement = "\\1")),
     "duplicate_reads" = as.numeric(gsub(bam_stats_raw[4], pattern = "^([0-9]+) \\+ .+", replacement = "\\1"))
   )
-
   # Parse QC data file
-  print(configlist$file_type)
-  print(read_qc_data)
   if (! configlist$file_type %in% c("bam", "peak_coverage")) {
     read_qc_data <- jsonlite::read_json(read_qc_data, simplifyVector = TRUE)
     bam_stats[["total_reads"]] <- read_qc_data$filtering_result$passed_filter_reads
@@ -77,7 +87,6 @@ prepare_report <- function(helper_dir, configs, sample_name, output_html, output
                     anno_data = anno_data,
                     rlfs_data = rlfs_data,
                     bam_stats = bam_stats,
-                    peak_ol = peak_ol,
                     total_peaks = total_peaks,
                     read_qc_data = read_qc_data,
                     configlist = configlist,
@@ -108,5 +117,7 @@ suppressMessages(prepare_report(helper_dir = arg[1],
                                 homer_annotations = arg[stringr::str_which(arg, pattern = "__feature_overlaps\\.txt$")],
                                 correlation_analysis = arg[stringr::str_which(arg, pattern = "__correlation_analysis\\.rda$")],
                                 read_qc_data = arg[stringr::str_which(arg, pattern = ".*/QC/fastq/.*\\.json$")],
-                                peak_compilation_data = arg[stringr::str_which(arg, pattern = "__compiled_peaks\\.rda$")],
-                                final_peaks = arg[stringr::str_which(arg, pattern = "__compiled_peaks\\.bed$")]))
+                                peaks = unique(arg[stringr::str_which(arg, pattern = "__peaks\\.broadPeak$")]),
+                                peaks_overInput = arg[stringr::str_which(arg, pattern = "_overInput__peaks\\.broadPeak$")],
+                                fingerprint = arg[stringr::str_which(arg, pattern = "_fingerprint\\.tab$")]
+                                ))

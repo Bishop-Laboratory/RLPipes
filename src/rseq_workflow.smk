@@ -11,6 +11,7 @@ cores=config['threads'][0]
 outdir=config['outdir'][0]
 outdir=outdir.removesuffix("/")
 bwa_mem2=config['bwa_mem2'][0]
+macs3=config['macs3'][0]
 
 # Sample info
 mode=config['mode']
@@ -32,8 +33,8 @@ report_html = expand("{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.html",
 report_data = expand("{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.rda",zip,
             sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
 
-# For testing the workflow
-debug=True
+# For testing the workflow using SRA
+debug=False
 
 # Select bwa type
 # BWA MEM2 is still in development and has a particularly problematic habit of over-zealous RAM usage
@@ -45,6 +46,15 @@ if bwa_mem2:
 else:
     bwa_cmd="bwa"
     bwa_location="bwa_index"
+    
+# Select MACS type
+# MACS3 is still in development, but it is much faster
+if macs3:
+    macs_cmd="macs3"
+    macs_yaml = helpers_dir + "/envs/macs3.yaml"
+else:
+    macs_cmd="macs2"
+    macs_yaml = helpers_dir + "/envs/macs2.yaml"
 
 ### Helper functions for pipeline ###
 def find_sra_replicates(wildcards):
@@ -109,7 +119,7 @@ def get_sample_bam(wildcards):
     return [experiments[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
 
 def input_test_callpeak(wildcards):
-    input = [controls[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    inpt = [controls[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
 
     # This is a hack that changes the expected bam location to switch between the bwamem rule and bam wrangle rule
@@ -119,15 +129,15 @@ def input_test_callpeak(wildcards):
         bam_type = "/wrangled_bam/"
 
     # Set the expected samples for peak calling
-    if input is not None:
+    if inpt is not None:
         if st_now != "public":
             # If not public, input will be a file. Need input sample name instead.
-            input = [sample[idx] for idx, element in enumerate(experiments) if element[0] == input][0]
+            inpt = [sample[idx] for idx, element in enumerate(experiments) if element[0] == inpt][0]
         return_dict = {
             'treatment': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam",
-            'control': wildcards.outdir + bam_type + input + "/" + input + "." + wildcards.genome + ".bam",
+            'control': wildcards.outdir + bam_type + inpt + "/" + inpt + "." + wildcards.genome + ".bam",
             'index_treatment': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam.bai",
-            'index_control': wildcards.outdir + bam_type + input + "/" + input + "." + wildcards.genome + ".bam.bai"
+            'index_control': wildcards.outdir + bam_type + inpt + "/" + inpt + "." + wildcards.genome + ".bam.bai"
         }
     else:
         return_dict = {
@@ -144,9 +154,15 @@ def get_report_inputs(wildcards):
         'rlfs_enrichment': wildcards.outdir + '/RLFS_analysis/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__rlfs_enrichment.rda",
         'homer_annotations': wildcards.outdir + '/homer_annotations/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__feature_overlaps.txt",
         'correlation_analysis': wildcards.outdir + '/correlation_analysis/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__correlation_analysis.rda",
-        'peak_compilation_data': wildcards.outdir + '/peaks/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__compiled_peaks.rda",
-        'peaks': wildcards.outdir + '/peaks/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__compiled_peaks.bed"
+        'peaks': wildcards.outdir + '/peaks/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__peaks.broadPeak",
+        'peaks_overInput': wildcards.outdir + '/peaks/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__peaks.broadPeak",
+        'fingerprint': wildcards.outdir + '/QC/fingerprint_data/' + wildcards.sample + "_" + wildcards.genome + "__fingerprint.tab"
     }
+    
+    inpt = [controls[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    if inpt is not None:
+        return_dict['peaks_overInput'] = wildcards.outdir + '/peaks_overInput/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "_overInput__peaks.broadPeak"
+        
     st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     if st_now in ['fastq', 'public', 'bam']:
         return_dict['bam_stats'] = wildcards.outdir + '/bam_stats/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__bam_stats.txt"
@@ -162,6 +178,19 @@ def choose_bam_type(wildcards):
         bam_type = "/wrangled_bam/"
     return wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam"
 
+
+def get_gene_anno_input(wildcards):
+    
+    return_dict = {
+        "gene_anno": genome_home_dir + "/" + wildcards.genome + "/homer_anno.txt",
+        "peaks": wildcards.outdir + "/peaks/" + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__peaks.broadPeak"
+    }
+    
+    inpt = [controls[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    if inpt is not None:
+        return_dict['peaks'] = wildcards.outdir + '/peaks_overInput/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "_overInput__peaks.broadPeak"
+    
+    return return_dict
 
 #######################################################################################################################
 ##############################################   Main pipeline    ######################################################
@@ -187,6 +216,19 @@ rule prepare_report:
      (Rscript {params.helpers_dir}/scripts/prepare_report.R {params.helpers_dir} {params.configs} {wildcards.sample} \
      {output.html} {output.data} {input}) &> {log}
      """
+     
+rule fingerprint_analysis:
+    input: choose_bam_type
+    output:
+        png="{outdir}/QC/fingerprint_plot/{sample}_{genome}__fingerprint.png",
+        data="{outdir}/QC/fingerprint_data/{sample}_{genome}__fingerprint.tab"
+    conda: helpers_dir + "/envs/deeptools.yaml"
+    log: "{outdir}/logs/fingerprint_analysis/{sample}_{genome}__fingerprint_analysis.log"
+    threads: 5
+    shell: """
+        (plotFingerprint -b {input} -o {output.png} --outRawCounts {output.data} \
+        --minMappingQuality 30 -p {threads}) &> {log}
+    """
 
 rule correlation_analysis:
     input: "{outdir}/bin_scores/{sample}/{sample}_{genome}__bin_scores.tab"
@@ -237,7 +279,7 @@ rule assign_genome_annotations:
     # Calculates the percentage of called peaks overlapping with repeat regions
     input:
         gene_anno=genome_home_dir + "/{genome}/homer_anno.txt",
-        peaks="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.bed"
+        peaks="{outdir}/peaks/{sample}/{sample}_{genome}__peaks.broadPeak"
     output:
         stats_out="{outdir}/homer_annotations/{sample}/{sample}_{genome}__feature_overlaps.txt"
     log: "{outdir}/logs/homer_annotations/{sample}_{genome}__homer_annotations.log"
@@ -269,7 +311,7 @@ rule bam_stats:
 
 rule rlfs_enrichment:
     input:
-         peaks="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.bed",
+         peaks="{outdir}/peaks/{sample}/{sample}_{genome}__peaks.broadPeak",
          rlfs=genome_home_dir + "/{genome}/rloop_predictions/{genome}.rlfs.bed"
     output: "{outdir}/RLFS_analysis/{sample}/{sample}_{genome}__rlfs_enrichment.rda"
     params:
@@ -288,62 +330,33 @@ rule download_rlfs_annotations:
     wget -O {output} https://rmapdb-data.s3.us-east-2.amazonaws.com/rlfs-beds/{wildcards.genome}.rlfs.bed
     """
 
-rule compile_peaks:
-    input:
-        macs2="{outdir}/peaks/{sample}/macs2/{sample}_{genome}__peaks.broadPeak",
-        epic2="{outdir}/peaks/{sample}/epic2/{sample}_{genome}__peaks_epic2.bed"
-    output:
-        peaks="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.bed",
-        rda="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks.rda"
-    conda: helpers_dir + "/envs/compile_peaks.yaml"
-    params:
-        helpers_dir=helpers_dir,
-        control=get_control,
-        mode=get_mode,
-        ouput_prefix="{outdir}/peaks/{sample}/{sample}_{genome}__compiled_peaks"
-    log: "{outdir}/logs/compile_peaks/{sample}_{genome}__compile_peaks.log"
-    shell: """
-    (
-    Rscript {params.helpers_dir}/scripts/compile_peaks.R {params.mode} {params.control} {input.macs2} {input.epic2} {params.ouput_prefix}
-    ) &> {log}
-    """
-
-rule macs:
+rule macs_callpeak_with_input:
     input: unpack(input_test_callpeak)
-    output: "{outdir}/peaks/{sample}/macs2/{sample}_{genome}__peaks.broadPeak"
-    log: "{outdir}/logs/macs2/{sample}_{genome}__macs2.log"
+    output: "{outdir}/peaks_overInput/{sample}/{sample}_{genome}_overInput__peaks.broadPeak"
+    log: "{outdir}/logs/peaks_overInput/{sample}_{genome}__macs2.log"
     threads: 1
-    conda: helpers_dir + "/envs/macs.yaml"
+    conda: macs_yaml
     params:
-        prefix="{outdir}/peaks/{sample}/macs2/{sample}_{genome}_"
+        prefix="{outdir}/peaks_overInput/{sample}/{sample}_{genome}_overInput_",
+        macs_cmd=macs_cmd
     shell: """
         (
-        if [ {input.control} == {input.treatment} ]; then
-            echo "No Control file detected -- running MACS2 without a control"
-            macs2 callpeak --broad -t {input.treatment} -n {params.prefix}
-        else
-            echo "Control file detected -- running MACS2 with control"
-            macs2 callpeak --broad -t {input.treatment} -c {input.control} -n {params.prefix}
-        fi
+        {params.macs_cmd} callpeak --broad -t {input.treatment} -c {input.control} -n {params.prefix}
         ) &> {log}
     """
 
-rule epic:
-    input:
-        unpack(input_test_callpeak)
-    output:
-        "{outdir}/peaks/{sample}/epic2/{sample}_{genome}__peaks_epic2.bed"
-    log: "{outdir}/logs/epic2/{sample}_{genome}__epic2_callpeaks.log"
-    conda: helpers_dir + "/envs/epic.yaml"
+rule macs_callpeak:
+    input: unpack(input_test_callpeak)
+    output: "{outdir}/peaks/{sample}/{sample}_{genome}__peaks.broadPeak"
+    log: "{outdir}/logs/peaks/{sample}_{genome}__macs2.log"
+    threads: 1
+    conda: macs_yaml
+    params:
+        prefix="{outdir}/peaks/{sample}/{sample}_{genome}_",
+        macs_cmd=macs_cmd
     shell: """
         (
-        if [ {input.control} == {input.treatment} ]; then
-            echo "No Control file detected -- running EPIC2 without a control"
-            epic2 -t {input.treatment} -gn {wildcards.genome} -o {output}
-        else
-            echo "Control file detected -- running EPIC2 with control"
-            epic2 -t {input.treatment} -c {input.control} -gn {wildcards.genome} -o {output}
-        fi
+        {macs_cmd} callpeak --broad -t {input.treatment} -n {params.prefix}
         ) &> {log}
     """
 
