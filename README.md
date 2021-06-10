@@ -10,15 +10,9 @@ conda install -c bioconda rseq-cli
 
 ## Quickstart
 
-First, you need to build and install the package from source:
+Until the first official release, you need to build and install the package from source:
 
 (This requires `git` and `miniconda3` to work)
-
-Clone the repo:
-
-```shell
-git clone https://github.com/Bishop-Laboratory/RSeq.git
-```
 
 ### Install: 
 
@@ -26,6 +20,12 @@ git clone https://github.com/Bishop-Laboratory/RSeq.git
 
 ```shell
 GITHUB_PAT="GH_TOKEN_HERE"
+```
+
+Clone the repo:
+
+```shell
+git clone https://github.com/Bishop-Laboratory/RSeq.git
 ```
 
 Then, proced to installation:
