@@ -26,22 +26,20 @@ jobs:
           environment-file: mamba-environment2.yml
           activate-environment: rseq
       - shell: bash -l {0}
-        run: |
-          conda info
-          conda list
-          conda config --show-sources
-          conda config --show
-          printenv | sort
-      - shell: bash -l {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHKEY: ${{ secrets.GHKEY }}
           FIRST_NAME: Henry
           LAST_NAME: Miller
         run: |
           conda activate rseq
           echo $GITHUB_TOKEN
+          GHKEY=
+          echo $GHKEY
+          GITHUB_PAT="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"
+          echo $GITHUB_PAT
           echo $FIRST_NAME
           echo $LAST_NAME
-          Rscript -e "remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GITHUB_TOKEN')"
+          Rscript -e "remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GITHUB_PAT')"
  
  
