@@ -23,7 +23,7 @@ jobs:
           mamba-version: "*"
           channels: conda-forge, bioconda, r
           channel-priority: true
-          environment-file: mamba-environment.yml
+          environment-file: mamba-environment2.yml
           activate-environment: rseq
       - shell: bash -l {0}
         run: |
@@ -33,7 +33,14 @@ jobs:
           conda config --show
           printenv | sort
       - shell: bash -l {0}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FIRST_NAME: Henry
+          LAST_NAME: Miller
         run: |
           conda activate rseq
-          Rscript -e "remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='${{ secrets.GITHUB_TOKEN }}')"
+          echo $GITHUB_TOKEN
+          echo $FIRST_NAME
+          echo $LAST_NAME
+          Rscript -e "remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GITHUB_TOKEN')"
  
