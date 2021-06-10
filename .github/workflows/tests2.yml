@@ -34,7 +34,6 @@ jobs:
         run: |
           conda activate rseq
           echo $GITHUB_TOKEN
-          GHKEY=
           echo $GHKEY
           GITHUB_PAT="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"
           echo $GITHUB_PAT
