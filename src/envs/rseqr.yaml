@@ -1,23 +1,8 @@
-name: rseq
 channels:
-  - conda-forge
   - bioconda
+  - conda-forge
   - r
-  - defaults
 dependencies:
-  - pylint
-  - pytest
-  - r-reutils
-  - r-tidyverse
-  - r-jsonlite
-  - r-remotes
-  - bioconductor-rsamtools
-  - r-xml
-  - boa
-  - snakemake
-  - conda-build
-  - graphviz
-  - samtools
   - r-kableextra
   - bioconductor-chippeakanno
   - r-readr

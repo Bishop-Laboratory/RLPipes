@@ -28,7 +28,7 @@ Clone the repo:
 git clone https://github.com/Bishop-Laboratory/RSeq.git
 ```
 
-Then, proced to installation:
+Then, proceed to installation:
 
 ```shell
 cd RSeq/
@@ -39,7 +39,7 @@ conda mambabuild bioconda-recipe-testing/ -c bioconda -c conda-forge |& tee buil
 BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
 conda remove rseq  # Remove previous version
 conda install $BINARY_PATH
-Rscript -e "remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GITHUB_PAT')"
+Rscript -e "remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GITHUB_PAT', dependencies=FALSE)"
 ```
 
 Testing:

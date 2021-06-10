@@ -1,9 +1,0 @@
-name: rseq
-channels:
-  - conda-forge
-  - bioconda
-  - defaults
-  - r
-dependencies:
-  - mamba
-  - r-remotes

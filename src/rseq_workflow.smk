@@ -206,7 +206,7 @@ rule prepare_report:
     output:
         html="{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.html",
         data="{outdir}/RSeq_report/{sample}_{genome}__RSeq_Report.rda"
-    conda: helpers_dir + "/envs/prepare_report.yaml"
+    # conda: helpers_dir + "/envs/rseqr.yaml"  TODO: Fix for production once RSeqR is public
     params:
         helpers_dir=helpers_dir,
         configs = "{outdir}/config.json",

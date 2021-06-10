@@ -5,6 +5,9 @@ prepare_report <- function(helper_dir, configs, sample_name, output_html,
                            homer_annotations, correlation_analysis,
                            read_qc_data, peaks, peaks_overInput,
                            fingerprint) {
+  
+  library(RSeqR)
+  
 
   print(c(helper_dir, configs, sample_name, output_html, output_data,
           rlfs_enrichment, bam_stats, 
@@ -93,12 +96,14 @@ prepare_report <- function(helper_dir, configs, sample_name, output_html,
                     helper_dir = helper_dir)
   save(data_list, file = output_data)
   print("Starting render!")
+  
+  RSeqR::makeReport(data=data_list, outputFile=output_html)
 
-  rmarkdown::render(md_template, 
-                    params = data_list, 
-                    output_format = "html_document", 
-                    output_dir = normalizePath(dirname(output_html)),
-                    output_file = output_html)
+  # rmarkdown::render(md_template, 
+  #                   params = data_list, 
+  #                   output_format = "html_document", 
+  #                   output_dir = normalizePath(dirname(output_html)),
+  #                   output_file = output_html)
 
 }
 
