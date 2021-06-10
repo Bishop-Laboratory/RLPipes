@@ -10,6 +10,7 @@ dependencies:
   - r-tidyverse
   - r-jsonlite
   - bioconductor-rsamtools
+  - r-remotes
   - r-xml
   - boa
   - snakemake
