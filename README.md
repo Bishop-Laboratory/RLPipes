@@ -20,7 +20,15 @@ Clone the repo:
 git clone https://github.com/Bishop-Laboratory/RSeq.git
 ```
 
-Install: 
+### Install: 
+
+**IMPORTANT:** You must set your GitHub dev token as an environmental variable or this will not work. Generate a token [here](https://github.com/settings/tokens).
+
+```shell
+GITHUB_PAT="HG_TOKEN_HERE"
+```
+
+Then, proced to installation:
 
 ```shell
 cd RSeq/
