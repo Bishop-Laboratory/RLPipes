@@ -200,7 +200,7 @@ rule output:
     input:
         html=report_html,
         data=report_data
-
+        
 rule prepare_report:
     input: unpack(get_report_inputs)
     output:
