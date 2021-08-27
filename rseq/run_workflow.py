@@ -9,9 +9,10 @@ from contextlib import redirect_stdout
 import warnings
 
 
-def make_snakes(config_file, snake_args, threads=1, verify=True):
+def make_snakes(config_file, snake_args, threads=1, debug=False, verify=True):
     # config_file = "rseq_out/config.json"
     config = json.load(open(config_file))
+    config['debug'] = debug
     snake_path = os.path.join(config['src'][0], "rseq_workflow.smk")
     outdir = config['outdir'][0].removesuffix("/")
     if threads == 1:

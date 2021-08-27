@@ -33,7 +33,7 @@ report_data = expand("{outdir}/RSeq_report/{sample}_{genome}.rda",zip,
             sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
 
 # For testing the workflow using SRA
-debug=False
+debug=config['debug']
 
 # Select bwa type
 # BWA MEM2 is still in development and has a particularly problematic habit of over-zealous RAM usage
@@ -190,15 +190,19 @@ rule RSeqR:
         src=src,
         configs = "{outdir}/config.json",
     log: "{outdir}/logs/prepare_report/{sample}_{genome}__prepare_report.log"
-    script: src + "scripts/runRSeqR.R"
+    # script: src + "scripts/runRSeqR.R"
+    shell:"""
+        touch {output.html}
+        touch {output.data}
+    """
     
     
 rule calculate_coverage:
     input: choose_bam_type
     output: "{outdir}/coverage/{sample}_{genome}.bw"
+    threads: 10
     conda: src + "/envs/deeptools.yaml"
     log: "{outdir}/logs/coverage/{sample}_{genome}__coverage.log"
-    threads: 5
     params:
         extra="--minMappingQuality 20 --binSize 10"
     shell: """
@@ -218,9 +222,10 @@ rule macs_callpeak:
     input: unpack(input_test_callpeak)
     output: "{outdir}/peaks/{sample}_{genome}.broadPeak"
     log: "{outdir}/logs/peaks/{sample}_{genome}__macs2.log"
+    threads: 1
     conda: macs_yaml
     params:
-        prefix="{outdir}/peaks/{sample}/{sample}_{genome}_",
+        prefix="{outdir}/peaks/{sample}_{genome}_",
         macsout="{outdir}/peaks/{sample}_{genome}__peaks.broadPeak",
         macs_cmd=macs_cmd
     shell: """
@@ -244,13 +249,14 @@ rule wrangle_bam:
         bam = "{outdir}/wrangled_bam/{sample}/{sample}.{genome}.bam",
         bai = "{outdir}/wrangled_bam/{sample}/{sample}.{genome}.bam.bai"
     conda: src + "/envs/bwa_mem.yaml"
-    threads: 30
+    priority: 15
     log: "{outdir}/logs/wrangle_bam/{sample}_{genome}__wrangle_bam.log"
     params:
         bwa_extra=r"-R '@RG\tID:{sample}\tSM:{sample}'",
         bwa_interleaved=pe_test_bwa,
         samblaster_extra=pe_test_samblaster,
         samtools_sort_extra="-O BAM"
+    threads: 10
     shell: """
         (samtools view -h -@ {threads} -q 10 {input} | \
         samblaster {params.samblaster_extra}| \
@@ -272,7 +278,7 @@ rule bwa_mem:
         bam="{outdir}/bam/{sample}/{sample}.{genome}.bam",
         bai="{outdir}/bam/{sample}/{sample}.{genome}.bam.bai"
     conda: src + "/envs/bwa_mem.yaml"
-    threads: 30
+    priority: 15
     log: "{outdir}/logs/bwa/{sample}_{genome}__bwa_mem.log"
     params:
         index=genome_home_dir + "/{genome}/bwa_index/{genome}",
@@ -281,6 +287,7 @@ rule bwa_mem:
         samblaster_extra=pe_test_samblaster,
         samtools_sort_extra="-O BAM",
         bwa_cmd=bwa_cmd
+    threads: 10
     shell: """
         ({params.bwa_cmd} mem -t {threads} {params.bwa_extra} {params.bwa_interleaved}{params.index} {input.reads} | \
         samblaster {params.samblaster_extra}| \
@@ -330,8 +337,10 @@ rule fastp:
         json="{outdir}/QC/fastq/json/{sample}.{genome}.json"
     conda: src + "/envs/fastp.yaml"
     log: "{outdir}/logs/fastp/{sample}.{genome}__fastp_pe.log"
+    priority: 10
     params:
         extra=pe_test_fastp
+    threads: 4
     shell: """
     (fastp -i {input} --stdout {params.extra}-w {threads} -h {output.html} -j {output.json} > {output} ) &> {log}
     """
@@ -368,9 +377,10 @@ rule gunzip_fq:
 # This should always produced interleaved fq even if paired end. I don't like this solution, but it should hold.
 # reformat.sh (from BBTools) will interleave the paired-end files
 rule sra_to_fastq:
-    input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
+    # input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
     output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
     conda: src + "/envs/sratools.yaml"
+    threads: 1
     log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
     params:
         output_directory="{outdir}/tmp/sras/{sample}/",
@@ -400,6 +410,7 @@ rule download_sra:
     log: "{outdir}/logs/download_sra/{sample}__{srr_acc}__download_sra.log"
     params:
         output_directory = "{outdir}/tmp/sras/{sample}/"
+    threads: math.ceil(workflow.cores * .2)
     shell: """
             (
             cd {params.output_directory}

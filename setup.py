@@ -7,6 +7,8 @@ setup(
     include_package_data=True,
     install_requires=[
         'Click',
+        'pysradb',
+        'pandas'
     ],
     entry_points={
         'console_scripts': [
