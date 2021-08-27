@@ -36,17 +36,17 @@ jobs:
           conda config --show-sources
           conda config --show
           printenv | sort
-      - shell: bash -l {0}
-        run: |
-          conda activate rseq
-          mamba install jupyterlab
       - shell: /usr/bin/bash -l {0}
         name: Install RSeq and run short tests
+        env:
+          GHKEY: ${{ secrets.GHKEY }}
         run: |
           conda activate rseq
           conda mambabuild bioconda-recipe-testing/ -c bioconda -c conda-forge -c r |& tee build.log
           BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
           mamba install $BINARY_PATH
+          RLIBPATH=$(Rscript -e "cat(.libPaths())")
+          Rscript -e "remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GHKEY', dependencies=FALSE, lib='$RLIBPATH')"
           RSeq -h
       - shell: /usr/bin/bash -l {0}
         name: Run pipeline tests

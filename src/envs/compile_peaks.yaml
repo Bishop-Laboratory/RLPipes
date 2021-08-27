@@ -1,9 +1,0 @@
-channels:
-  - r
-  - bioconda
-  - conda-forge
-dependencies:
-  - bioconductor-chippeakanno
-  - r-jsonlite
-  - r-readr
-  - r-dplyr

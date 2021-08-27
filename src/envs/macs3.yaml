@@ -2,4 +2,6 @@ channels:
   - bioconda
   - conda-forge
 dependencies:
-  - epic2
+  - pip
+  - pip:
+    - macs3

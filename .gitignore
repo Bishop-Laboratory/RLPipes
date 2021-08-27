@@ -44,3 +44,4 @@ logfile*
 misc/conservation_analysis/data/final-peaks-unstranded/
 misc/conservation_analysis/data/hg38_10kb-widow_2.5kb-step_tiles.intersected.bed
 misc/conservation_analysis/data/hg38_10kb-widow_2.5kb-step_tiles.bed
+tests/test*/

@@ -10,7 +10,6 @@ params:
   anno_data: "placeholder"
   rlfs_data: "placeholder"
   bam_stats: "placeholder"
-  peak_ol: "placeholder"
   read_qc_data: "placeholder"
   configlist: "placeholder"
   helper_dir: "placeholder"
@@ -132,23 +131,8 @@ Number of peaks in final RSeq peakset: <strong style="color: `r total_peaks_colo
 
 #### Peak MACS2 and EPIC2 overlap statistics
 
-```{r peakVenn}
-res <- suppressMessages(suppressWarnings(makeVennDiagram(peak_ol, ignore.strand = FALSE, margin = .05,
-                                         fill = c('skyblue', 'firebrick'))))
-```
-
-
-```{r peakCompare}
-venn_counts <- res$vennCounts
-peak_stats <- data.frame(
-  "MACS2" = venn_counts[c(3:4),c(4)],
-  "EPIC2" = venn_counts[c(2, 4),c(5)],
-  row.names = c("Distinct Peak Count", "Overlapping Peak Count")
-)
-peak_stats['Percentage Peaks Overlapping',] <- c(round(100*(peak_stats$MACS2[2]/sum(peak_stats$MACS2)), 1),
-                                           round(100*(peak_stats$EPIC2[2]/sum(peak_stats$EPIC2)), 1))
-kable(peak_stats) %>%
-  kable_styling(full_width = FALSE, position = "left", bootstrap_options = "striped")
+```{r peakAnalyze}
+print("MISSING for now")
 ```
 
 

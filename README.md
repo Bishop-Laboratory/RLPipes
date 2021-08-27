@@ -4,15 +4,23 @@ RSeq CLI is a command-line interface to the RSeq best-practices R-looping mappin
 
 In the future the RSeq CLI will be installed using conda:
 
-```bazaar
+```shell
 conda install -c bioconda rseq-cli
 ```
 
 ## Quickstart
 
-First, you need to build and install the package from source:
+Until the first official release, you need to build and install the package from source:
 
 (This requires `git` and `miniconda3` to work)
+
+### Install: 
+
+**IMPORTANT:** You must set your GitHub dev token as an environmental variable or this will not work. Generate a token [here](https://github.com/settings/tokens).
+
+```shell
+GITHUB_PAT="GH_TOKEN_HERE"
+```
 
 Clone the repo:
 
@@ -20,7 +28,7 @@ Clone the repo:
 git clone https://github.com/Bishop-Laboratory/RSeq.git
 ```
 
-Install: 
+Then, proceed to installation:
 
 ```shell
 cd RSeq/
@@ -31,6 +39,8 @@ conda mambabuild bioconda-recipe-testing/ -c bioconda -c conda-forge |& tee buil
 BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
 conda remove rseq  # Remove previous version
 conda install $BINARY_PATH
+RLIBPATH=$(Rscript -e "cat(.libPaths())")
+Rscript -e "remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GITHUB_PAT', dependencies=FALSE, lib='$RLIBPATH')"
 ```
 
 Testing:
@@ -43,20 +53,28 @@ To run the RSeq pipeline you will need R-loop mapping data in either `fastq`,
 `bam`, `bigWig`, or `bedGraph` format. You may also use public data accessions
 with RSeq, from SRA, GEO, or BioProject (e.g., `SRX1025899`, `SRX8908682`, `GSM4714836`, etc).
 
-To run the basic RSeq workflow:
+You can get some example data like so:
 
 ```shell
-RSeq -m DRIP -s sampleSheet.csv -o RSeq_out/ -t 98
+cd tests/
+bash setup_tests.sh
 ```
 
-This will run the full RSeq pipeline to:
-1. Deduplicate and condense the fastq files
-2. Map the reads to the genome.
-3. Call R-loop peaks and signal tracks
-4. Calculate the quality score of the resulting maps.
-5. Return an analysis report in HTML format.
+This will download a DRIP-Seq sample and the corresponding input control (downsampled due to size).
 
-\* Upon first use, RSeq genomes will not be available and may take some time to be generated.
+To test the full RSeq pipeline:
+
+```shell
+bash tests.sh
+```
+
+You can also test it directly using the CLI interface:
+
+```shell
+# Run a dryrun test on the example data
+RSeq -e SRX1025890_TC32_NT_DRIP.hg38.bam -g hg38 -m DRIP -S dryrun=True -o testBasicDryDRIP
+```
+
 
 ## Basic Usage
 
