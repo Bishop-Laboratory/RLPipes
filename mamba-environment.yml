@@ -6,7 +6,9 @@ channels:
 dependencies:
   - pylint
   - pytest
-  - snakemake-minimal
+  # The last version with cores working correctly in api
+  # TODO: submit an issue about this...
+  - snakemake-minimal=6.4.0
   # Boa is required for conda mambabuild
   - boa
   - graphviz

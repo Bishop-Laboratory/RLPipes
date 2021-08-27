@@ -2,6 +2,7 @@
 
 **RSeqCLI** is a quality-centric pipeline for R-loop-mapping data analysis.
 
+The primary outputs of the pipeline are:
 1. Coverage (.bw) tracks 
 2. Peaks (.broadpeak) files
 3. Alignment (.bam) files
@@ -68,7 +69,7 @@ Here is an example file provided for testing purposes:
 The basic usage of RSeq follows a three-step process: **build** the workflow,
 **check** the workflow, and **run** the workflow.
 
-#### Build
+#### **Build**
 
 Building the workflow generates the **config.json** file which is used to 
 configure the RSeq workflow. 
@@ -85,7 +86,7 @@ Success! The config file is located here: rseq_out/config.json
 Run 'RSeqCLI check rseq_out/config.json' to verify the configuration.
 ```
 
-#### Check
+#### **Check**
 
 This tests that the run will succeed with the given `config.json` file. 
 
@@ -104,7 +105,7 @@ Run 'RSeqCLI run rseq_out/config.json' to execute the workflow.
 It also produces a visualization of the workflow DAG.
 
 
-#### Run
+#### **Run**
 
 Executes the workflow rules.
 
