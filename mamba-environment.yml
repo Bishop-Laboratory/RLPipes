@@ -2,31 +2,14 @@ name: rseq
 channels:
   - conda-forge
   - bioconda
-  - r
   - defaults
 dependencies:
   - pylint
   - pytest
-  - r-reutils
-  - r-tidyverse
-  - r-jsonlite
-  - r-remotes
-  - bioconductor-rsamtools
-  - r-xml
+  - snakemake-minimal
+  # Boa is required for conda mambabuild
   - boa
-  - snakemake
-  - conda-build
   - graphviz
-  - samtools
-  - r-kableextra
-  - bioconductor-chippeakanno
-  - r-readr
-  - r-tibble
-  - r-dplyr
-  - r-ggplot2
-  - r-rcolorbrewer
-  - r-pheatmap
-  - r-stringr
-  - r-rlang
-  - r-plotly
-  - r-rmarkdown
+  - pandas==1.2.0
+  - click
+  - pysradb

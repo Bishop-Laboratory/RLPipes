@@ -17,6 +17,8 @@ def make_snakes(config_file, snake_args, threads=1, debug=False, verify=True):
     outdir = config['outdir'][0].removesuffix("/")
     if threads == 1:
         threads = config['threads'][0]
+    if debug:
+        snake_args['notemp'] = True
     
     # Set use_conda as True if not supplied
     if 'use_conda' not in snake_args.keys():
@@ -38,12 +40,12 @@ def make_snakes(config_file, snake_args, threads=1, debug=False, verify=True):
         # Make DAG and perform dry-run
         good_exit = snk.snakemake(snake_path, config=config, cores=threads, dryrun=True, **snake_args)
     
-        pathlib.Path(outdir + "/dags/").mkdir(parents=True, exist_ok=True)
+        pathlib.Path(outdir).mkdir(parents=True, exist_ok=True)
         out = io.StringIO()
         with redirect_stdout(out):
             snk.snakemake(snake_path, printdag=True, config=config, cores=threads, **snake_args)
             out = out.getvalue()
-            out_file = outdir + '/dags/dag.gv'
+            out_file = outdir + '/dag.gv'
     
             if os.path.exists(out_file):
                 os.remove(out_file)
@@ -51,7 +53,7 @@ def make_snakes(config_file, snake_args, threads=1, debug=False, verify=True):
             with open(out_file, 'a') as stdout_log:
                 stdout_log.writelines(out)
     
-            out_png = outdir + '/dags/dag.png'
+            out_png = outdir + '/dag.png'
             os.system('cat ' + out_file + ' | dot -Tpng -o ' + out_png)
             os.remove(out_file)
         if good_exit:

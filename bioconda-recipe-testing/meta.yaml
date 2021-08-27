@@ -1,5 +1,5 @@
-{% set name = "RSeq" %}
-{% set version = "0.0.1" %}
+{% set name = "RSeqCLI" %}
+{% set version = "0.1.0" %}
 
 
 package:
@@ -7,24 +7,28 @@ package:
   version: {{ version }}
 
 source:
-  path: ../../RSeq
+  path: ../
 #  git_url: https://github.com/Bishop-Laboratory/RSeq.git
 #  git_rev: v0.0.1
 #  git_depth: 8
-
+# 
 requirements:
+  build:
+    - python >=3.6
+    - setuptools
+    - click
+    - pysradb
+    # Have to set this verion or causes install error due to incompatibility with pysradb
+    - pandas==1.2.0
   run:
-    - r-reutils
-    - r-tidyverse
-    - r-jsonlite
-    - bioconductor-rsamtools
-    - r-xml
-    - r-remotes
-    - snakemake
+    - python >=3.6
     - graphviz
+    - snakemake-minimal
+    - click
+    - pysradb
+    # Have to set this verion or causes install error due to incompatibility with pysradb
+    - pandas==1.2.0
 
 test:
   commands:
-    - RSeq -h
-
-
+    - RSeqCLI --help

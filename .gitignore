@@ -28,7 +28,7 @@ instance/
 .coverage
 htmlcov/
 rseq_out*
-
+*.html
 build.log
 dist/
 build/
