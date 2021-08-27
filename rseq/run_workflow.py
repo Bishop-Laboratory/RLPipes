@@ -9,12 +9,13 @@ from contextlib import redirect_stdout
 import warnings
 
 
-def make_snakes(config_file, snake_args, verify=True):
+def make_snakes(config_file, snake_args, threads=1, verify=True):
     # config_file = "rseq_out/config.json"
     config = json.load(open(config_file))
-    snake_path = os.path.join(config['helpers_dir'][0], "rseq_workflow.smk")
-    outdir = config['outdir'][0]
-    threads = config['threads'][0]
+    snake_path = os.path.join(config['src'][0], "rseq_workflow.smk")
+    outdir = config['outdir'][0].removesuffix("/")
+    if threads == 1:
+        threads = config['threads'][0]
     
     # Set use_conda as True if not supplied
     if 'use_conda' not in snake_args.keys():
@@ -39,7 +40,7 @@ def make_snakes(config_file, snake_args, verify=True):
         pathlib.Path(outdir + "/dags/").mkdir(parents=True, exist_ok=True)
         out = io.StringIO()
         with redirect_stdout(out):
-            snk.snakemake(snake_path, printdag=True, config=config, **snake_args)
+            snk.snakemake(snake_path, printdag=True, config=config, cores=threads, **snake_args)
             out = out.getvalue()
             out_file = outdir + '/dags/dag.gv'
     
@@ -49,15 +50,19 @@ def make_snakes(config_file, snake_args, verify=True):
             with open(out_file, 'a') as stdout_log:
                 stdout_log.writelines(out)
     
-            out_svg = outdir + '/dags/dag.png'
-            os.system('cat ' + out_file + ' | dot -Tpng -o ' + out_svg)
+            out_png = outdir + '/dags/dag.png'
+            os.system('cat ' + out_file + ' | dot -Tpng -o ' + out_png)
             os.remove(out_file)
+        if good_exit:
+            return(out_png)
+        else:
+            sys.exit(1)
     else:
         # Run snakemake
         good_exit = snk.snakemake(snake_path, config=config, cores=threads, **snake_args)
-
-    # Check exit status
-    if good_exit:
-        sys.exit(0)
-    else:
-        sys.exit(1)
+    
+        # Check exit status
+        if good_exit:
+            sys.exit(0)
+        else:
+            sys.exit(1)

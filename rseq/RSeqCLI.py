@@ -29,23 +29,26 @@ class PythonLiteralOption(click.Option):
 AVAILABLE_MODES=["DRIP", "DRIPc", "qDRIP", "sDRIP", "ssDRIP", "R-ChIP", 
                  "RR-ChIP", "RDIP", "S1-DRIP", "DRIVE", "RNH-CnR", "MapR"]
 SRA_URL = "https://www.ncbi.nlm.nih.gov/sra/"
+SRA_COLS=['experiment_title', 'experiment_accession', "organism_taxid ", "run_accession", "library_layout"]
 redict = {
   "fastq": '^.+\.f[ast]q$|^.+f[ast]q\w.+f[ast]q$',
   "bam": '^.+\.bam$',
   "public": '^GSM[0-9]+$|^SRX[0-9]+$'
 }
-
 this_dir, this_filename = os.path.split(__file__)
 DATA_PATH = os.path.join(os.path.dirname(this_dir), "src", "data", "available_genomes.tsv.xz")
+SRC_DIR = os.path.join(os.path.dirname(this_dir), "src")
+
+# Set verion
 __version__ = pkg_resources.require("rseq")[0].version
 
 # Help text
 snakeHelp = """
-  A dctionary of arguments to pass to the snakemake python API. Default: "{'use_conda': True}".
-  Please visit the snakemake API reference for the full list of available options.
+  Dict of arguments passed to the snakemake python API. Default: "{'use_conda': True}".
+  Read the snakemake API reference for the full list of options.
 """
 modeHelp = """
-  Specify the type of sequencing (e.g., "DRIP"). The available options are currently:
+  The type of sequencing (e.g., "DRIP"). The available options are currently:
   DRIP, DRIPc, qDRIP, sDRIP, ssDRIP, R-ChIP, RR-ChIP, RDIP, S1-DRIP, DRIVE, RNH-CnR, and MapR
 """
 
@@ -54,7 +57,9 @@ modeHelp = """
 verify_run_options = [
     click.option("--smargs", "-s", cls=PythonLiteralOption, help=snakeHelp, default="{'use_conda': True}")
 ]
-
+build_run_options = [
+    click.option("--smargs", "-s", cls=PythonLiteralOption, help=snakeHelp, default="{'use_conda': True}")
+]
 
 # Function for addint these options to the click command
 def add_options(options):
@@ -87,13 +92,14 @@ def validate_mode(ctx, param, value):
 
 
 def validate_samples(ctx, param, value):
-  """Validate mode input"""
+  """Validate and wrangle sampels input"""
   params=ctx.params
   samps = pd.read_csv(value)
   
   # First, check for matching pattern
   exp = samps.experiment[0]
   samptype = [key for key, val in redict.items() if re.match(val, exp)][0]
+  samps['file_type'] = samptype
   
   # Wrangle controls if provided
   if "control" in samps.columns:
@@ -107,11 +113,12 @@ def validate_samples(ctx, param, value):
   
   
   if samptype == "public":
+    
     # Query the SRAdb and wrangle with original data
-    SRA_COLS=['experiment_title', 'experiment_accession', "organism_taxid ", "run_accession"]
     newSamps = pd.concat(samps.experiment.apply(lambda x: db.sra_metadata(x)).values.tolist())[SRA_COLS]
     
-    # Get the latest genomes. From https://stackoverflow.com/questions/15705630/get-the-rows-which-have-the-max-value-in-groups-using-groupby
+    # Get the latest genomes. 
+    # From https://stackoverflow.com/questions/15705630/get-the-rows-which-have-the-max-value-in-groups-using-groupby
     available_genome = pd.read_table(DATA_PATH)
     latest_genomes = available_genome[available_genome.groupby(axis=0, by=['taxId'])['year'].transform(max) == available_genome['year']]
     latest_genomes = latest_genomes.rename(columns={'taxId': 'organism_taxid '})
@@ -119,9 +126,17 @@ def validate_samples(ctx, param, value):
     newSamps=newSamps.set_index('organism_taxid ')
     latest_genomes=latest_genomes.set_index('organism_taxid ')
     newSamps=newSamps.join(latest_genomes, how='left')
-    newSamps=newSamps[['experiment_title', 'experiment_accession', 'run_accession', 'UCSC_orgID']].rename(columns={
-      "experiment_title": "name", "experiment_accession": "experiment", "run_accession": "run", "UCSC_orgID": "genome"
+    newSamps=newSamps[
+      ['experiment_title', 'experiment_accession', 'run_accession', 
+       'library_layout', 'UCSC_orgID']
+    ].rename(columns={
+      "experiment_title": "name", "library_layout": "paired_end",
+      "experiment_accession": "experiment", 
+      "run_accession": "run", "UCSC_orgID": "genome"
     }).set_index('experiment')
+    
+    # Set paired end
+    newSamps['paired_end'] = newSamps['paired_end'] == "PAIRED"
     
     if "genome" in samps.columns:
       newSamps=newSamps.drop('genome', axis=1)
@@ -155,12 +170,12 @@ def cli(ctx, **kwargs):
   "--genome", "-g", callback=validate_genome,
   help="UCSC genome for samples (e.g., 'hg38'). Not required if providing public data accessions."
 )
-@click.option("--outdir", "-t", help="Output folder. Default: 'rseq_out/'", default="rseq_out/")
-@click.option("--threads", "-o", help="Number of threads to use. Default: 1", default=1)
+@click.option("--outdir", "-o", help="Output folder. Default: 'rseq_out/'", default="rseq_out/")
 @click.option("--name", "-n", help="Sample names for use in output report. By default, inferred from inputs.")
 @click.option("--bwamem2", help="Align with BWA-MEM2 instead of BWA. BWA MEM2 Needs > 70GB RAM avaialble to build index, but shows > 3x speed increase. Default: False.", default=False)
+@click.option("--macs3", help="Call peaks using macs3 instead of macs2. Default: True.", default=True)
 @click.pass_context
-def build(ctx, samples, mode, genome, outdir, threads, name, bwamem2):
+def build(ctx, samples, mode, genome, outdir, name, bwamem2, macs3):
     """
     Configure an RSeq workflow.
     
@@ -196,41 +211,50 @@ def build(ctx, samples, mode, genome, outdir, threads, name, bwamem2):
     # Create output folder if it doesn't already exist
     if not os.path.exists(outdir):
       os.mkdir(outdir)
+      
+    # Add src dir, outdir, and threads
+    samples['src'] = SRC_DIR
+    samples['outdir'] = outdir
+    samples['threads'] = 1
+    samples['bwamem2'] = bwamem2
+    samples['macs3'] = macs3
     
-    # Compile for snakemake
+    # Compile to json for snakemake
     outjson=os.path.join(outdir, "config.json")
-    samples.fillna('').reset_index().drop('index', axis=1).to_json(path_or_buf=outjson)
+    outdict = samples.fillna('').reset_index().drop('index', axis=1).to_dict("list")
+    with open(outjson, 'w') as f:
+      json.dump(outdict, f, ensure_ascii=False)
     
     print("Success! The config file is located here: " + outjson)
     
 
 @cli.command("check")
 @click.argument("config")
+@click.option("--threads", "-t", help="Number of threads to use. Default: 1", default=1)
 @add_options(verify_run_options)
-def check(config, **kwargs):
+def check(config, threads, **kwargs):
     """
     Validate an RSeq workflow.
     
     CONFIG: required. Filepath to config.json generated by RSeqCLI build.
     """
-    click.echo(f"{config}")
     smargs=kwargs['smargs']
-    click.echo("smargs, type: {}  value: {}".format(
-        type(smargs), smargs))
-    make_snakes(config, smargs, verify=True)
-
+    dagfile=make_snakes(config, smargs, threads=threads, verify=True)
+    print("Success! The DAG has been generated successfully. You can view it here: " + dagfile)
+    
 
 @cli.command("run")
 @click.argument("config")
+@click.option("--threads", "-t", help="Number of threads to use. Default: 1", default=1)
 @add_options(verify_run_options)
-def run(config, **kwargs):
+def run(config, threads, **kwargs):
     """
     Execute an RSeq workflow.
     
     CONFIG: required. Filepath to config.json generated by RSeqCLI build.
     """
-    click.echo(f"{config}")
     smargs=kwargs['smargs']
-    click.echo("smargs, type: {}  value: {}".format(
-        type(smargs), smargs))
+    exitcode=make_snakes(config, smargs, threads=threads, verify=False)
+    print(exitcode)
+    print("Success! RSeqCLI will now close.")
 
