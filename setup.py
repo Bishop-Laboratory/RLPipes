@@ -12,7 +12,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'RSeqCLI = rseq.RSeqCLI:cli',
+            'RSeqCLI = rseq.cli:cli',
         ],
     },
 )

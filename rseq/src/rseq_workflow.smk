@@ -6,12 +6,12 @@ import math
 from os.path import expanduser
 
 # Global Configs
-src=config['src'][0]
+src=config['src']
 genome_home_dir = expanduser("~") + "/.rseq_genomes"
-outdir=config['outdir'][0]
+outdir=config['run_dir']
 outdir=outdir.removesuffix("/")
-bwa_mem2=config['bwamem2'][0]
-macs3=config['macs3'][0]
+bwa_mem2=config['bwamem2']
+macs3=config['macs3']
 
 # Sample info
 mode=config['mode']

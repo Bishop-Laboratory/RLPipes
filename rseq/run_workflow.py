@@ -1,5 +1,6 @@
 import snakemake as snk
 import json
+import pandas as pd
 import sys
 import io
 import time
@@ -9,14 +10,15 @@ from contextlib import redirect_stdout
 import warnings
 
 
-def make_snakes(config_file, snake_args, threads=1, debug=False, verify=True):
-    # config_file = "rseq_out/config.json"
-    config = json.load(open(config_file))
+def make_snakes(run_dir, snake_args, src_dir, bwamem2, macs3, threads=1, debug=False, verify=True):
+    config = json.load(open(os.path.join(run_dir, 'config.json')))
     config['debug'] = debug
-    snake_path = os.path.join(config['src'][0], "rseq_workflow.smk")
-    outdir = config['outdir'][0].removesuffix("/")
-    if threads == 1:
-        threads = config['threads'][0]
+    config['run_dir'] = run_dir
+    config['src'] = src_dir
+    config['bwamem2'] = bwamem2
+    config['macs3'] = macs3
+    snake_path = os.path.join(config['src'], "rseq_workflow.smk")
+    
     if debug:
         snake_args['notemp'] = True
     
@@ -38,14 +40,14 @@ def make_snakes(config_file, snake_args, threads=1, debug=False, verify=True):
 
     if verify:
         # Make DAG and perform dry-run
-        good_exit = snk.snakemake(snake_path, config=config, cores=threads, dryrun=True, **snake_args)
+        good_exit = snk.snakemake(snake_path, workdir=run_dir, config=config, cores=threads, dryrun=True, **snake_args)
     
-        pathlib.Path(outdir).mkdir(parents=True, exist_ok=True)
+        pathlib.Path(run_dir).mkdir(parents=True, exist_ok=True)
         out = io.StringIO()
         with redirect_stdout(out):
-            snk.snakemake(snake_path, printdag=True, config=config, cores=threads, **snake_args)
+            snk.snakemake(snake_path, workdir=run_dir, printdag=True, config=config, cores=threads, **snake_args)
             out = out.getvalue()
-            out_file = outdir + '/dag.gv'
+            out_file = run_dir + '/dag.gv'
     
             if os.path.exists(out_file):
                 os.remove(out_file)
@@ -53,7 +55,7 @@ def make_snakes(config_file, snake_args, threads=1, debug=False, verify=True):
             with open(out_file, 'a') as stdout_log:
                 stdout_log.writelines(out)
     
-            out_png = outdir + '/dag.png'
+            out_png = run_dir + '/dag.png'
             os.system('cat ' + out_file + ' | dot -Tpng -o ' + out_png)
             os.remove(out_file)
         if good_exit:
@@ -62,7 +64,7 @@ def make_snakes(config_file, snake_args, threads=1, debug=False, verify=True):
             sys.exit(1)
     else:
         # Run snakemake
-        good_exit = snk.snakemake(snake_path, config=config, cores=threads, **snake_args)
+        good_exit = snk.snakemake(snake_path, workdir=run_dir, config=config, cores=threads, **snake_args)
     
         # Check exit status
         if good_exit:

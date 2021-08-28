@@ -28,13 +28,13 @@ AVAILABLE_MODES=["DRIP", "DRIPc", "qDRIP", "sDRIP", "ssDRIP", "R-ChIP",
 SRA_URL = "https://www.ncbi.nlm.nih.gov/sra/"
 SRA_COLS=['experiment_title', 'experiment_accession', "organism_taxid ", "run_accession", "library_layout"]
 redict = {
-  "fastq": '^.+\.f[ast]q$|^.+f[ast]q\w.+f[ast]q$',
-  "bam": '^.+\.bam$',
+  "fastq": '^.+\\.f[ast]q$|^.+f[ast]q~.+f[ast]q$',
+  "bam": '^.+\\.bam$',
   "public": '^GSM[0-9]+$|^SRX[0-9]+$'
 }
 this_dir, this_filename = os.path.split(__file__)
-DATA_PATH = os.path.join(this_dir, "src", "data", "available_genomes.tsv.xz")
-SRC_DIR = os.path.join(this_dir, "src")
+DATA_PATH = os.path.abspath(os.path.join(this_dir, "src", "data", "available_genomes.tsv.xz"))
+SRC_DIR = os.path.abspath(os.path.join(this_dir, "src"))
 
 # Set verion
 __version__ = pkg_resources.require("rseq")[0].version
@@ -54,6 +54,15 @@ modeHelp = """
 verify_run_options = [
     click.option("--smargs", "-s", cls=PythonLiteralOption, help=snakeHelp, default="{'use_conda': True}"),
     click.option("--threads", "-t", help="Number of threads to use. Default: 1", default=1),
+    click.option(
+      "--bwamem2", is_flag=True,
+      help="Align with BWA-MEM2 instead of BWA. BWA MEM2 Needs > 70GB RAM avaialble to build index, but shows > 3x speed increase. Default: False.",
+      default=False
+    ),
+    click.option(
+      "--macs3", is_flag=True, 
+      help="Call peaks using macs3 instead of macs2. Default: True.", default=True
+    ),
     click.option("--debug", is_flag=True, help="Run pipeline on subsampled number of reads (for testing).", default=False)
 ]
 
@@ -86,6 +95,13 @@ def validate_mode(ctx, param, value):
       raise click.BadParameter("'" + value + "' is not a valid mode. (RSeqCLI build --help for more info)")
   return(value)
 
+
+def validate_run_dir(ctx, param, value):
+  try:
+      os.makedirs(value, exist_ok=True)  
+  except FileNotFoundError:
+    raise click.BadParameter("'" + value + "' could not be created using `os.makedirs(" + value + ", exist_ok=True)` please re-check this path.")
+  return(os.path.abspath(value))
 
 def validate_samples(ctx, param, value):
   """Validate and wrangle sampels input"""
@@ -158,6 +174,9 @@ def cli(ctx, **kwargs):
 
 @cli.command("build")
 @click.argument(
+  "run_dir", type=click.Path(), callback=validate_run_dir
+)
+@click.argument(
   "samples", type=click.File('rb'), callback=validate_samples
 )
 @click.option(
@@ -169,21 +188,13 @@ def cli(ctx, **kwargs):
   "--genome", "-g", callback=validate_genome,
   help="UCSC genome for samples (e.g., 'hg38'). Not required if providing public data accessions."
 )
-@click.option("--outdir", "-o", help="Output folder. Default: 'rseq_out/'", default="rseq_out/")
 @click.option("--name", "-n", help="Sample names for use in output report. By default, inferred from inputs.")
-@click.option(
-  "--bwamem2", is_flag=True,
-  help="Align with BWA-MEM2 instead of BWA. BWA MEM2 Needs > 70GB RAM avaialble to build index, but shows > 3x speed increase. Default: False.",
-  default=False
-)
-@click.option(
-  "--macs3", is_flag=True, 
-  help="Call peaks using macs3 instead of macs2. Default: True.", default=True
-)
 @click.pass_context
-def build(ctx, samples, mode, genome, outdir, name, bwamem2, macs3):
+def build(ctx, samples, mode, genome, run_dir, name):
     """
     Configure an RSeq workflow.
+    
+    RUN_DIR: Directory for RSeq Execution. Will be created if it does not exist.
     
     SAMPLES: A CSV file with at least one column "experiment" that provides the
     path to either local fastq files, bam files, or public sample accessions (SRX or GSM). 
@@ -213,54 +224,60 @@ def build(ctx, samples, mode, genome, outdir, name, bwamem2, macs3):
       samples['genome'] = genome
     if not 'name' in samples.columns:
       samples['name'] = name
-    
-    # Create output folder if it doesn't already exist
-    if not os.path.exists(outdir):
-      os.mkdir(outdir)
       
-    # Add src dir, outdir, and threads
-    samples['src'] = SRC_DIR
-    samples['outdir'] = outdir
-    samples['threads'] = 1
-    samples['bwamem2'] = bwamem2
-    samples['macs3'] = macs3
-    
     # Compile to json for snakemake
-    outjson=os.path.join(outdir, "config.json")
+    outjson = os.path.join(run_dir, "config.json")
     outdict = samples.fillna('').reset_index().drop('index', axis=1).to_dict("list")
+    print(outjson)
+    print(os.path.isfile(outjson))
     with open(outjson, 'w') as f:
       json.dump(outdict, f, ensure_ascii=False)
+      
     
-    print("\nSuccess! The config file is located here: " + outjson)
-    print("\nRun 'RSeqCLI check " + outjson + "' to verify the configuration.\n")
+    print("\nSuccess! RSeq has been initialized at the specified directory: " + run_dir)
+    print("\nRun 'RSeqCLI check " + run_dir + "' to verify the configuration.\n")
     
 
 @cli.command("check")
-@click.argument("config")
+@click.argument(
+  "run_dir", type=click.Path(), callback=validate_run_dir
+)
 @add_options(verify_run_options)
-def check(config, threads, debug, **kwargs):
+def check(run_dir, threads, debug, bwamem2, macs3, **kwargs):
     """
     Validate an RSeq workflow.
     
-    CONFIG: required. Filepath to config.json generated by RSeqCLI build.
+    RUN_DIR: Directory configured with `RSeqCLI build` and ready for checking and execution.
     """
-    smargs=kwargs['smargs']
-    dagfile=make_snakes(config, smargs, threads=threads, debug=debug, verify=True)
+    smargs = kwargs['smargs']
+    dagfile = make_snakes(
+      snake_args=smargs, run_dir=run_dir, 
+      src_dir=SRC_DIR, threads=threads, 
+      bwamem2=bwamem2, macs3=macs3,
+      debug=debug, verify=True
+    )
     print("\nSuccess! The DAG has been generated successfully. You can view it here: " + dagfile)
-    print("\nRun 'RSeqCLI run " + config + "' to execute the workflow.\n")
+    print("\nRun 'RSeqCLI run " + run_dir + "' to execute the workflow.\n")
     
 
 @cli.command("run")
-@click.argument("config")
+@click.argument(
+  "run_dir", type=click.Path(), callback=validate_run_dir
+)
 @add_options(verify_run_options)
-def run(config, threads, debug, **kwargs):
+def run(run_dir, threads, debug, bwamem2, macs3, **kwargs):
     """
     Execute an RSeq workflow.
     
-    CONFIG: required. Filepath to config.json generated by RSeqCLI build.
+    RUN_DIR: Directory configured with `RSeqCLI build` and ready for checking and execution.
     """
-    smargs=kwargs['smargs']
-    exitcode=make_snakes(config, smargs, threads=threads, debug=debug, verify=False)
+    smargs = kwargs['smargs']
+    exitcode = make_snakes(
+      snake_args=smargs, run_dir=run_dir, 
+      src_dir=SRC_DIR, threads=threads, 
+      bwamem2=bwamem2, macs3=macs3,
+      debug=debug, verify=False
+    )
     print(exitcode)
     print("Success! RSeqCLI will now close.")
 

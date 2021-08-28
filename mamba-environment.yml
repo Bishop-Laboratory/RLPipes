@@ -1,4 +1,4 @@
-name: rseq
+name: rseqDev
 channels:
   - conda-forge
   - bioconda
@@ -6,6 +6,7 @@ channels:
 dependencies:
   - pylint
   - pytest
+  - coverage
   # The last version with cores working correctly in api
   # TODO: submit an issue about this...
   - snakemake-minimal=6.4.0

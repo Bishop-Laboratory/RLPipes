@@ -40,13 +40,13 @@ GITHUB_PAT="GH_TOKEN_HERE"
 git clone https://github.com/Bishop-Laboratory/RSeq.git
 ```
 
-3. Build the conda recipe in a new environment (`rseq`) and install
+3. Build the conda recipe in a new environment (`rseqDev`) and install
 
 ```shell
 cd RSeq/
 conda install -c conda-forge mamba -y
 mamba env create -f mamba-environment.yml --force
-conda activate rseq
+conda activate rseqDev
 conda mambabuild -c conda-forge -c bioconda bioconda-recipe-testing/ |& tee build.log
 BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
 mamba remove rseq  # Remove previous version
@@ -75,15 +75,15 @@ Building the workflow generates the **config.json** file which is used to
 configure the RSeq workflow. 
 
 ```shell
-RSeqCLI build -o rseq_out/ -m DRIP tests/test_data/samples.csv
+RSeqCLI build -m DRIP rseq_out/ tests/test_data/samples.csv
 ```
 
 Output:
 
 ```shell
-Success! The config file is located here: rseq_out/config.json
+Success! RSeq has been initialized at the specified directory: rseq_out/
 
-Run 'RSeqCLI check rseq_out/config.json' to verify the configuration.
+Run 'RSeqCLI check rseq_out/' to verify the configuration.
 ```
 
 #### **Check**
@@ -91,7 +91,7 @@ Run 'RSeqCLI check rseq_out/config.json' to verify the configuration.
 This tests that the run will succeed with the given `config.json` file. 
 
 ```shell
-RSeqCLI check rseq_out/config.json
+RSeqCLI check rseq_out/
 ```
 
 Output:
@@ -99,7 +99,7 @@ Output:
 ```shell
 Success! The DAG has been generated successfully. You can view it here: rseq_out/dag.png
 
-Run 'RSeqCLI run rseq_out/config.json' to execute the workflow.
+Run 'RSeqCLI run rseq_out/' to execute the workflow.
 ```
 
 It also produces a visualization of the workflow DAG.
@@ -110,19 +110,142 @@ It also produces a visualization of the workflow DAG.
 Executes the workflow rules.
 
 ```shell
-RSeqCLI run rseq_out/config.json
+RSeqCLI run rseq_out/
 ```
 
 If multiple cores are available, they can be specified using the `--threads/-t` option.
 
 ```shell
-RSeqCLI run -t 30 rseq_out/config.json
+RSeqCLI run -t 30 rseq_out/
 ```
 
 
 ## Usage Reference
 
-User manual goes here.
+Top-level usage:
+
+```shell
+
+Usage: RSeqCLI [OPTIONS] COMMAND [ARGS]...
+
+  RSeq: An R-loop mapping pipeline with built-in QC.
+
+Options:
+  --version  Show the version and exit.
+  --help     Show this message and exit.
+
+Commands:
+  build  Configure an RSeq workflow.
+  check  Validate an RSeq workflow.
+  run    Execute an RSeq workflow.
+  
+```
+
+### Build
+
+```shell
+
+Usage: RSeqCLI build [OPTIONS] RUN_DIR SAMPLES
+
+  Configure an RSeq workflow.
+
+  RUN_DIR: Directory for RSeq Execution. Will be created if it does not exist.
+
+  SAMPLES: A CSV file with at least one column "experiment" that provides the
+  path to either local fastq files, bam files, or public sample accessions
+  (SRX or GSM).  Input controls should be in the "control" column.
+
+  If providing paired-end fastq files, enter: "exp_1.fastq~exp_2.fastq".
+
+  Columns may also include "genome" and "mode" columns. These will  override
+  the -g, -m, and -n  options.
+
+  "genome" (-g/--genome) is not required if providing public data accessions.
+
+
+
+  Example #1: "RSeqCLI build -m DRIP samples.csv"; where "samples.csv" is:
+
+  experiment
+
+  SRX113812
+
+  SRX113813
+
+
+
+  Example #2: "RSeqCLI build samples.csv"; where "samples.csv" is:
+
+  experiment,control,genome,mode
+
+  qDRIP_siGL3_1.fq~qDRIP_siGL3_2.fq,,hg38,qDRIP
+
+  DRIPc_3T3.fq,Input_3T3.fq,mm10,DRIPc
+
+Options:
+  -m, --mode TEXT    The type of sequencing (e.g., "DRIP"). The available
+                     options are currently: DRIP, DRIPc, qDRIP, sDRIP, ssDRIP,
+                     R-ChIP, RR-ChIP, RDIP, S1-DRIP, DRIVE, RNH-CnR, and MapR
+  -g, --genome TEXT  UCSC genome for samples (e.g., 'hg38'). Not required if
+                     providing public data accessions.
+  -n, --name TEXT    Sample names for use in output report. By default,
+                     inferred from inputs.
+  --help             Show this message and exit.
+
+```
+
+### Check
+
+```shell
+Usage: RSeqCLI check [OPTIONS] RUN_DIR
+
+  Validate an RSeq workflow.
+
+  RUN_DIR: Directory configured with `RSeqCLI build` and ready for checking
+  and execution.
+
+Options:
+  -s, --smargs TEXT      Dict of arguments passed to the snakemake python API.
+                         Default: "{'use_conda': True}". Read the snakemake
+                         API reference for the full list of options.
+  -t, --threads INTEGER  Number of threads to use. Default: 1
+  --bwamem2              Align with BWA-MEM2 instead of BWA. BWA MEM2 Needs >
+                         70GB RAM avaialble to build index, but shows > 3x
+                         speed increase. Default: False.
+  --macs3                Call peaks using macs3 instead of macs2. Default:
+                         True.
+  --debug                Run pipeline on subsampled number of reads (for
+                         testing).
+  --help                 Show this message and exit.
+```
+
+### Run
+
+
+```shell
+Usage: RSeqCLI run [OPTIONS] RUN_DIR
+
+  Execute an RSeq workflow.
+
+  RUN_DIR: Directory configured with `RSeqCLI build` and ready for checking
+  and execution.
+
+Options:
+  -s, --smargs TEXT      Dict of arguments passed to the snakemake python API.
+                         Default: "{'use_conda': True}". Read the snakemake
+                         API reference for the full list of options.
+  -t, --threads INTEGER  Number of threads to use. Default: 1
+  --bwamem2              Align with BWA-MEM2 instead of BWA. BWA MEM2 Needs >
+                         70GB RAM avaialble to build index, but shows > 3x
+                         speed increase. Default: False.
+  --macs3                Call peaks using macs3 instead of macs2. Default:
+                         True.
+  --debug                Run pipeline on subsampled number of reads (for
+                         testing).
+  --help                 Show this message and exit.
+
+```
+
 
 ## Development notes
 
