@@ -6,6 +6,7 @@ import numpy as np
 from pysradb.sraweb import SRAweb
 import requests
 from .run_workflow import make_snakes
+import pysam
 import os
 import re
 import pkg_resources  # part of setuptools
@@ -35,6 +36,7 @@ redict = {
 this_dir, this_filename = os.path.split(__file__)
 DATA_PATH = os.path.abspath(os.path.join(this_dir, "src", "data", "available_genomes.tsv.xz"))
 SRC_DIR = os.path.abspath(os.path.join(this_dir, "src"))
+N_BAM_READS_CHECK=1000
 
 # Set verion
 __version__ = pkg_resources.require("rseq")[0].version
@@ -101,7 +103,17 @@ def validate_run_dir(ctx, param, value):
       os.makedirs(value, exist_ok=True)  
   except FileNotFoundError:
     raise click.BadParameter("'" + value + "' could not be created using `os.makedirs(" + value + ", exist_ok=True)` please re-check this path.")
+  except FileExistsError:
+    raise click.BadParameter("RUN_DIR must be a directory. User supplied '" + value + "'")
   return(os.path.abspath(value))
+
+
+def test_pe_bam(bamfile, n_bam_reads_check=1000):
+    """Tests whether bam file is paired end. Requires pysam."""
+    samfile=pysam.AlignmentFile(bamfile, "rb")
+    numPair = sum([x.is_paired for x in samfile.head(n=N_BAM_READS_CHECK)])
+    return(numPair > n_bam_reads_check/2)
+    
 
 def validate_samples(ctx, param, value):
   """Validate and wrangle sampels input"""
@@ -115,6 +127,7 @@ def validate_samples(ctx, param, value):
   
   # Wrangle controls if provided
   if "control" in samps.columns:
+    controls=True
     # This line adds all controls an independent "experiment" samples
     # This eases the process of querying sample info and running the pipeline later.
     samps = pd.concat([
@@ -122,6 +135,9 @@ def validate_samples(ctx, param, value):
       samps.assign(experiment=samps.control).assign(control=pd.NA).dropna(subset=['experiment'])
     ])
     samps=samps.assign(control=samps.control.apply(lambda x: pd.NA if pd.isna(x) else x ))
+  else:
+    controls=False
+    samps['control']=""
   
   
   if samptype == "public":
@@ -158,6 +174,17 @@ def validate_samples(ctx, param, value):
     
     # Finally, join the dataframes 
     samps=samps.set_index('experiment').join(newSamps).reset_index(level=0)
+  elif samptype == "bam":
+    # Check which are paired-end
+    samps['paired_end'] = [test_pe_bam(bam, N_BAM_READS_CHECK) for bam in samps['experiment']]
+    samps['run'] = [os.path.abspath(bam) for bam in samps['experiment']]
+    samps['name'] = samps['experiment'] = [os.path.splitext(os.path.basename(exp))[0] for exp in samps['experiment']]
+    if controls:
+      samps['control'] = [
+        os.path.splitext(os.path.basename(exp))[0] if not pd.isna(exp) else exp for exp in samps['control']
+      ]
+    else:
+      samps['control']=""
     
   return(samps)
 
@@ -221,6 +248,10 @@ def build(ctx, samples, mode, genome, run_dir, name):
     if not "mode" in samples.columns:
       samples['mode'] = mode
     if not 'genome' in samples.columns:
+      try: 
+        assert genome is not None
+      except AssertionError:
+        raise click.BadParameter(message="Genome cannot be missing when running local files.")
       samples['genome'] = genome
     if not 'name' in samples.columns:
       samples['name'] = name

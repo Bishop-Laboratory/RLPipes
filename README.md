@@ -40,13 +40,13 @@ GITHUB_PAT="GH_TOKEN_HERE"
 git clone https://github.com/Bishop-Laboratory/RSeq.git
 ```
 
-3. Build the conda recipe in a new environment (`rseqDev`) and install
+3. Build the conda recipe in a new environment (`rseq`) and install
 
 ```shell
 cd RSeq/
 conda install -c conda-forge mamba -y
 mamba env create -f mamba-environment.yml --force
-conda activate rseqDev
+conda activate rseq
 conda mambabuild -c conda-forge -c bioconda bioconda-recipe-testing/ |& tee build.log
 BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
 mamba remove rseq  # Remove previous version

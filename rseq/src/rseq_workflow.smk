@@ -92,6 +92,7 @@ def check_type_fq(wildcards):
 
 def pe_test_fastp(wildcards):
     pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    print(pe)
     if pe:
         res="--interleaved_in "
     else:
@@ -100,7 +101,7 @@ def pe_test_fastp(wildcards):
 
 def pe_test_samblaster(wildcards):
     pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
-    if not pe:
+    if pe:
         res="--ignoreUnmated "
     else:
         res=""
@@ -151,9 +152,9 @@ def get_report_inputs(wildcards):
         'coverage': wildcards.outdir + '/coverage/' + wildcards.sample + "_" + wildcards.genome + ".bw",
         'bam_stats': wildcards.outdir + '/bam_stats/' + wildcards.sample + "_" + wildcards.genome + "__bam_stats.txt",
     }
-    st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
-    if st_now in ['fastq', 'public']:
-        return_dict['fastq_stats'] = wildcards.outdir + '/fastq_stats/' + wildcards.sample + "_" + wildcards.genome + "__fastq_stats.json"
+    # st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    # if st_now in ['fastq', 'public']:
+    #     return_dict['fastq_stats'] = wildcards.outdir + '/fastq_stats/' + wildcards.sample + "_" + wildcards.genome + "__fastq_stats.json"
     return return_dict
 
 def input_test_callpeak(wildcards):
@@ -171,7 +172,7 @@ def input_test_callpeak(wildcards):
     else:
         if st_now != "public":
             # If not public, input will be a file. Need input sample name instead.
-            inpt = [sample[idx] for idx, element in enumerate(samples) if element[0] == inpt][0]
+            inpt = [sample[idx] for idx, element in enumerate(sample) if element == inpt][0]
     return_dict = {
             'treatment': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + ".bam",
             'control': wildcards.outdir + bam_type + inpt + "/" + inpt + "_" + wildcards.genome + ".bam",
@@ -216,7 +217,7 @@ rule calculate_coverage:
     conda: src + "/envs/deeptools.yaml"
     log: "{outdir}/logs/coverage/{sample}_{genome}__coverage.log"
     params:
-        extra="--minMappingQuality 20 --binSize 10"
+        extra="--minMappingQuality 20"
     shell: """
         (bamCoverage -b {input} -p {threads} {params.extra} -o {output}) &> {log}
     """
@@ -270,14 +271,30 @@ rule wrangle_bam:
         samtools_sort_extra="-O BAM"
     threads: 10
     shell: """
-        (samtools view -h -@ {threads} -q 10 {input} | \
-        samblaster {params.samblaster_extra}| \
-        samtools sort {params.samtools_sort_extra} -@ {threads} -O bam -o {output.bam} - && \
-        samtools index -@ {threads} {output.bam}) &> {log}
+        (   
+            echo {params.samblaster_extra}
+            samtools view -h -@ {threads} -q 10 {input} | \
+            samtools sort -n -O sam -@ {threads} - | \
+            samblaster {params.samblaster_extra}| \
+            samtools sort {params.samtools_sort_extra} -@ {threads} -O bam -o {output.bam} - && \
+            samtools index -@ {threads} {output.bam}
+        ) &> {log}
      """
 
 
-# TODO: Try BWA MEM2 (Has stdin option and 1.5-3X speed increase)
+rule index_bam:
+    input: 
+        bam="{outdir}/bam/{sample}/{sample}_{genome}.bam"
+    output: 
+        bai="{outdir}/bam/{sample}/{sample}_{genome}.bam.bai"
+    conda: src + "/envs/samtools.yaml"
+    threads: 10
+    log: "{outdir}/logs/index_bam/{sample}_{genome}__index_bam.log"
+    shell: """
+        samtools index -@ {threads} {input.bam}
+    """
+
+
 rule bwa_mem:
     input:
         bwa_index_done=[
@@ -285,10 +302,9 @@ rule bwa_mem:
             genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
             genome_home_dir + "/{genome}/bwa_index/{genome}.amb"
         ],
-        reads="{outdir}/tmp/fastqs_trimmed/{sample}_{genome}__trimmed.fastq"
+        reads=ancient("{outdir}/tmp/fastqs_trimmed/{sample}_{genome}__trimmed.fastq")
     output:
-        bam="{outdir}/bam/{sample}/{sample}_{genome}.bam",
-        bai="{outdir}/bam/{sample}/{sample}_{genome}.bam.bai"
+        bam="{outdir}/bam/{sample}/{sample}_{genome}.bam"
     conda: src + "/envs/bwa_mem.yaml"
     priority: 15
     log: "{outdir}/logs/bwa/{sample}_{genome}__bwa_mem.log"
@@ -304,8 +320,7 @@ rule bwa_mem:
         ({params.bwa_cmd} mem -t {threads} {params.bwa_extra} {params.bwa_interleaved}{params.index} {input.reads} | \
         samblaster {params.samblaster_extra}| \
         samtools view -q 10 -b -@ {threads} - | \
-        samtools sort {params.samtools_sort_extra} -@ {threads} -o {output.bam} - && \
-        samtools index -@ {threads} {output.bam}) &> {log}
+        samtools sort {params.samtools_sort_extra} -@ {threads} -o {output.bam} -) &> {log}
      """
 
 

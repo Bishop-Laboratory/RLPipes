@@ -1,4 +1,4 @@
-name: rseqDev
+name: rseq
 channels:
   - conda-forge
   - bioconda
@@ -14,5 +14,6 @@ dependencies:
   - boa
   - graphviz
   - pandas==1.2.0
+  - pysam
   - click
   - pysradb

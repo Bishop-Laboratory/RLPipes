@@ -18,3 +18,8 @@ def test_build_fail_mkdir():
   result = runner.invoke(build, ['/asd/as/d/sad/asd/rseqOutdir/', 'test_data/samples.csv', "-m", "bisDRIP"])
   assert result.exit_code == 2
 
+def test_build_bam():
+  runner = CliRunner()
+  buildres = runner.invoke(build, ['rseq_out_bams/', 'test_data/bam_test_samples_1.csv'])
+  assert buildres.exit_code == 0
+
