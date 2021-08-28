@@ -20,6 +20,6 @@ def test_build_fail_mkdir():
 
 def test_build_bam():
   runner = CliRunner()
-  buildres = runner.invoke(build, ['rseq_out_bams/', 'test_data/bam_test_samples_1.csv'])
+  buildres = runner.invoke(build, ['rseq_out_bams/', 'test_data/bam_test_samples_1.csv', "-g", "hg38"])
   assert buildres.exit_code == 0
 

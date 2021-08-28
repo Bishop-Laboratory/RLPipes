@@ -7,10 +7,12 @@ from pysradb.sraweb import SRAweb
 import requests
 from .run_workflow import make_snakes
 import pysam
-import os
 import re
 import pkg_resources  # part of setuptools
 import json
+import warnings
+import sys
+import os
 
 # Allows passing strings to CLI and eval as python objects
 # From https://stackoverflow.com/questions/47631914/how-to-pass-several-list-of-arguments-to-click-option
@@ -22,7 +24,7 @@ class PythonLiteralOption(click.Option):
     except ValueError:
       raise click.BadParameter(value)
     
-    
+
 # Constants
 AVAILABLE_MODES=["DRIP", "DRIPc", "qDRIP", "sDRIP", "ssDRIP", "R-ChIP", 
                  "RR-ChIP", "RDIP", "S1-DRIP", "DRIVE", "RNH-CnR", "MapR"]
@@ -110,7 +112,9 @@ def validate_run_dir(ctx, param, value):
 
 def test_pe_bam(bamfile, n_bam_reads_check=1000):
     """Tests whether bam file is paired end. Requires pysam."""
+    save = pysam.set_verbosity(0)
     samfile=pysam.AlignmentFile(bamfile, "rb")
+    pysam.set_verbosity(save)
     numPair = sum([x.is_paired for x in samfile.head(n=N_BAM_READS_CHECK)])
     return(numPair > n_bam_reads_check/2)
     
@@ -259,11 +263,8 @@ def build(ctx, samples, mode, genome, run_dir, name):
     # Compile to json for snakemake
     outjson = os.path.join(run_dir, "config.json")
     outdict = samples.fillna('').reset_index().drop('index', axis=1).to_dict("list")
-    print(outjson)
-    print(os.path.isfile(outjson))
     with open(outjson, 'w') as f:
       json.dump(outdict, f, ensure_ascii=False)
-      
     
     print("\nSuccess! RSeq has been initialized at the specified directory: " + run_dir)
     print("\nRun 'RSeqCLI check " + run_dir + "' to verify the configuration.\n")
