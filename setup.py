@@ -8,6 +8,7 @@ setup(
     install_requires=[
         'Click',
         'pysradb',
+        'pysam',
         'pandas==1.2.0'
     ],
     entry_points={

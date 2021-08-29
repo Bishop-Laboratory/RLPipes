@@ -18,6 +18,7 @@ requirements:
     - setuptools
     - click
     - pysradb
+    - pysam
     # Have to set this verion or causes install error due to incompatibility with pysradb
     - pandas==1.2.0
   run:
@@ -26,6 +27,7 @@ requirements:
     - snakemake-minimal
     - click
     - pysradb
+    - pysam
     # Have to set this verion or causes install error due to incompatibility with pysradb
     - pandas==1.2.0
 

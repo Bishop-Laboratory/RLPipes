@@ -37,17 +37,18 @@ GITHUB_PAT="GH_TOKEN_HERE"
 2. Clone the repo
 
 ```shell
-git clone https://github.com/Bishop-Laboratory/RSeq.git
+git clone https://github.com/Bishop-Laboratory/RSeqCLI.git
+cd RSeqCLI/
+git checkout cleanupCLI
 ```
 
 3. Build the conda recipe in a new environment (`rseq`) and install
 
 ```shell
-cd RSeq/
 conda install -c conda-forge mamba -y
 mamba env create -f mamba-environment.yml --force
 conda activate rseq
-conda mambabuild -c conda-forge -c bioconda bioconda-recipe-testing/ |& tee build.log
+conda mambabuild -c conda-forge -c bioconda bioconda-recipe/ |& tee build.log
 BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
 mamba remove rseq  # Remove previous version
 conda install $BINARY_PATH
