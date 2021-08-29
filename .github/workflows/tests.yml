@@ -48,17 +48,10 @@ jobs:
       - name: Test with coverage + pytest
         run: |
           bash tests/download_test_data.sh
-          pip install pytest
-          pip install pytest-cov
-          pytest --cov=./ --cov-report=xml
+          python -m coverage run -m pytest
+          python -m coverage report -m
       - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v1
         with:
-          token: 'ffe81218-3385-4ec1-aac1-62f348161b04'
-          directory: ./coverage/reports/
-          env_vars: OS,PYTHON
-          files: ./coverage1.xml,./coverage2.xml
-          flags: unittests
-          name: codecov-umbrella
-          path_to_write_report: ./coverage/codecov_report.txt
-          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./.coverage

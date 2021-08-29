@@ -1,4 +1,5 @@
 # RSeq CLI
+![Build Status](https://github.com/Bishop-Laboratory/RSeqCLI/workflows/tests/badge.svg)
 
 **RSeqCLI** is a quality-centric pipeline for R-loop-mapping data analysis.
 
