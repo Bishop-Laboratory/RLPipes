@@ -6,7 +6,6 @@ import numpy as np
 from pysradb.sraweb import SRAweb
 import requests
 from imp import find_module
-from rseq.run_workflow import make_snakes
 import pysam
 import re
 import pkg_resources  # part of setuptools
@@ -14,6 +13,7 @@ import json
 import warnings
 import sys
 import os
+from rseq.run_workflow import make_snakes
 
 # Allows passing strings to CLI and eval as python objects
 # From https://stackoverflow.com/questions/47631914/how-to-pass-several-list-of-arguments-to-click-option
