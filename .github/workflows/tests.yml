@@ -47,7 +47,7 @@ jobs:
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Test with coverage + pytest
         run: |
-          bash download_test_data.sh
+          bash tests/download_test_data.sh
           python -m coverage run -m pytest
           python -m coverage report -m
       - name: Upload Coverage to Codecov
