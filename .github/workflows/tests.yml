@@ -38,8 +38,6 @@ jobs:
         run: |
           conda activate rseq
           pip install .
-          RLIBPATH=$(Rscript -e "cat(.libPaths()[1])")
-          Rscript -e "remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GHKEY', dependencies=FALSE, lib='$RLIBPATH')"
           RSeqCLI
       - name: Lint with flake8
         run: |
