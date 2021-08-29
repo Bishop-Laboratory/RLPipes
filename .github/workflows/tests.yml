@@ -37,9 +37,7 @@ jobs:
       - name: Setup RSeq
         run: |
           conda activate rseq
-          conda mambabuild bioconda-recipe/ -c bioconda -c conda-forge |& tee build.log
-          BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
-          mamba install $BINARY_PATH
+          pip install .
           RLIBPATH=$(Rscript -e "cat(.libPaths()[1])")
           Rscript -e "remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GHKEY', dependencies=FALSE, lib='$RLIBPATH')"
           RSeqCLI
