@@ -28,32 +28,38 @@ conda install -c bioconda rseq-cli
 
 **Until the first official release on conda, you need to build the package via the following:**
 
-1. Set your GitHub dev token as an environmental variable. Generate a token [here](https://github.com/settings/tokens).
-
-```shell
-GITHUB_PAT="GH_TOKEN_HERE"
-```
-
-2. Clone the repo
+1. Clone the repo
 
 ```shell
 git clone https://github.com/Bishop-Laboratory/RSeqCLI.git
+```
+
+2. Checkout the cleanupCLI branch
+
+```shell
 cd RSeqCLI/
 git checkout cleanupCLI
 ```
 
-3. Build the conda recipe in a new environment (`rseq`) and install
+3. Build the environment and install.
 
 ```shell
 conda install -c conda-forge mamba -y
 mamba env create -f mamba-environment.yml --force
 conda activate rseq
-conda mambabuild -c conda-forge -c bioconda bioconda-recipe/ |& tee build.log
-BINARY_PATH=$(grep -i "TEST END" build.log | awk '{ print $3 }')
-mamba remove rseq  # Remove previous version
-conda install $BINARY_PATH
-RLIBPATH=$(Rscript -e "cat(.libPaths()[1])")
-Rscript -e "remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GITHUB_PAT', dependencies=FALSE, lib='$RLIBPATH')"
+pip install -e .
+```
+
+4. Set your GitHub dev token as a variable in R. Generate a token [here](https://github.com/settings/tokens).
+
+```R
+GITHUB_PAT="GH_TOKEN_HERE"
+```
+
+5. Install the `RSeqR` package using R:
+
+```R
+remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GITHUB_PAT', dependencies=FALSE, lib='$RLIBPATH')
 ```
 
 ### Basic Usage

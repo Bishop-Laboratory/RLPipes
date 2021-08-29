@@ -14,6 +14,7 @@ dependencies:
   - boa
   - graphviz
   - pandas==1.2.0
+  - awscli
   - pysam
   - click
   - pysradb
