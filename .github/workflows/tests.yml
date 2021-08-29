@@ -1,6 +1,6 @@
 # This is a basic workflow that is manually triggered
 
-name: Install-and-test
+name: tests
 
 # Controls when the action will run. Workflow runs when manually triggered using the UI
 # or API.
@@ -16,8 +16,8 @@ on:
 # mamba-version accepts a version string x.y (including "*").
 # It requires you specify conda-forge as part of the channels, ideally with the highest priority.
 jobs:
-  install-and-test:
-    name: Install and Test
+  tests:
+    name: tests
     runs-on: "ubuntu-latest"
     defaults:
       run:
@@ -51,3 +51,8 @@ jobs:
           bash download_test_data.sh
           python -m coverage run -m pytest
           python -m coverage report -m
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: "./.coverage"
