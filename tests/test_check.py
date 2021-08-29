@@ -4,10 +4,10 @@ from rseq.cli import build, check
 import os
 import shutil
 
-RSEQ_OUT_PUBLIC='rseq_out_public/'
-PUBSAMPS='test_data/samples.csv'
-RSEQ_OUT_BAM='rseq_out_bams/'
-BAMSAMPS='test_data/bam_test_samples_1.csv'
+RSEQ_OUT_PUBLIC='tests/rseq_out_public/'
+PUBSAMPS='tests/test_data/samples.csv'
+RSEQ_OUT_BAM='tests/rseq_out_bams/'
+BAMSAMPS='tests/test_data/bam_test_samples_1.csv'
 
 def test_check():
   if os.path.exists(RSEQ_OUT_PUBLIC):

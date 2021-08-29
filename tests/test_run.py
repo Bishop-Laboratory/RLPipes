@@ -4,9 +4,9 @@ from rseq.cli import build, check, run
 import os
 import shutil
 
-RSEQ_OUT_BAM1='rseq_out_bams/'
-BAMSAMPS='test_data/bam_test_samples_1.csv'
-RSEQ_OUT_BAM2='rseq_out_bams_macs2/'
+RSEQ_OUT_BAM1='tests/rseq_out_bams/'
+BAMSAMPS='tests/test_data/bam_test_samples_1.csv'
+RSEQ_OUT_BAM2='tests/rseq_out_bams_macs2/'
 
 def test_run_1():
   if os.path.exists(RSEQ_OUT_BAM1):
