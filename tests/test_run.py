@@ -16,14 +16,3 @@ def test_run_1():
   checkres = runner.invoke(check, [RSEQ_OUT_BAM1])
   runres = runner.invoke(run, [RSEQ_OUT_BAM1, "--debug"])
   assert runres.exit_code == 0
-
-
-def test_run_2():
-  if os.path.exists(RSEQ_OUT_BAM2):
-    shutil.rmtree(RSEQ_OUT_BAM2)
-  runner = CliRunner()
-  buildres = runner.invoke(build, [RSEQ_OUT_BAM2, BAMSAMPS, "-g", "hg38"])
-  checkres = runner.invoke(check, [RSEQ_OUT_BAM2])
-  runres = runner.invoke(run, [RSEQ_OUT_BAM2, "--debug", "--macs2"])
-  assert runres.exit_code == 0
-  

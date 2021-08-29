@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 from pysradb.sraweb import SRAweb
 import requests
-from imp import find_module
 import pysam
 import re
 import pkg_resources  # part of setuptools
@@ -42,7 +41,7 @@ redict = {
   "public": '^GSM[0-9]+$|^SRX[0-9]+$'
 }
 # __file__=os.path.abspath("../../rseq/cli.py")
-this_dir = find_module('rseq')[1]
+this_dir = os.path.dirname(__file__)
 DATA_PATH = os.path.abspath(os.path.join(this_dir, "src", "data", "available_genomes.tsv.xz"))
 GENSIZE_PATH = os.path.abspath(os.path.join(this_dir, "src", "data", "eff_gen_size.tsv.xz"))
 SRC_DIR = os.path.abspath(os.path.join(this_dir, "src"))

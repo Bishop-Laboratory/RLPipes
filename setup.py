@@ -15,5 +15,5 @@ setup(
         'console_scripts': [
             'RSeqCLI = rseq.cli:cli',
         ],
-    },
+    }
 )
