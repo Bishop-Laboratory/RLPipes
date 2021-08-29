@@ -23,6 +23,7 @@ misc/export
 __pycache__/
 *.ipynb_checkpoints*
 instance/
+tests/rseq*
 
 .pytest_cache/
 .coverage

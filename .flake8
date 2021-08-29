@@ -1,0 +1,15 @@
+[flake8]
+exclude =
+    migrations
+    __pycache__
+    manage.py
+    settings.py
+    env
+    .env
+    tests
+    *.egg-info
+    dist
+    build
+    .pytest_cache
+    .git
+    *.html

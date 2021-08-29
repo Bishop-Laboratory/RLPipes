@@ -4,7 +4,7 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - pylint
+  - flake8
   - pytest
   - coverage
   # The last version with cores working correctly in api

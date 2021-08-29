@@ -57,5 +57,6 @@ jobs:
       - name: Test with coverage + pytest
         run: |
           cd tests/
+          bash download_test_data.sh
           python -m coverage run -m pytest
           python -m coverage report -m

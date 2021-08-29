@@ -33,7 +33,7 @@ def make_snakes(run_dir, snake_args, src_dir, bwamem2, macs2, threads=1, debug=F
     # Set conda_frontend='mamba' if not supplied
     if 'conda_frontend' not in snake_args.keys():
         snake_args['conda_frontend'] = 'mamba'
-    elif kwargs['conda_frontend'] == 'conda':
+    elif snake_args['conda_frontend'] == 'conda':
         warnings.warn("'conda_frontend' is set to 'conda' by user. This will lead to slower operations, consider using "
               "'mamba' instead.")
         time.sleep(4)
