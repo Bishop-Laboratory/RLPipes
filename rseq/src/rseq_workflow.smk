@@ -106,7 +106,7 @@ def pe_test_samblaster(wildcards):
     if pe:
         res="--ignoreUnmated "
     else:
-        res=""
+        res="--ignoreUnmated "
     return res
 
 def pe_test_bwa(wildcards):
@@ -225,7 +225,7 @@ rule calculate_coverage:
     conda: src + "/envs/deeptools.yaml"
     log: "{outdir}/logs/coverage/{sample}_{genome}__coverage.log"
     params:
-        extra="--minMappingQuality 20"
+        extra="--minMappingQuality 20 --ignoreDuplicates"
     shell: """
         (bamCoverage -b {input[0]} -p {threads} {params.extra} -o {output}) &> {log}
     """
@@ -278,15 +278,12 @@ rule wrangle_bam:
     params:
         bwa_extra=r"-R '@RG\tID:{sample}\tSM:{sample}'",
         bwa_interleaved=pe_test_bwa,
-        samblaster_extra=pe_test_samblaster,
         samtools_sort_extra="-O BAM"
     threads: 10
     shell: """
         (   
             echo {params.samblaster_extra}
             samtools view -h -@ {threads} -q 10 {input} | \
-            samtools sort -n -O sam -@ {threads} - | \
-            samblaster {params.samblaster_extra}| \
             samtools sort {params.samtools_sort_extra} -@ {threads} -O bam -o {output.bam} - && \
             samtools index -@ {threads} {output.bam}
         ) &> {log}
@@ -319,13 +316,11 @@ rule bwa_mem:
         index=genome_home_dir + "/{genome}/" + bwa_ind_prefix,
         bwa_extra=r"-R '@RG\tID:{sample}\tSM:{sample}'",
         bwa_interleaved=pe_test_bwa,
-        samblaster_extra=pe_test_samblaster,
         samtools_sort_extra="-O BAM",
         bwa_cmd=bwa_cmd
     threads: 10
     shell: """
         ({params.bwa_cmd} mem -t {threads} {params.bwa_extra} {params.bwa_interleaved}{params.index} {input.reads} | \
-        samblaster {params.samblaster_extra}| \
         samtools view -q 10 -b -@ {threads} - | \
         samtools sort {params.samtools_sort_extra} -@ {threads} -o {output.bam} -) &> {log}
      """
