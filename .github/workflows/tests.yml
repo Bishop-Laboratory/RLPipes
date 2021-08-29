@@ -19,6 +19,9 @@ jobs:
   install-and-test:
     name: Install and Test
     runs-on: "ubuntu-latest"
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
       - uses: actions/checkout@v2
       - uses: conda-incubator/setup-miniconda@v2
@@ -29,17 +32,9 @@ jobs:
           channel-priority: true
           environment-file: mamba-environment.yml
           activate-environment: rseq
-      - shell: bash
-        run: |
-          conda info
-          conda list
-          conda config --show-sources
-          conda config --show
-          printenv | sort
-      - shell: bash
-        name: Install RSeq and run short tests
         env:
           GHKEY: ${{ secrets.GHKEY }}
+      - name: Setup RSeq
         run: |
           conda activate rseq
           conda mambabuild bioconda-recipe/ -c bioconda -c conda-forge |& tee build.log
