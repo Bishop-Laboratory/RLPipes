@@ -29,14 +29,21 @@ class PythonLiteralOption(click.Option):
 AVAILABLE_MODES=["DRIP", "DRIPc", "qDRIP", "sDRIP", "ssDRIP", "R-ChIP", 
                  "RR-ChIP", "RDIP", "S1-DRIP", "DRIVE", "RNH-CnR", "MapR"]
 SRA_URL = "https://www.ncbi.nlm.nih.gov/sra/"
-SRA_COLS=['experiment_title', 'experiment_accession', "organism_taxid ", "run_accession", "library_layout"]
+SRA_COLS=[
+  'experiment_title', 'experiment_accession', 
+  "organism_taxid ", "run_accession",
+  "library_layout", "run_total_bases",
+  "run_total_spots"
+]
 redict = {
   "fastq": '^.+\\.f[ast]q$|^.+f[ast]q~.+f[ast]q$',
   "bam": '^.+\\.bam$',
   "public": '^GSM[0-9]+$|^SRX[0-9]+$'
 }
+# __file__=os.path.abspath("../../rseq/cli.py")
 this_dir, this_filename = os.path.split(__file__)
 DATA_PATH = os.path.abspath(os.path.join(this_dir, "src", "data", "available_genomes.tsv.xz"))
+GENSIZE_PATH = os.path.abspath(os.path.join(this_dir, "src", "data", "eff_gen_size.tsv.xz"))
 SRC_DIR = os.path.abspath(os.path.join(this_dir, "src"))
 N_BAM_READS_CHECK=1000
 
@@ -64,8 +71,8 @@ verify_run_options = [
       default=False
     ),
     click.option(
-      "--macs3", is_flag=True, 
-      help="Call peaks using macs3 instead of macs2. Default: True.", default=True
+      "--macs2", is_flag=True, 
+      help="Call peaks using macs2 instead of macs2. Default: True.", default=True
     ),
     click.option("--debug", is_flag=True, help="Run pipeline on subsampled number of reads (for testing).", default=False)
 ]
@@ -110,13 +117,15 @@ def validate_run_dir(ctx, param, value):
   return(os.path.abspath(value))
 
 
-def test_pe_bam(bamfile, n_bam_reads_check=1000):
-    """Tests whether bam file is paired end. Requires pysam."""
+def bam_info(bamfile, n_bam_reads_check=1000):
+    """Tests whether bam file is paired end and checks read length. Requires pysam."""
     save = pysam.set_verbosity(0)
     samfile=pysam.AlignmentFile(bamfile, "rb")
     pysam.set_verbosity(save)
-    numPair = sum([x.is_paired for x in samfile.head(n=N_BAM_READS_CHECK)])
-    return(numPair > n_bam_reads_check/2)
+    numPair = sum([x.is_paired for x in samfile.head(n=n_bam_reads_check)])
+    read_len=sum([x.infer_read_length() for x in samfile.head(n=n_bam_reads_check)])//n_bam_reads_check
+    return({"paired_end": numPair > n_bam_reads_check/2,
+            "read_len": read_len})
     
 
 def validate_samples(ctx, param, value):
@@ -131,18 +140,18 @@ def validate_samples(ctx, param, value):
   
   # Wrangle controls if provided
   if "control" in samps.columns:
-    controls=True
-    # This line adds all controls an independent "experiment" samples
-    # This eases the process of querying sample info and running the pipeline later.
-    samps = pd.concat([
-      samps,
-      samps.assign(experiment=samps.control).assign(control=pd.NA).dropna(subset=['experiment'])
-    ])
-    samps=samps.assign(control=samps.control.apply(lambda x: pd.NA if pd.isna(x) else x ))
+      controls=True
+      samps = pd.concat([
+        samps,
+        samps.assign(experiment=samps.control).assign(control=pd.NA).dropna(subset=['experiment'])
+      ])
+      samps=samps.assign(control=samps.control.apply(lambda x: pd.NA if pd.isna(x) else x ))
   else:
     controls=False
     samps['control']=""
   
+  # Get effective genome sizes  
+  eff_gen_size=pd.read_table(GENSIZE_PATH)
   
   if samptype == "public":
     
@@ -152,18 +161,24 @@ def validate_samples(ctx, param, value):
     # Query the SRAdb and wrangle with original data
     newSamps = pd.concat(samps.experiment.apply(lambda x: db.sra_metadata(x)).values.tolist())[SRA_COLS]
     
+    # Get the read length
+    newSamps=newSamps.astype({'run_total_bases': "int64", 'run_total_spots': 'int64'})
+    newSamps['read_length'] = newSamps.run_total_bases // newSamps.run_total_spots
+    
     # Get the latest genomes. 
     # From https://stackoverflow.com/questions/15705630/get-the-rows-which-have-the-max-value-in-groups-using-groupby
     available_genome = pd.read_table(DATA_PATH)
     latest_genomes = available_genome[available_genome.groupby(axis=0, by=['taxId'])['year'].transform(max) == available_genome['year']]
     latest_genomes = latest_genomes.rename(columns={'taxId': 'organism_taxid '})
     newSamps['organism_taxid '] = newSamps['organism_taxid '].astype(np.int64)
+    if newSamps['organism_taxid '][0] == 4932:
+      newSamps['organism_taxid '] = 559292  # Fixes issue where the taxid of sc changed...
     newSamps=newSamps.set_index('organism_taxid ')
     latest_genomes=latest_genomes.set_index('organism_taxid ')
     newSamps=newSamps.join(latest_genomes, how='left')
     newSamps=newSamps[
       ['experiment_title', 'experiment_accession', 'run_accession', 
-       'library_layout', 'UCSC_orgID']
+       'library_layout', 'UCSC_orgID', 'read_length']
     ].rename(columns={
       "experiment_title": "name", "library_layout": "paired_end",
       "experiment_accession": "experiment", 
@@ -180,7 +195,8 @@ def validate_samples(ctx, param, value):
     samps=samps.set_index('experiment').join(newSamps).reset_index(level=0)
   elif samptype == "bam":
     # Check which are paired-end
-    samps['paired_end'] = [test_pe_bam(bam, N_BAM_READS_CHECK) for bam in samps['experiment']]
+    samps['paired_end'] = [bam_info(bam, N_BAM_READS_CHECK)['paired_end'] for bam in samps['experiment']]
+    samps['read_length'] = [bam_info(bam, N_BAM_READS_CHECK)['read_len'] for bam in samps['experiment']]
     samps['run'] = [os.path.abspath(bam) for bam in samps['experiment']]
     samps['name'] = samps['experiment'] = [os.path.splitext(os.path.basename(exp))[0] for exp in samps['experiment']]
     if controls:
@@ -189,7 +205,12 @@ def validate_samples(ctx, param, value):
       ]
     else:
       samps['control']=""
-    
+  
+  # Get the effective genome sizes
+  sizes=eff_gen_size['read_length'].unique()
+  samps['read_length'] = [min(sizes, key=lambda x:abs(x-sizeCheck)) for sizeCheck in samps['read_length']]
+  samps = pd.merge(samps, eff_gen_size.rename(columns={"UCSC_orgID": "genome"}), how='inner')
+  
   return(samps)
 
 
@@ -275,7 +296,7 @@ def build(ctx, samples, mode, genome, run_dir, name):
   "run_dir", type=click.Path(), callback=validate_run_dir
 )
 @add_options(verify_run_options)
-def check(run_dir, threads, debug, bwamem2, macs3, **kwargs):
+def check(run_dir, threads, debug, bwamem2, macs2, **kwargs):
     """
     Validate an RSeq workflow.
     
@@ -285,7 +306,7 @@ def check(run_dir, threads, debug, bwamem2, macs3, **kwargs):
     dagfile = make_snakes(
       snake_args=smargs, run_dir=run_dir, 
       src_dir=SRC_DIR, threads=threads, 
-      bwamem2=bwamem2, macs3=macs3,
+      bwamem2=bwamem2, macs2=macs2,
       debug=debug, verify=True
     )
     print("\nSuccess! The DAG has been generated successfully. You can view it here: " + dagfile)
@@ -297,7 +318,7 @@ def check(run_dir, threads, debug, bwamem2, macs3, **kwargs):
   "run_dir", type=click.Path(), callback=validate_run_dir
 )
 @add_options(verify_run_options)
-def run(run_dir, threads, debug, bwamem2, macs3, **kwargs):
+def run(run_dir, threads, debug, bwamem2, macs2, **kwargs):
     """
     Execute an RSeq workflow.
     
@@ -307,7 +328,7 @@ def run(run_dir, threads, debug, bwamem2, macs3, **kwargs):
     exitcode = make_snakes(
       snake_args=smargs, run_dir=run_dir, 
       src_dir=SRC_DIR, threads=threads, 
-      bwamem2=bwamem2, macs3=macs3,
+      bwamem2=bwamem2, macs2=macs2,
       debug=debug, verify=False
     )
     print(exitcode)

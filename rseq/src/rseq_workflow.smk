@@ -11,7 +11,7 @@ genome_home_dir = expanduser("~") + "/.rseq_genomes"
 outdir=config['run_dir']
 outdir=outdir.removesuffix("/")
 bwa_mem2=config['bwamem2']
-macs3=config['macs3']
+macs2=config['macs2']
 
 # Sample info
 mode=config['mode']
@@ -19,6 +19,7 @@ paired_end=config['paired_end']
 genome=config['genome']
 sample_type=config['file_type']
 sample_name=config['name']
+eff_gen_size=config['eff_genome_size']
 # Refers to the experiment ID (e.g., basename of a fastq file, SRX)
 # Used as primary name for file paths in this workflow.
 sample=config['experiment']  
@@ -45,14 +46,16 @@ debug=config['debug']
 # User needs to have the option to choose classic BWA
 if bwa_mem2:
     bwa_cmd="bwa-mem2"
-    bwa_location="bwa_mem2_index"
+    bwa_ind_prefix="bwa_mem2_index/{genome}"
+    bwa_location="bwa_mem2_index/{genome}.bwt.2bit.64"
 else:
     bwa_cmd="bwa"
-    bwa_location="bwa_index"
-    
+    bwa_ind_prefix="bwa_index/{genome}"
+    bwa_location="bwa_index/{genome}.pac"
+
 # Select MACS type
 # MACS3 is still in development, but it is much faster
-if macs3:
+if not macs2:
     macs_cmd="macs3"
     macs_yaml = src + "/envs/macs3.yaml"
 else:
@@ -92,7 +95,6 @@ def check_type_fq(wildcards):
 
 def pe_test_fastp(wildcards):
     pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
-    print(pe)
     if pe:
         res="--interleaved_in "
     else:
@@ -127,6 +129,9 @@ def get_control(wildcards):
 def get_sample_bam(wildcards):
     return [run[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
 
+def get_gensize(wildcards):
+    return [eff_gen_size[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    
 def isdebug(wildcards):
     if debug:
         param="-X 500000 "
@@ -143,7 +148,10 @@ def choose_bam_type(wildcards):
     bam_type = "/bam/"
     if st_now == "bam":
         bam_type = "/wrangled_bam/"
-    return wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + ".bam"
+    return [
+        wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + ".bam",
+        wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + ".bam.bai"
+    ]
 
 
 def get_report_inputs(wildcards):
@@ -219,7 +227,7 @@ rule calculate_coverage:
     params:
         extra="--minMappingQuality 20"
     shell: """
-        (bamCoverage -b {input} -p {threads} {params.extra} -o {output}) &> {log}
+        (bamCoverage -b {input[0]} -p {threads} {params.extra} -o {output}) &> {log}
     """
 
 rule bam_stats:
@@ -228,29 +236,32 @@ rule bam_stats:
     threads: 4
     conda: src + "/envs/samtools.yaml"
     log: "{outdir}/logs/bam_stats/{sample}_{genome}__bam_stats.log"
-    shell: "(samtools flagstat -@ {threads} {input} > {output}) &> {log}"
+    shell: "(samtools flagstat -@ {threads} {input[0]} > {output}) &> {log}"
 
 
 rule macs_callpeak:
     input: unpack(input_test_callpeak)
     output: "{outdir}/peaks/{sample}_{genome}.broadPeak"
-    log: "{outdir}/logs/peaks/{sample}_{genome}__macs2.log"
+    log: "{outdir}/logs/peaks/{sample}_{genome}__macs.log"
     threads: 1
     conda: macs_yaml
     params:
         prefix="{outdir}/peaks/{sample}_{genome}_",
         macsout="{outdir}/peaks/{sample}_{genome}__peaks.broadPeak",
+        gensize=get_gensize,
         macs_cmd=macs_cmd
     shell: """
         (
         if [ {input.control} == {input.treatment} ]; then
             echo "No Control file detected -- running MACS2 without a control"
-            {params.macs_cmd} callpeak --broad -t {input.treatment} -n {params.prefix}
+            {params.macs_cmd} callpeak --broad -g {params.gensize} -t {input.treatment} \
+            -n {params.prefix} || true
         else
             echo "Control file detected -- running MACS2 with control"
-            {params.macs_cmd} callpeak --broad -t {input.treatment} -c {input.control} -n {params.prefix}
+            {params.macs_cmd} callpeak --broad -g {params.gensize} -t {input.treatment} -c {input.control} \
+            -n {params.prefix} || true
         fi
-        mv {params.macsout} {output}
+        mv {params.macsout} {output} || (touch {output} && touch {output}.failed)
         ) &> {log}
     """
 
@@ -297,11 +308,7 @@ rule index_bam:
 
 rule bwa_mem:
     input:
-        bwa_index_done=[
-            genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-            genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
-            genome_home_dir + "/{genome}/bwa_index/{genome}.amb"
-        ],
+        bwa_index_done=ancient(genome_home_dir + "/{genome}/" + bwa_location),
         reads=ancient("{outdir}/tmp/fastqs_trimmed/{sample}_{genome}__trimmed.fastq")
     output:
         bam="{outdir}/bam/{sample}/{sample}_{genome}.bam"
@@ -309,7 +316,7 @@ rule bwa_mem:
     priority: 15
     log: "{outdir}/logs/bwa/{sample}_{genome}__bwa_mem.log"
     params:
-        index=genome_home_dir + "/{genome}/bwa_index/{genome}",
+        index=genome_home_dir + "/{genome}/" + bwa_ind_prefix,
         bwa_extra=r"-R '@RG\tID:{sample}\tSM:{sample}'",
         bwa_interleaved=pe_test_bwa,
         samblaster_extra=pe_test_samblaster,
@@ -328,15 +335,13 @@ rule bwa_index:
     input:
         genome_home_dir + "/{genome}/{genome}.fa"
     output:
-        genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-        genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
-        genome_home_dir + "/{genome}/bwa_index/{genome}.amb"
+        genome_home_dir + "/{genome}/" + bwa_location,
     params:
-        prefix=genome_home_dir + "/{genome}/" + bwa_location + "/{genome}",
+        prefix=genome_home_dir + "/{genome}/" + bwa_ind_prefix,
         bwa_cmd=bwa_cmd
     conda: src + "/envs/bwa.yaml"
     log:
-        genome_home_dir + "/{genome}/" + bwa_location + "/{genome}_bwa_index.log"
+        genome_home_dir + "/{genome}/" + bwa_ind_prefix + "_bwa_index.log"
     shell:"""
         ({params.bwa_cmd} index -p {params.prefix} {input}) &> {log}
     """
@@ -368,7 +373,7 @@ rule fastp:
         extra=pe_test_fastp
     threads: 4
     shell: """
-    (fastp -i {input} --stdout {params.extra}-w {threads} -j {output.json} > {output} ) &> {log}
+    (fastp -i {input} --stdout {params.extra}-w {threads} -h /dev/null -j {output.json} > {output} ) &> {log}
     """
 
 

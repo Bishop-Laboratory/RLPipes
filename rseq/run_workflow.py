@@ -10,13 +10,13 @@ from contextlib import redirect_stdout
 import warnings
 
 
-def make_snakes(run_dir, snake_args, src_dir, bwamem2, macs3, threads=1, debug=False, verify=True):
+def make_snakes(run_dir, snake_args, src_dir, bwamem2, macs2, threads=1, debug=False, verify=True):
     config = json.load(open(os.path.join(run_dir, 'config.json')))
     config['debug'] = debug
     config['run_dir'] = run_dir
     config['src'] = src_dir
     config['bwamem2'] = bwamem2
-    config['macs3'] = macs3
+    config['macs2'] = macs2
     snake_path = os.path.join(config['src'], "rseq_workflow.smk")
     
     if debug:
