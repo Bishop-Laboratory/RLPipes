@@ -5,7 +5,8 @@ import pandas as pd
 import numpy as np
 from pysradb.sraweb import SRAweb
 import requests
-from .run_workflow import make_snakes
+from imp import find_module
+from rseq.run_workflow import make_snakes
 import pysam
 import re
 import pkg_resources  # part of setuptools
@@ -41,7 +42,7 @@ redict = {
   "public": '^GSM[0-9]+$|^SRX[0-9]+$'
 }
 # __file__=os.path.abspath("../../rseq/cli.py")
-this_dir, this_filename = os.path.split(__file__)
+this_dir = find_module('rseq')[1]
 DATA_PATH = os.path.abspath(os.path.join(this_dir, "src", "data", "available_genomes.tsv.xz"))
 GENSIZE_PATH = os.path.abspath(os.path.join(this_dir, "src", "data", "eff_gen_size.tsv.xz"))
 SRC_DIR = os.path.abspath(os.path.join(this_dir, "src"))
@@ -71,8 +72,7 @@ verify_run_options = [
       default=False
     ),
     click.option(
-      "--macs2", is_flag=True, 
-      help="Call peaks using macs2 instead of macs2. Default: True.", default=True
+      "--macs2", help="Call peaks using macs2 instead of macs2", is_flag=True, default=False
     ),
     click.option("--debug", is_flag=True, help="Run pipeline on subsampled number of reads (for testing).", default=False)
 ]
@@ -116,6 +116,13 @@ def validate_run_dir(ctx, param, value):
     raise click.BadParameter("RUN_DIR must be a directory. User supplied '" + value + "'")
   return(os.path.abspath(value))
 
+def validate_run_dir_prepped(ctx, param, value):
+  try:
+      assert os.path.exists(value) and os.path.exists(os.path.join(value, "config.json")) 
+  except AssertionError:
+    raise click.BadParameter("Configuration file '" + os.path.join(value, "config.json") + "' is not found. Have you run 'RSeqCLI build' yet?")
+  return(os.path.abspath(value))
+
 
 def bam_info(bamfile, n_bam_reads_check=1000):
     """Tests whether bam file is paired end and checks read length. Requires pysam."""
@@ -150,9 +157,6 @@ def validate_samples(ctx, param, value):
     controls=False
     samps['control']=""
   
-  # Get effective genome sizes  
-  eff_gen_size=pd.read_table(GENSIZE_PATH)
-  
   if samptype == "public":
     
     # Init SRAdb
@@ -171,8 +175,9 @@ def validate_samples(ctx, param, value):
     latest_genomes = available_genome[available_genome.groupby(axis=0, by=['taxId'])['year'].transform(max) == available_genome['year']]
     latest_genomes = latest_genomes.rename(columns={'taxId': 'organism_taxid '})
     newSamps['organism_taxid '] = newSamps['organism_taxid '].astype(np.int64)
-    if newSamps['organism_taxid '][0] == 4932:
-      newSamps['organism_taxid '] = 559292  # Fixes issue where the taxid of sc changed...
+    
+    # Necessary to avoid taxid conflict between sacCer2/3
+    newSamps.loc[newSamps['organism_taxid '] == 4932, 'organism_taxid '] = 559292
     newSamps=newSamps.set_index('organism_taxid ')
     latest_genomes=latest_genomes.set_index('organism_taxid ')
     newSamps=newSamps.join(latest_genomes, how='left')
@@ -205,11 +210,6 @@ def validate_samples(ctx, param, value):
       ]
     else:
       samps['control']=""
-  
-  # Get the effective genome sizes
-  sizes=eff_gen_size['read_length'].unique()
-  samps['read_length'] = [min(sizes, key=lambda x:abs(x-sizeCheck)) for sizeCheck in samps['read_length']]
-  samps = pd.merge(samps, eff_gen_size.rename(columns={"UCSC_orgID": "genome"}), how='inner')
   
   return(samps)
 
@@ -281,6 +281,13 @@ def build(ctx, samples, mode, genome, run_dir, name):
     if not 'name' in samples.columns:
       samples['name'] = name
       
+    # Get the effective genome sizes
+    eff_gen_size=pd.read_table(GENSIZE_PATH)
+    sizes=eff_gen_size['read_length'].unique()
+    samples['read_length'] = [min(sizes, key=lambda x:abs(x-sizeCheck)) for sizeCheck in samples['read_length']]
+    samples = pd.merge(samples, eff_gen_size.rename(columns={"UCSC_orgID": "genome"}), how='inner')
+  
+      
     # Compile to json for snakemake
     outjson = os.path.join(run_dir, "config.json")
     outdict = samples.fillna('').reset_index().drop('index', axis=1).to_dict("list")
@@ -293,7 +300,7 @@ def build(ctx, samples, mode, genome, run_dir, name):
 
 @cli.command("check")
 @click.argument(
-  "run_dir", type=click.Path(), callback=validate_run_dir
+  "run_dir", type=click.Path(), callback=validate_run_dir_prepped
 )
 @add_options(verify_run_options)
 def check(run_dir, threads, debug, bwamem2, macs2, **kwargs):
@@ -315,7 +322,7 @@ def check(run_dir, threads, debug, bwamem2, macs2, **kwargs):
 
 @cli.command("run")
 @click.argument(
-  "run_dir", type=click.Path(), callback=validate_run_dir
+  "run_dir", type=click.Path(), callback=validate_run_dir_prepped
 )
 @add_options(verify_run_options)
 def run(run_dir, threads, debug, bwamem2, macs2, **kwargs):

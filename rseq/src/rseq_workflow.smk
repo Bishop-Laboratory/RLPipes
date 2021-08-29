@@ -48,10 +48,12 @@ if bwa_mem2:
     bwa_cmd="bwa-mem2"
     bwa_ind_prefix="bwa_mem2_index/{genome}"
     bwa_location="bwa_mem2_index/{genome}.bwt.2bit.64"
+    bwa_yaml = src + "/envs/bwamem2.yaml"
 else:
     bwa_cmd="bwa"
     bwa_ind_prefix="bwa_index/{genome}"
     bwa_location="bwa_index/{genome}.pac"
+    bwa_yaml = src + "/envs/bwa.yaml"
 
 # Select MACS type
 # MACS3 is still in development, but it is much faster
@@ -101,18 +103,19 @@ def pe_test_fastp(wildcards):
         res=""
     return res
 
-def pe_test_samblaster(wildcards):
-    pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
-    if pe:
-        res="--ignoreUnmated "
-    else:
-        res="--ignoreUnmated "
-    return res
 
 def pe_test_bwa(wildcards):
     pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     if pe:
         res="-p "
+    else:
+        res=""
+    return res
+
+def get_pe_bam(wildcards):
+    pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    if pe:
+        res="-f BAMPE "
     else:
         res=""
     return res
@@ -160,11 +163,23 @@ def get_report_inputs(wildcards):
         'coverage': wildcards.outdir + '/coverage/' + wildcards.sample + "_" + wildcards.genome + ".bw",
         'bam_stats': wildcards.outdir + '/bam_stats/' + wildcards.sample + "_" + wildcards.genome + "__bam_stats.txt",
     }
-    # st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    if debug:
+        del return_dict['coverage']
     # if st_now in ['fastq', 'public']:
     #     return_dict['fastq_stats'] = wildcards.outdir + '/fastq_stats/' + wildcards.sample + "_" + wildcards.genome + "__fastq_stats.json"
     return return_dict
 
+def get_final_inputs(wildcards):
+    return_dict = {
+        'report': report_html,
+        'report_data': report_data,
+        'peaks': peaks_out,
+        'coverage': coverage_out
+    }
+    if debug:
+        del return_dict['coverage']
+    return return_dict
+        
 def input_test_callpeak(wildcards):
     inpt = [control[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
@@ -195,10 +210,7 @@ def input_test_callpeak(wildcards):
 
 rule output:
     input:
-        html=report_html,
-        data=report_data,
-        peaks=peaks_out,
-        coverage=coverage_out
+        unpack(get_final_inputs)
         
         
 rule RSeqR:
@@ -249,17 +261,20 @@ rule macs_callpeak:
         prefix="{outdir}/peaks/{sample}_{genome}_",
         macsout="{outdir}/peaks/{sample}_{genome}__peaks.broadPeak",
         gensize=get_gensize,
-        macs_cmd=macs_cmd
+        macs_cmd=macs_cmd,
+        pe_bam=get_pe_bam
     shell: """
         (
         if [ {input.control} == {input.treatment} ]; then
-            echo "No Control file detected -- running MACS2 without a control"
-            {params.macs_cmd} callpeak --broad -g {params.gensize} -t {input.treatment} \
-            -n {params.prefix} || true
+            echo {params.macs_cmd}
+            echo "No Control file detected -- running MACS without a control"
+            {params.macs_cmd} callpeak --broad {params.pe_bam}-g {params.gensize} \
+            -t {input.treatment} -n {params.prefix} || true
         else
-            echo "Control file detected -- running MACS2 with control"
-            {params.macs_cmd} callpeak --broad -g {params.gensize} -t {input.treatment} -c {input.control} \
-            -n {params.prefix} || true
+            echo "Control file detected -- running MACS with control"
+            echo {params.macs_cmd}
+            {params.macs_cmd} callpeak --broad {params.pe_bam}-g {params.gensize} \
+            -t {input.treatment} -c {input.control} -n {params.prefix} || true
         fi
         mv {params.macsout} {output} || (touch {output} && touch {output}.failed)
         ) &> {log}
@@ -272,7 +287,7 @@ rule wrangle_bam:
     output:
         bam = "{outdir}/wrangled_bam/{sample}/{sample}_{genome}.bam",
         bai = "{outdir}/wrangled_bam/{sample}/{sample}_{genome}.bam.bai"
-    conda: src + "/envs/bwa_mem.yaml"
+    conda: src + "/envs/samtools.yaml"
     priority: 15
     log: "{outdir}/logs/wrangle_bam/{sample}_{genome}__wrangle_bam.log"
     params:
@@ -282,7 +297,6 @@ rule wrangle_bam:
     threads: 10
     shell: """
         (   
-            echo {params.samblaster_extra}
             samtools view -h -@ {threads} -q 10 {input} | \
             samtools sort {params.samtools_sort_extra} -@ {threads} -O bam -o {output.bam} - && \
             samtools index -@ {threads} {output.bam}
@@ -309,7 +323,7 @@ rule bwa_mem:
         reads=ancient("{outdir}/tmp/fastqs_trimmed/{sample}_{genome}__trimmed.fastq")
     output:
         bam="{outdir}/bam/{sample}/{sample}_{genome}.bam"
-    conda: src + "/envs/bwa_mem.yaml"
+    conda: bwa_yaml
     priority: 15
     log: "{outdir}/logs/bwa/{sample}_{genome}__bwa_mem.log"
     params:
@@ -334,7 +348,7 @@ rule bwa_index:
     params:
         prefix=genome_home_dir + "/{genome}/" + bwa_ind_prefix,
         bwa_cmd=bwa_cmd
-    conda: src + "/envs/bwa.yaml"
+    conda: bwa_yaml
     log:
         genome_home_dir + "/{genome}/" + bwa_ind_prefix + "_bwa_index.log"
     shell:"""
