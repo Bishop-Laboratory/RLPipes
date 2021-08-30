@@ -1,1 +1,1 @@
-recursive-include src *
+recursive-include rseq/src *

@@ -1,0 +1,7 @@
+experiment,control,genome,mode
+tests/test_data/SRX1025890_hg38.bam,tests/test_data/SRX1025893_hg38.bam,hg38,DRIP
+tests/test_data/SRX1025890_hg38.bam,tests/test_data/SRX1025893_hg38.bam,hg38,DRIP
+tests/test_data/SRX6427717_hg38.bam,tests/test_data/SRX6427719_hg38.bam,hg38,qDRIP
+tests/test_data/SRX2675003_hg38.bam,tests/test_data/SRX2675004_hg38.bam,hg38,R-ChIP
+tests/test_data/SRX1674681_mm10.bam,,mm10,DRIPc
+tests/test_data/SRX6427717_hg19.bam,,hg19,qDRIP

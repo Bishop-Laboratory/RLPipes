@@ -8,11 +8,13 @@ setup(
     install_requires=[
         'Click',
         'pysradb',
-        'pandas'
+        'pysam',
+        'pyfastx',
+        'pandas==1.2.0'
     ],
     entry_points={
         'console_scripts': [
-            'RSeqCLI = rseq.RSeqCLI:cli',
+            'RSeqCLI = rseq.cli:cli',
         ],
-    },
+    }
 )

@@ -2,4 +2,5 @@ channels:
   - bioconda
   - conda-forge
 dependencies:
-  - parallel-fastq-dump
+  - bwa-mem2
+  - samtools

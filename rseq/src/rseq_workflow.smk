@@ -6,12 +6,12 @@ import math
 from os.path import expanduser
 
 # Global Configs
-src=config['src'][0]
+src=config['src']
 genome_home_dir = expanduser("~") + "/.rseq_genomes"
-outdir=config['outdir'][0]
+outdir=config['run_dir']
 outdir=outdir.removesuffix("/")
-bwa_mem2=config['bwamem2'][0]
-macs3=config['macs3'][0]
+bwa_mem2=config['bwamem2']
+macs2=config['macs2']
 
 # Sample info
 mode=config['mode']
@@ -19,6 +19,7 @@ paired_end=config['paired_end']
 genome=config['genome']
 sample_type=config['file_type']
 sample_name=config['name']
+eff_gen_size=config['eff_genome_size']
 # Refers to the experiment ID (e.g., basename of a fastq file, SRX)
 # Used as primary name for file paths in this workflow.
 sample=config['experiment']  
@@ -31,6 +32,10 @@ report_html = expand("{outdir}/RSeq_report/{sample}_{genome}.html",zip,
             sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
 report_data = expand("{outdir}/RSeq_report/{sample}_{genome}.rda",zip,
             sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
+peaks_out = expand("{outdir}/peaks/{sample}_{genome}.broadPeak",zip,
+            sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
+coverage_out = expand("{outdir}/coverage/{sample}_{genome}.bw",zip,
+            sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
 
 # For testing the workflow using SRA
 debug=config['debug']
@@ -41,21 +46,30 @@ debug=config['debug']
 # User needs to have the option to choose classic BWA
 if bwa_mem2:
     bwa_cmd="bwa-mem2"
-    bwa_location="bwa_mem2_index"
+    bwa_ind_prefix="bwa_mem2_index/{genome}"
+    bwa_location="bwa_mem2_index/{genome}.bwt.2bit.64"
+    bwa_yaml = src + "/envs/bwamem2.yaml"
 else:
     bwa_cmd="bwa"
-    bwa_location="bwa_index"
-    
+    bwa_ind_prefix="bwa_index/{genome}"
+    bwa_location="bwa_index/{genome}.sa"
+    bwa_yaml = src + "/envs/bwa.yaml"
+
 # Select MACS type
 # MACS3 is still in development, but it is much faster
-if macs3:
+if not macs2:
     macs_cmd="macs3"
     macs_yaml = src + "/envs/macs3.yaml"
 else:
     macs_cmd="macs2"
     macs_yaml = src + "/envs/macs2.yaml"
+    
 
+########################################################################################################################
+############################################   Helper Functions   ######################################################
+########################################################################################################################
 ### Helper functions for pipeline ###
+### For some reason, they have to be in the same file... ###
 def find_sra_replicates(wildcards):
     srr_list = [run[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     replicates = expand("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq",
@@ -66,19 +80,32 @@ def find_fq(wildcards):
     fq = [run[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     return fq
 
+def find_fq_pe(wildcards):
+    fq1 = [re.sub('\\~.+', "", run[idx]) for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    fq2 = [re.sub('.+\\~', "", run[idx]) for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    return [
+        fq1, fq2
+    ]
+
 def check_type_fq(wildcards):
     file_type = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     if file_type == "fastq":
         fq = [run[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0][0]
-        if fq[-3:] == ".gz":
-            # CASE: Fastq GZ available
-            return "{outdir}/tmp/fastqs_gunzip/{sample}.{genome}__gunzip.fastq"
+        pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+        if pe:
+            # CASE: paired-end fq
+            return "{outdir}/tmp/fastqs_interleave/{sample}_{genome}__interleave.fastq"
+            # TODO: Still need gz case...
         else:
-            # CASE: normal Fastq
-            return "{outdir}/tmp/fastqs_cp/{sample}.{genome}__cp.fastq"
+            if fq[-3:] == ".gz":
+                # CASE: Fastq GZ available
+                return "{outdir}/tmp/fastqs_gunzip/{sample}_{genome}__gunzip.fastq"
+            else:
+                # CASE: normal Fastq
+                return "{outdir}/tmp/fastqs_cp/{sample}_{genome}__cp.fastq"
     else:
         # CASE: Public data accession
-        return "{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq"
+        return "{outdir}/tmp/fastqs_merged/{sample}_{genome}__merged.fastq"
     
 
 def pe_test_fastp(wildcards):
@@ -89,18 +116,19 @@ def pe_test_fastp(wildcards):
         res=""
     return res
 
-def pe_test_samblaster(wildcards):
-    pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
-    if not pe:
-        res="--ignoreUnmated "
-    else:
-        res=""
-    return res
 
 def pe_test_bwa(wildcards):
     pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     if pe:
         res="-p "
+    else:
+        res=""
+    return res
+
+def get_pe_bam(wildcards):
+    pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    if pe:
+        res="-f BAMPE "
     else:
         res=""
     return res
@@ -117,6 +145,9 @@ def get_control(wildcards):
 def get_sample_bam(wildcards):
     return [run[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
 
+def get_gensize(wildcards):
+    return [eff_gen_size[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    
 def isdebug(wildcards):
     if debug:
         param="-X 500000 "
@@ -124,6 +155,44 @@ def isdebug(wildcards):
         param=""
     return param
 
+
+def choose_bam_type(wildcards):
+    """
+    Switch to the "wrangled_bam" directory if user supplied a bam file.
+    """
+    st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    bam_type = "/bam/"
+    if st_now == "bam":
+        bam_type = "/wrangled_bam/"
+    return [
+        wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + ".bam",
+        wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + ".bam.bai"
+    ]
+
+
+def get_report_inputs(wildcards):
+    return_dict = {
+        'peaks': wildcards.outdir + '/peaks/' + wildcards.sample + "_" + wildcards.genome + ".broadPeak",
+        'coverage': wildcards.outdir + '/coverage/' + wildcards.sample + "_" + wildcards.genome + ".bw",
+        'bam_stats': wildcards.outdir + '/bam_stats/' + wildcards.sample + "_" + wildcards.genome + "__bam_stats.txt",
+    }
+    if debug:
+        del return_dict['coverage']
+    # if st_now in ['fastq', 'public']:
+    #     return_dict['fastq_stats'] = wildcards.outdir + '/fastq_stats/' + wildcards.sample + "_" + wildcards.genome + "__fastq_stats.json"
+    return return_dict
+
+def get_final_inputs(wildcards):
+    return_dict = {
+        'report': report_html,
+        'report_data': report_data,
+        'peaks': peaks_out,
+        'coverage': coverage_out
+    }
+    if debug:
+        del return_dict['coverage']
+    return return_dict
+        
 def input_test_callpeak(wildcards):
     inpt = [control[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
@@ -139,45 +208,22 @@ def input_test_callpeak(wildcards):
     else:
         if st_now != "public":
             # If not public, input will be a file. Need input sample name instead.
-            inpt = [sample[idx] for idx, element in enumerate(samples) if element[0] == inpt][0]
+            inpt = [sample[idx] for idx, element in enumerate(sample) if element == inpt][0]
     return_dict = {
-            'treatment': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam",
-            'control': wildcards.outdir + bam_type + inpt + "/" + inpt + "." + wildcards.genome + ".bam",
-            'index_treatment': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam.bai",
-            'index_control': wildcards.outdir + bam_type + inpt + "/" + inpt + "." + wildcards.genome + ".bam.bai"
+            'treatment': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + ".bam",
+            'control': wildcards.outdir + bam_type + inpt + "/" + inpt + "_" + wildcards.genome + ".bam",
+            'index_treatment': wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + ".bam.bai",
+            'index_control': wildcards.outdir + bam_type + inpt + "/" + inpt + "_" + wildcards.genome + ".bam.bai"
         }
     return return_dict
 
-def get_report_inputs(wildcards):
-    return_dict = {
-        'peaks': wildcards.outdir + '/peaks/' + wildcards.sample + "_" + wildcards.genome + ".broadPeak",
-        'coverage': wildcards.outdir + '/coverage/' + wildcards.sample + "_" + wildcards.genome + ".bw",
-        'bam_stats': wildcards.outdir + '/bam_stats/' + wildcards.sample + "/" + wildcards.sample + "_" + wildcards.genome + "__bam_stats.txt"
-    }
-    st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
-    if st_now in ['fastq', 'public']:
-        return_dict['read_qc_data'] = wildcards.outdir + '/QC/fastq/json/' + wildcards.sample + "." + wildcards.genome + ".json"
-    return return_dict
-
-def choose_bam_type(wildcards):
-    """
-    Switch to the "wrangled_bam" directory if user supplied a bam file.
-    """
-    st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
-    bam_type = "/bam/"
-    if st_now == "bam":
-        bam_type = "/wrangled_bam/"
-    return wildcards.outdir + bam_type + wildcards.sample + "/" + wildcards.sample + "." + wildcards.genome + ".bam"
-
-
-#######################################################################################################################
+########################################################################################################################
 ##############################################   Main pipeline    ######################################################
 ########################################################################################################################
 
 rule output:
     input:
-        html=report_html,
-        data=report_data
+        unpack(get_final_inputs)
         
         
 rule RSeqR:
@@ -204,40 +250,46 @@ rule calculate_coverage:
     conda: src + "/envs/deeptools.yaml"
     log: "{outdir}/logs/coverage/{sample}_{genome}__coverage.log"
     params:
-        extra="--minMappingQuality 20 --binSize 10"
+        extra="--minMappingQuality 20 --ignoreDuplicates"
     shell: """
-        (bamCoverage -b {input} -p {threads} {params.extra} -o {output}) &> {log}
+        (bamCoverage -b {input[0]} -p {threads} {params.extra} -o {output}) &> {log}
     """
 
 rule bam_stats:
     input: choose_bam_type
-    output: "{outdir}/bam_stats/{sample}/{sample}_{genome}__bam_stats.txt"
+    output: "{outdir}/bam_stats/{sample}_{genome}__bam_stats.txt"
     threads: 4
     conda: src + "/envs/samtools.yaml"
     log: "{outdir}/logs/bam_stats/{sample}_{genome}__bam_stats.log"
-    shell: "(samtools flagstat -@ {threads} {input} > {output}) &> {log}"
+    shell: "(samtools flagstat -@ {threads} {input[0]} > {output}) &> {log}"
 
 
 rule macs_callpeak:
     input: unpack(input_test_callpeak)
     output: "{outdir}/peaks/{sample}_{genome}.broadPeak"
-    log: "{outdir}/logs/peaks/{sample}_{genome}__macs2.log"
+    log: "{outdir}/logs/peaks/{sample}_{genome}__macs.log"
     threads: 1
     conda: macs_yaml
     params:
         prefix="{outdir}/peaks/{sample}_{genome}_",
         macsout="{outdir}/peaks/{sample}_{genome}__peaks.broadPeak",
-        macs_cmd=macs_cmd
+        gensize=get_gensize,
+        macs_cmd=macs_cmd,
+        pe_bam=get_pe_bam
     shell: """
         (
         if [ {input.control} == {input.treatment} ]; then
-            echo "No Control file detected -- running MACS2 without a control"
-            {params.macs_cmd} callpeak --broad -t {input.treatment} -n {params.prefix}
+            echo {params.macs_cmd}
+            echo "No Control file detected -- running MACS without a control"
+            {params.macs_cmd} callpeak --broad {params.pe_bam}-g {params.gensize} \
+            -t {input.treatment} -n {params.prefix} || true
         else
-            echo "Control file detected -- running MACS2 with control"
-            {params.macs_cmd} callpeak --broad -t {input.treatment} -c {input.control} -n {params.prefix}
+            echo "Control file detected -- running MACS with control"
+            echo {params.macs_cmd}
+            {params.macs_cmd} callpeak --broad {params.pe_bam}-g {params.gensize} \
+            -t {input.treatment} -c {input.control} -n {params.prefix} || true
         fi
-        mv {params.macsout} {output}
+        mv {params.macsout} {output} || (touch {output} && touch {output}.failed)
         ) &> {log}
     """
 
@@ -246,54 +298,58 @@ rule macs_callpeak:
 rule wrangle_bam:
     input: get_sample_bam
     output:
-        bam = "{outdir}/wrangled_bam/{sample}/{sample}.{genome}.bam",
-        bai = "{outdir}/wrangled_bam/{sample}/{sample}.{genome}.bam.bai"
-    conda: src + "/envs/bwa_mem.yaml"
+        bam = "{outdir}/wrangled_bam/{sample}/{sample}_{genome}.bam",
+        bai = "{outdir}/wrangled_bam/{sample}/{sample}_{genome}.bam.bai"
+    conda: src + "/envs/samtools.yaml"
     priority: 15
     log: "{outdir}/logs/wrangle_bam/{sample}_{genome}__wrangle_bam.log"
     params:
         bwa_extra=r"-R '@RG\tID:{sample}\tSM:{sample}'",
         bwa_interleaved=pe_test_bwa,
-        samblaster_extra=pe_test_samblaster,
         samtools_sort_extra="-O BAM"
     threads: 10
     shell: """
-        (samtools view -h -@ {threads} -q 10 {input} | \
-        samblaster {params.samblaster_extra}| \
-        samtools sort {params.samtools_sort_extra} -@ {threads} -O bam -o {output.bam} - && \
-        samtools index -@ {threads} {output.bam}) &> {log}
+        (   
+            samtools view -h -@ {threads} -q 10 {input} | \
+            samtools sort {params.samtools_sort_extra} -@ {threads} -O bam -o {output.bam} - && \
+            samtools index -@ {threads} {output.bam}
+        ) &> {log}
      """
 
 
-# TODO: Try BWA MEM2 (Has stdin option and 1.5-3X speed increase)
+rule index_bam:
+    input: 
+        bam="{outdir}/bam/{sample}/{sample}_{genome}.bam"
+    output: 
+        bai="{outdir}/bam/{sample}/{sample}_{genome}.bam.bai"
+    conda: src + "/envs/samtools.yaml"
+    threads: 10
+    log: "{outdir}/logs/index_bam/{sample}_{genome}__index_bam.log"
+    shell: """
+        samtools index -@ {threads} {input.bam}
+    """
+
+
 rule bwa_mem:
     input:
-        bwa_index_done=[
-            genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-            genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
-            genome_home_dir + "/{genome}/bwa_index/{genome}.amb"
-        ],
-        reads="{outdir}/tmp/fastqs_trimmed/{sample}.{genome}__trimmed.fastq"
+        bwa_index_done=ancient(genome_home_dir + "/{genome}/" + bwa_location),
+        reads=ancient("{outdir}/tmp/fastqs_trimmed/{sample}_{genome}__trimmed.fastq")
     output:
-        bam="{outdir}/bam/{sample}/{sample}.{genome}.bam",
-        bai="{outdir}/bam/{sample}/{sample}.{genome}.bam.bai"
-    conda: src + "/envs/bwa_mem.yaml"
+        bam="{outdir}/bam/{sample}/{sample}_{genome}.bam"
+    conda: bwa_yaml
     priority: 15
     log: "{outdir}/logs/bwa/{sample}_{genome}__bwa_mem.log"
     params:
-        index=genome_home_dir + "/{genome}/bwa_index/{genome}",
+        index=genome_home_dir + "/{genome}/" + bwa_ind_prefix,
         bwa_extra=r"-R '@RG\tID:{sample}\tSM:{sample}'",
         bwa_interleaved=pe_test_bwa,
-        samblaster_extra=pe_test_samblaster,
         samtools_sort_extra="-O BAM",
         bwa_cmd=bwa_cmd
     threads: 10
     shell: """
         ({params.bwa_cmd} mem -t {threads} {params.bwa_extra} {params.bwa_interleaved}{params.index} {input.reads} | \
-        samblaster {params.samblaster_extra}| \
         samtools view -q 10 -b -@ {threads} - | \
-        samtools sort {params.samtools_sort_extra} -@ {threads} -o {output.bam} - && \
-        samtools index -@ {threads} {output.bam}) &> {log}
+        samtools sort {params.samtools_sort_extra} -@ {threads} -o {output.bam} -) &> {log}
      """
 
 
@@ -301,15 +357,13 @@ rule bwa_index:
     input:
         genome_home_dir + "/{genome}/{genome}.fa"
     output:
-        genome_home_dir + "/{genome}/bwa_index/{genome}.ann",
-        genome_home_dir + "/{genome}/bwa_index/{genome}.pac",
-        genome_home_dir + "/{genome}/bwa_index/{genome}.amb"
+        genome_home_dir + "/{genome}/" + bwa_location,
     params:
-        prefix=genome_home_dir + "/{genome}/" + bwa_location + "/{genome}",
+        prefix=genome_home_dir + "/{genome}/" + bwa_ind_prefix,
         bwa_cmd=bwa_cmd
-    conda: src + "/envs/bwa.yaml"
+    conda: bwa_yaml
     log:
-        genome_home_dir + "/{genome}/" + bwa_location + "/{genome}_bwa_index.log"
+        genome_home_dir + "/{genome}/" + bwa_ind_prefix + "_bwa_index.log"
     shell:"""
         ({params.bwa_cmd} index -p {params.prefix} {input}) &> {log}
     """
@@ -332,32 +386,22 @@ rule download_fasta:
 rule fastp:
     input: check_type_fq
     output:
-        trimmed=temp("{outdir}/tmp/fastqs_trimmed/{sample}.{genome}__trimmed.fastq"),
-        html="{outdir}/QC/fastq/html/{sample}.{genome}.html",
-        json="{outdir}/QC/fastq/json/{sample}.{genome}.json"
+        trimmed=temp("{outdir}/tmp/fastqs_trimmed/{sample}_{genome}__trimmed.fastq"),
+        json="{outdir}/fastq_stats/{sample}_{genome}__fastq_stats.json"
     conda: src + "/envs/fastp.yaml"
-    log: "{outdir}/logs/fastp/{sample}.{genome}__fastp_pe.log"
+    log: "{outdir}/logs/fastp/{sample}_{genome}__fastp_pe.log"
     priority: 10
     params:
         extra=pe_test_fastp
     threads: 4
     shell: """
-    (fastp -i {input} --stdout {params.extra}-w {threads} -h {output.html} -j {output.json} > {output} ) &> {log}
+    (fastp -i {input} --stdout {params.extra}-w {threads} -h /dev/null -j {output.json} > {output} ) &> {log}
     """
 
 
-rule merge_replicate_reads:
-    input: find_sra_replicates
-    output: temp("{outdir}/tmp/fastqs_merged/{sample}.{genome}__merged.fastq")
-    log: "{outdir}/logs/merge_fastq/{sample}_{genome}__merge_fastq.log"
-    shell: """
-    (cat {input} > {output}) &> {log}
-    """
-    
-    
 rule cp_fq:
     input: find_fq
-    output: temp("{outdir}/tmp/fastqs_cp/{sample}.{genome}__cp.fastq")
+    output: temp("{outdir}/tmp/fastqs_cp/{sample}_{genome}__cp.fastq")
     log: "{outdir}/logs/cp_fastq/{sample}_{genome}__cp_fastq.log"
     shell: """
         (cp {input} {output}) &> {log}
@@ -366,18 +410,59 @@ rule cp_fq:
 
 rule gunzip_fq:
     input: find_fq
-    output: temp("{outdir}/tmp/fastqs_gunzip/{sample}.{genome}__gunzip.fastq")
+    output: temp("{outdir}/tmp/fastqs_gunzip/{sample}_{genome}__gunzip.fastq")
     log: "{outdir}/logs/gunzip_fastq/{sample}_{genome}__gunzip_fastq.log"
     shell: """
         (cp {input} {output}.gz
         gunzip {output}.gz) &> {log}
     """
+    
 
+rule fq_interleave:
+    input: 
+        r1=temp("{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R1.fastq"),
+        r2=temp("{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R2.fastq")
+    output: temp("{outdir}/tmp/fastqs_interleave/{sample}_{genome}__interleave.fastq")
+    log: "{outdir}/logs/fastqs_interleave/{sample}_{genome}__interleave_fastq.log"
+    conda: src + "/envs/sratools.yaml"
+    threads: 1
+    shell:"""
+    (
+        echo "Paired end -- interleaving"
+        reformat.sh in1={input.r1} in2={input.r2} out={output} overwrite=true
+    ) &> {log}
+    """
+
+
+rule fq_repair:
+    input: find_fq_pe
+    output:
+        r1=temp("{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R1.fastq"),
+        r2=temp("{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R2.fastq")
+    log: "{outdir}/logs/fastqs_repair/{sample}_{genome}__repair_fastq.log"
+    conda: src + "/envs/sratools.yaml"
+    threads: 1
+    shell: """
+    (
+        echo "Repairing mates"
+        repair.sh in1={input[0]} in2={input[1]} out1={output.r1} out2={output.r2} outs=/dev/null repair
+    ) &> {log}
+    """
+
+
+rule merge_replicate_reads:
+    input: find_sra_replicates
+    output: temp("{outdir}/tmp/fastqs_merged/{sample}_{genome}__merged.fastq")
+    log: "{outdir}/logs/merge_fastq/{sample}_{genome}__merge_fastq.log"
+    shell: """
+    (cat {input} > {output}) &> {log}
+    """
+    
 
 # This should always produced interleaved fq even if paired end. I don't like this solution, but it should hold.
 # reformat.sh (from BBTools) will interleave the paired-end files
 rule sra_to_fastq:
-    # input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
+    input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
     output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
     conda: src + "/envs/sratools.yaml"
     threads: 1

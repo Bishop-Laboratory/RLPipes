@@ -1,0 +1,2 @@
+experiment,control,genome,mode
+tests/test_data/SRX6427717_hg38_1.fq~tests/test_data/SRX6427717_hg38_2.fq,tests/test_data/SRX6427719_hg38_R1.fq~tests/test_data/SRX6427719_hg38_R2.fq,hg38,qDRIP
