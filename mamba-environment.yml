@@ -6,6 +6,7 @@ channels:
 dependencies:
   - flake8
   - pytest
+  - samtools
   - coverage
   # The last version with cores working correctly in api
   # TODO: submit an issue about this...
@@ -15,6 +16,7 @@ dependencies:
   - graphviz
   - pandas==1.2.0
   - awscli
+  - pyfastx
   - pysam
   - click
   - pysradb

@@ -8,6 +8,8 @@ RSEQ_OUT_PUBLIC='tests/rseq_out_public/'
 PUBSAMPS='tests/test_data/samples.csv'
 RSEQ_OUT_BAM='tests/rseq_out_bams/'
 BAMSAMPS='tests/test_data/bam_test_samples_1.csv'
+RSEQ_OUT_FQ='tests/rseq_out_fqs/'
+FQSAMPS='tests/test_data/fq_test_samples_1.csv'
 
 def test_build():
   if os.path.exists(RSEQ_OUT_PUBLIC):
@@ -35,3 +37,10 @@ def test_build_bam():
   buildres = runner.invoke(build, [RSEQ_OUT_BAM, BAMSAMPS, "-g", "hg38"])
   assert buildres.exit_code == 0
 
+
+def test_build_fq():
+  if os.path.exists(RSEQ_OUT_BAM):
+    shutil.rmtree(RSEQ_OUT_BAM)
+  runner = CliRunner()
+  buildres = runner.invoke(build, [RSEQ_OUT_FQ, FQSAMPS, "-g", "hg38"])
+  assert buildres.exit_code == 0

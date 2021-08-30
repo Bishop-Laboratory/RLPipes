@@ -9,6 +9,7 @@ setup(
         'Click',
         'pysradb',
         'pysam',
+        'pyfastx',
         'pandas==1.2.0'
     ],
     entry_points={

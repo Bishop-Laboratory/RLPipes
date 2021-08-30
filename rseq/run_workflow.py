@@ -26,9 +26,7 @@ def make_snakes(
 
     # Set use_conda as True if not supplied
     if "use_conda" not in snake_args.keys():
-        warnings.warn(
-            "'use_conda' is set to False by user. It is expected that user has all dependencies installed."
-        )
+        snake_args["use_conda"] = True
         time.sleep(4)
     elif not snake_args["use_conda"]:
         warnings.warn(

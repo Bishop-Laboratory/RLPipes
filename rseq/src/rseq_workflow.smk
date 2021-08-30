@@ -52,7 +52,7 @@ if bwa_mem2:
 else:
     bwa_cmd="bwa"
     bwa_ind_prefix="bwa_index/{genome}"
-    bwa_location="bwa_index/{genome}.pac"
+    bwa_location="bwa_index/{genome}.sa"
     bwa_yaml = src + "/envs/bwa.yaml"
 
 # Select MACS type
@@ -80,16 +80,29 @@ def find_fq(wildcards):
     fq = [run[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     return fq
 
+def find_fq_pe(wildcards):
+    fq1 = [re.sub('\\~.+', "", run[idx]) for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    fq2 = [re.sub('.+\\~', "", run[idx]) for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    return [
+        fq1, fq2
+    ]
+
 def check_type_fq(wildcards):
     file_type = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     if file_type == "fastq":
         fq = [run[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0][0]
-        if fq[-3:] == ".gz":
-            # CASE: Fastq GZ available
-            return "{outdir}/tmp/fastqs_gunzip/{sample}_{genome}__gunzip.fastq"
+        pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+        if pe:
+            # CASE: paired-end fq
+            return "{outdir}/tmp/fastqs_interleave/{sample}_{genome}__interleave.fastq"
+            # TODO: Still need gz case...
         else:
-            # CASE: normal Fastq
-            return "{outdir}/tmp/fastqs_cp/{sample}_{genome}__cp.fastq"
+            if fq[-3:] == ".gz":
+                # CASE: Fastq GZ available
+                return "{outdir}/tmp/fastqs_gunzip/{sample}_{genome}__gunzip.fastq"
+            else:
+                # CASE: normal Fastq
+                return "{outdir}/tmp/fastqs_cp/{sample}_{genome}__cp.fastq"
     else:
         # CASE: Public data accession
         return "{outdir}/tmp/fastqs_merged/{sample}_{genome}__merged.fastq"
@@ -386,15 +399,6 @@ rule fastp:
     """
 
 
-rule merge_replicate_reads:
-    input: find_sra_replicates
-    output: temp("{outdir}/tmp/fastqs_merged/{sample}_{genome}__merged.fastq")
-    log: "{outdir}/logs/merge_fastq/{sample}_{genome}__merge_fastq.log"
-    shell: """
-    (cat {input} > {output}) &> {log}
-    """
-    
-    
 rule cp_fq:
     input: find_fq
     output: temp("{outdir}/tmp/fastqs_cp/{sample}_{genome}__cp.fastq")
@@ -412,7 +416,48 @@ rule gunzip_fq:
         (cp {input} {output}.gz
         gunzip {output}.gz) &> {log}
     """
+    
 
+rule fq_interleave:
+    input: 
+        r1=temp("{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R1.fastq"),
+        r2=temp("{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R2.fastq")
+    output: temp("{outdir}/tmp/fastqs_interleave/{sample}_{genome}__interleave.fastq")
+    log: "{outdir}/logs/fastqs_interleave/{sample}_{genome}__interleave_fastq.log"
+    conda: src + "/envs/sratools.yaml"
+    threads: 1
+    shell:"""
+    (
+        echo "Paired end -- interleaving"
+        reformat.sh in1={input.r1} in2={input.r2} out={output} overwrite=true
+    ) &> {log}
+    """
+
+
+rule fq_repair:
+    input: find_fq_pe
+    output:
+        r1=temp("{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R1.fastq"),
+        r2=temp("{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R2.fastq")
+    log: "{outdir}/logs/fastqs_repair/{sample}_{genome}__repair_fastq.log"
+    conda: src + "/envs/sratools.yaml"
+    threads: 1
+    shell: """
+    (
+        echo "Repairing mates"
+        repair.sh in1={input[0]} in2={input[1]} out1={output.r1} out2={output.r2} outs=/dev/null repair
+    ) &> {log}
+    """
+
+
+rule merge_replicate_reads:
+    input: find_sra_replicates
+    output: temp("{outdir}/tmp/fastqs_merged/{sample}_{genome}__merged.fastq")
+    log: "{outdir}/logs/merge_fastq/{sample}_{genome}__merge_fastq.log"
+    shell: """
+    (cat {input} > {output}) &> {log}
+    """
+    
 
 # This should always produced interleaved fq even if paired end. I don't like this solution, but it should hold.
 # reformat.sh (from BBTools) will interleave the paired-end files

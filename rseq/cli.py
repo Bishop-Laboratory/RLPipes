@@ -7,6 +7,7 @@ from pysradb.sraweb import SRAweb
 import requests
 import pysam
 import re
+import pyfastx
 import pkg_resources  # part of setuptools
 import json
 import warnings
@@ -51,7 +52,7 @@ SRA_COLS = [
     "run_total_spots",
 ]
 redict = {
-    "fastq": "^.+\\.f[ast]q$|^.+f[ast]q~.+f[ast]q$",
+    "fastq": "^.+\\.f[ast]q$|^.+\\.f[ast]q\\~.+\\.f[ast]q$",
     "bam": "^.+\\.bam$",
     "public": "^GSM[0-9]+$|^SRX[0-9]+$",
 }
@@ -201,6 +202,11 @@ def validate_samples(ctx, param, value):
 
     # First, check for matching pattern
     exp = samps.experiment[0]
+    redict = {
+        "fastq": "^.+\\.[fastq]+$|^.+\\.f[ast]q\\~.+\\.[fastq]+$",
+        "bam": "^.+\\.bam$",
+        "public": "^GSM[0-9]+$|^SRX[0-9]+$",
+    }
     samptype = [key for key, val in redict.items() if re.match(val, exp)][0]
     samps["file_type"] = samptype
 
@@ -284,26 +290,66 @@ def validate_samples(ctx, param, value):
 
         # Finally, join the dataframes
         samps = samps.set_index("experiment").join(newSamps).reset_index(level=0)
-    elif samptype == "bam":
-        # Check which are paired-end
-        samps["paired_end"] = [
-            bam_info(bam, N_BAM_READS_CHECK)["paired_end"]
-            for bam in samps["experiment"]
-        ]
-        samps["read_length"] = [
-            bam_info(bam, N_BAM_READS_CHECK)["read_len"] for bam in samps["experiment"]
-        ]
-        samps["run"] = [os.path.abspath(bam) for bam in samps["experiment"]]
-        samps["name"] = samps["experiment"] = [
-            os.path.splitext(os.path.basename(exp))[0] for exp in samps["experiment"]
-        ]
-        if controls:
+    else:
+        if samptype == "bam":
+          # Check which are paired-end
+          samps["paired_end"] = [
+              bam_info(bam, N_BAM_READS_CHECK)["paired_end"]
+              for bam in samps["experiment"]
+          ]
+          samps["read_length"] = [
+              bam_info(bam, N_BAM_READS_CHECK)["read_len"] for bam in samps["experiment"]
+          ]
+          samps["name"] = [
+              os.path.splitext(os.path.basename(exp))[0] for exp in samps["experiment"]
+          ]
+          if controls:
             samps["control"] = [
-                os.path.splitext(os.path.basename(exp))[0] if not pd.isna(exp) else exp
-                for exp in samps["control"]
-            ]
-        else:
-            samps["control"] = ""
+                  os.path.splitext(os.path.basename(exp))[0] if not pd.isna(exp) else exp
+                  for exp in samps["control"]
+              ]
+          else:
+              samps["control"] = ""
+          samps["run"] = [os.path.abspath(bam) for bam in samps["experiment"]]
+        elif samptype == "fastq":
+          # Check which are paired-end
+          samps["paired_end"] = [bool(re.match(".+\\~.+", exp)) for exp in samps["experiment"]]
+          samps["read_length"] = [
+              round(pyfastx.Fastq(re.sub('\\~.+', "", exp ), build_index=True).avglen) for exp in samps["experiment"]
+          ]
+          samps["name"] = [
+              re.sub(
+                '[\\._]{1}[R1-2]+$', "", os.path.splitext(
+                  os.path.basename(
+                    re.sub('\\~.+', "", exp )
+                  )
+                )[0]
+              ) for exp in samps["experiment"]
+          ]
+          if controls:
+            samps["control"] = [
+                  re.sub(
+                '[\\._]{1}[R1-2]+$', "", os.path.splitext(
+                  os.path.basename(
+                    re.sub('\\~.+', "", exp )
+                  )
+                )[0]
+              ) if not pd.isna(exp) else exp
+                  for exp in samps["control"]
+              ]
+          else:
+              samps["control"] = ""
+              
+          def get_fq_path(fq, pe):
+            if pe:
+              fq1=os.path.abspath(re.sub('\\~.+', "", fq))
+              fq2=os.path.abspath(re.sub('.+\\~', "", fq))
+              return fq1 + "~" + fq2
+            else:
+              return os.path.abspath(fq)
+              
+          samps["run"] = [get_fq_path(fq, pe) for idx, fq, pe in samps[["experiment", "paired_end"]].itertuples()]
+        samps["experiment"] = samps["name"]
 
     return samps
 

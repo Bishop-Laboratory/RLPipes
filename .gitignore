@@ -33,6 +33,9 @@ rseq_out*
 build.log
 dist/
 build/
+*.fq
+*.fastq
+*.fxi
 *.egg-info/
 .RSeq.Rproj
 .Rproj.user
