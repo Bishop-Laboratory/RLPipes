@@ -152,6 +152,12 @@ verify_run_options = [
         default=False
     ),
     click.option(
+        "--noreport",
+        help="If set, RSeq reports will not be generated.",
+        is_flag=True,
+        default=False
+    ),
+    click.option(
         "--debug",
         is_flag=True,
         help="Run pipeline on subsampled number of reads (for testing).",
@@ -551,7 +557,7 @@ def build(ctx, samples, mode, genome, run_dir, name):
 @cli.command("check")
 @click.argument("run_dir", type=click.Path(), callback=validate_run_dir_prepped)
 @add_options(verify_run_options)
-def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, **kwargs):
+def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, **kwargs):
     """
     Validate an RSeq workflow.
 
@@ -567,6 +573,7 @@ def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, **kwargs):
         macs2=macs2,
         groupby=groupby,
         noexp=noexp,
+        noreport=noreport,
         debug=debug,
         verify=True,
     )
@@ -580,7 +587,7 @@ def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, **kwargs):
 @cli.command("run")
 @click.argument("run_dir", type=click.Path(), callback=validate_run_dir_prepped)
 @add_options(verify_run_options)
-def run(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, **kwargs):
+def run(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, **kwargs):
     """
     Execute an RSeq workflow.
 
@@ -596,6 +603,7 @@ def run(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, **kwargs):
         macs2=macs2,
         groupby=groupby,
         noexp=noexp,
+        noreport=noreport,
         debug=debug,
         verify=False,
     )

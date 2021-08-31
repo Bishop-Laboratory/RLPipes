@@ -13,6 +13,7 @@ outdir=config['run_dir']
 outdir=outdir.removesuffix("/")
 bwa_mem2=config['bwamem2']
 macs2=config['macs2']
+noreport=config['noreport']
 
 # Sample info
 mode=config['mode']
@@ -44,13 +45,14 @@ peaks_out = expand("{outdir}/peaks/{sample}_{genome}.broadPeak",zip,
             sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
 coverage_out = expand("{outdir}/coverage/{sample}_{genome}.bw",zip,
             sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
-            
+bamstats_out = expand("{outdir}/bam_stats/{sample}_{genome}__bam_stats.txt",zip,
+            sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
+
 # Get collater inputs
-collate_inputs = {
-    'html': [outdir + '/RSeq_report/' + elem + "_" + genome[idx] + ".html" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]],
-    'rda': [outdir + '/RSeq_report/' + elem + "_" + genome[idx] + ".rda" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]],
-    'quant': [outdir + '/quant/' + elem + "_" + genome[idx] + "/quant.sf" for idx, elem in enumerate(sample) if mode[idx] in ["RNA-Seq", "RNA-seq"]]
-}
+quant=[outdir + '/quant/' + elem + "_" + genome[idx] + "/quant.sf" for idx, elem in enumerate(sample) if mode[idx] in ["RNA-Seq", "RNA-seq"]]
+html=[outdir + '/RSeq_report/' + elem + "_" + genome[idx] + ".html" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
+rda=[outdir + '/RSeq_report/' + elem + "_" + genome[idx] + ".rda" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
+collate_inputs = html + rda + quant
 
 # For testing the workflow using SRA
 debug=config['debug']
@@ -79,6 +81,11 @@ else:
     macs_cmd="macs2"
     macs_yaml = src + "/envs/macs2.yaml"
     
+    
+# Set output
+final_outputs = outdir + "/rseq.html"
+if noreport:
+    final_outputs = quant + peaks_out + coverage_out + bamstats_out
 
 ########################################################################################################################
 ############################################   Helper Functions   ######################################################
@@ -252,11 +259,11 @@ def get_fq_salmon(wildcards):
 ########################################################################################################################
 
 rule output:
-    input: outdir + "/rseq.html"
+    input: final_outputs
     
     
 rule rseqr_collate:
-    input: collate_inputs.values()
+    input: collate_inputs
     output:
         src="{outdir}/rseq.html"
     shell:

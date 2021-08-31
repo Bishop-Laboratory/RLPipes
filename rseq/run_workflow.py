@@ -12,7 +12,8 @@ import warnings
 
 
 def make_snakes(
-    run_dir, snake_args, src_dir, bwamem2, macs2, threads=1, groupby=None, noexp=False, debug=False, verify=True
+    run_dir, snake_args, src_dir, bwamem2, macs2, threads=1, groupby=None,
+    noexp=False, debug=False, noreport=False, verify=True
 ):
     config = json.load(open(os.path.join(run_dir, "config.json")))
     config["debug"] = debug
@@ -22,6 +23,7 @@ def make_snakes(
     config["macs2"] = macs2
     config["groupby"] = groupby
     config['noexp'] = noexp
+    config['noreport'] = noreport
     snake_path = os.path.join(config["src"], "rseq_workflow.smk")
     
     # Check groupby
