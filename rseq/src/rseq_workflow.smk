@@ -49,6 +49,9 @@ bamstats_out = expand("{outdir}/bam_stats/{sample}_{genome}__bam_stats.txt",zip,
             sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
 
 # Get collater inputs
+peaks=[outdir + '/peaks/' + elem + "_" + genome[idx] + ".broadPeak" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
+coverage=[outdir + '/coverage/' + elem + "_" + genome[idx] + ".bw" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
+bamstats=[outdir + '/bam_stats/' + elem + "_" + genome[idx] + "__bam_stats.txt" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
 quant=[outdir + '/quant/' + elem + "_" + genome[idx] + "/quant.sf" for idx, elem in enumerate(sample) if mode[idx] in ["RNA-Seq", "RNA-seq"]]
 html=[outdir + '/RSeq_report/' + elem + "_" + genome[idx] + ".html" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
 rda=[outdir + '/RSeq_report/' + elem + "_" + genome[idx] + ".rda" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
@@ -85,7 +88,7 @@ else:
 # Set output
 final_outputs = outdir + "/rseq.html"
 if noreport:
-    final_outputs = quant + peaks_out + coverage_out + bamstats_out
+    final_outputs = quant + peaks + coverage + bamstats
 
 ########################################################################################################################
 ############################################   Helper Functions   ######################################################
@@ -206,17 +209,6 @@ def get_report_inputs(wildcards):
         return_dict['fastq_stats'] = wildcards.outdir + '/fastq_stats/' + wildcards.sample + "_" + wildcards.genome + "__fastq_stats.json"
     return return_dict
 
-def get_final_inputs(wildcards):
-    return_dict = {
-        'report': report_html,
-        'report_data': report_data,
-        'peaks': peaks_out,
-        'coverage': coverage_out
-    }
-    if debug:
-        del return_dict['coverage']
-    return return_dict
-        
 def input_test_callpeak(wildcards):
     inpt = [control[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
@@ -271,7 +263,7 @@ rule rseqr_collate:
         touch {output.src}
         """
         
-rule salmon:
+rule salmon_quant:
   input: 
     fq="{outdir}/tmp/fastqs_prepped/{sample}_{genome}.R1.fastq",
     ind=genome_home_dir + "/{genome}/salmon_index/versionInfo.json"
