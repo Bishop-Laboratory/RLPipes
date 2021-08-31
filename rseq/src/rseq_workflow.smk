@@ -5,6 +5,7 @@
 import math
 from os.path import expanduser
 
+
 # Global Configs
 src=config['src']
 genome_home_dir = expanduser("~") + "/.rseq_genomes"
@@ -20,6 +21,13 @@ genome=config['genome']
 sample_type=config['file_type']
 sample_name=config['name']
 eff_gen_size=config['eff_genome_size']
+
+# Group info
+groupby=None
+if config['groupby'] is not None:
+    groupby=config['groupby'].split(" ")
+noexp=config['noexp']
+
 # Refers to the experiment ID (e.g., basename of a fastq file, SRX)
 # Used as primary name for file paths in this workflow.
 sample=config['experiment']  
@@ -36,6 +44,13 @@ peaks_out = expand("{outdir}/peaks/{sample}_{genome}.broadPeak",zip,
             sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
 coverage_out = expand("{outdir}/coverage/{sample}_{genome}.bw",zip,
             sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
+            
+# Get collater inputs
+collate_inputs = {
+    'html': [outdir + '/RSeq_report/' + elem + "_" + genome[idx] + ".html" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]],
+    'rda': [outdir + '/RSeq_report/' + elem + "_" + genome[idx] + ".rda" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]],
+    'quant': [outdir + '/quant/' + elem + "_" + genome[idx] + "/quant.sf" for idx, elem in enumerate(sample) if mode[idx] in ["RNA-Seq", "RNA-seq"]]
+}
 
 # For testing the workflow using SRA
 debug=config['debug']
@@ -171,6 +186,8 @@ def choose_bam_type(wildcards):
 
 
 def get_report_inputs(wildcards):
+    mode_now = [mode[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+    st_now = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     return_dict = {
         'peaks': wildcards.outdir + '/peaks/' + wildcards.sample + "_" + wildcards.genome + ".broadPeak",
         'coverage': wildcards.outdir + '/coverage/' + wildcards.sample + "_" + wildcards.genome + ".bw",
@@ -178,8 +195,8 @@ def get_report_inputs(wildcards):
     }
     if debug:
         del return_dict['coverage']
-    # if st_now in ['fastq', 'public']:
-    #     return_dict['fastq_stats'] = wildcards.outdir + '/fastq_stats/' + wildcards.sample + "_" + wildcards.genome + "__fastq_stats.json"
+    if st_now in ['fastq', 'public']:
+        return_dict['fastq_stats'] = wildcards.outdir + '/fastq_stats/' + wildcards.sample + "_" + wildcards.genome + "__fastq_stats.json"
     return return_dict
 
 def get_final_inputs(wildcards):
@@ -217,16 +234,127 @@ def input_test_callpeak(wildcards):
         }
     return return_dict
 
+def test_pe(wildcards):
+  return [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
+
+def get_fq_salmon(wildcards):
+  pe = test_pe(wildcards)
+  if pe:
+      res="-1 " + wildcards.outdir + "/tmp/fastqs_prepped/" + wildcards.sample + "_" + wildcards.genome +\
+      ".R1.fastq -2 " + wildcards.outdir + "/tmp/fastqs_prepped/" + wildcards.sample + "_" +\
+      wildcards.genome + ".R2.fastq"
+  else:
+      res="-r " + wildcards.outdir + "/tmp/fastqs_prepped/" + wildcards.sample + "_" + wildcards.genome + ".R1.fastq"
+  return res
+
 ########################################################################################################################
 ##############################################   Main pipeline    ######################################################
 ########################################################################################################################
 
 rule output:
+    input: outdir + "/rseq.html"
+    
+    
+rule rseqr_collate:
+    input: collate_inputs.values()
+    output:
+        src="{outdir}/rseq.html"
+    shell:
+        """
+        touch {output.src}
+        """
+        
+rule salmon:
+  input: 
+    fq="{outdir}/tmp/fastqs_prepped/{sample}_{genome}.R1.fastq",
+    ind=genome_home_dir + "/{genome}/salmon_index/versionInfo.json"
+  output: "{outdir}/quant/{sample}_{genome}/quant.sf"
+  params:
+    pe_fq=get_fq_salmon,
+    ind= genome_home_dir + "/{genome}/salmon_index",
+    outdir="{outdir}/quant/{sample}_{genome}"
+  log: "{outdir}/logs/quant/{sample}_{genome}__quant.log"
+  conda: src + "/envs/salmon.yaml"
+  threads: 6
+  priority: 11
+  shell:
+    """
+    (
+      salmon quant -i {params.ind} -l A {params.pe_fq} --validateMappings -o {params.outdir} -p {threads}
+    ) &> {log}
+    
+    """
+
+
+rule cleanup_fq:
+  input: "{outdir}/tmp/fastqs_trimmed/{sample}_{genome}__trimmed.fastq"
+  output: temp("{outdir}/tmp/fastqs_prepped/{sample}_{genome}.R1.fastq")
+  conda: src + "/envs/sratools.yaml"
+  log: "{outdir}/logs/cleanup_fq/{sample}.{genome}__cleanup_fq.log"
+  params:
+    ispe=test_pe,
+    outdir="{outdir}/tmp/fastqs_prepped/"
+  shell: """
+  (
+    if [ {params.ispe} == "True" ]; then
+      reformat.sh ow=t in={input} out1={params.outdir}/{wildcards.sample}.{wildcards.genome}.R1.fastq \
+      out2={params.outdir}/{wildcards.sample}.{wildcards.genome}.R2.fastq
+    else
+      mv {input} {output}
+    fi
+  ) &> {log}
+  """
+  
+
+rule salmon_index:
     input:
-        unpack(get_final_inputs)
+        fa=genome_home_dir + "/{genome}/{genome}.ensTx.fa"
+    output:
+        vi=genome_home_dir + "/{genome}/salmon_index/versionInfo.json"
+    params:
+        prefix=genome_home_dir + "/{genome}/salmon_index"
+    threads: 50
+    conda: src + "/envs/salmon.yaml"
+    log: genome_home_dir + "/{genome}/salmon_index/{genome}__salmon_index.log"
+    shell: """
+    (
+        salmon index -t {input} -i {params.prefix} -p {threads}
+    ) &> {log}
         
+    """
+
+rule prep_txome_fa:
+    input:
+        fa=genome_home_dir + "/{genome}/{genome}.fa",
+        gtf=genome_home_dir + "/{genome}/{genome}.ensGene.gtf"
+    output:
+        genome_home_dir + "/{genome}/{genome}.ensTx.fa"
+    params:
+        pref=genome_home_dir + "/{genome}/rsem/{genome}",
+        rsemdir=genome_home_dir + "/{genome}/rsem"
+    conda: src + "/envs/rsem.yaml"
+    log: genome_home_dir + "/logs/prep_txome/{genome}__prep_txome_fa.log"
+    shell: """
+    (
+        if [ -d {params.rsemdir} ]; then rm -Rf {params.rsemdir}; fi
+        mkdir {params.rsemdir}
+        rsem-prepare-reference --gtf {input.gtf} {input.fa} {params.pref}
+        mv {params.pref}.transcripts.fa {output}
+        rm -rf {params.rsemdir}
+    ) &> {log}
         
-rule RSeqR:
+    """
+
+rule download_gtf:
+    output:
+        genome_home_dir + "/{genome}/{genome}.ensGene.gtf"
+    log: genome_home_dir + "/logs/download_gtf/{genome}__download_gtf.log"
+    shell: """
+        wget -O {output}.gz ftp://hgdownload.soe.ucsc.edu/goldenPath/{wildcards.genome}/bigZips/genes/{wildcards.genome}.ensGene.gtf.gz
+        gunzip {output}.gz &> {log}
+    """
+
+rule rseqr_quality:
     input: unpack(get_report_inputs)
     output:
         html="{outdir}/RSeq_report/{sample}_{genome}.html",
@@ -241,7 +369,6 @@ rule RSeqR:
         touch {output.html}
         touch {output.data}
     """
-    
     
 rule calculate_coverage:
     input: choose_bam_type

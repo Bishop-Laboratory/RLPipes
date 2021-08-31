@@ -4,6 +4,7 @@ import pandas as pd
 import sys
 import io
 import time
+import click
 import os
 import pathlib
 from contextlib import redirect_stdout
@@ -11,7 +12,7 @@ import warnings
 
 
 def make_snakes(
-    run_dir, snake_args, src_dir, bwamem2, macs2, threads=1, debug=False, verify=True
+    run_dir, snake_args, src_dir, bwamem2, macs2, threads=1, groupby=None, noexp=False, debug=False, verify=True
 ):
     config = json.load(open(os.path.join(run_dir, "config.json")))
     config["debug"] = debug
@@ -19,7 +20,18 @@ def make_snakes(
     config["src"] = src_dir
     config["bwamem2"] = bwamem2
     config["macs2"] = macs2
+    config["groupby"] = groupby
+    config['noexp'] = noexp
     snake_path = os.path.join(config["src"], "rseq_workflow.smk")
+    
+    # Check groupby
+    if groupby is not None:
+        def testgroup(group):
+            assert group in config.keys()
+        try:
+            [testgroup(group) for group in groupby.split(" ")]
+        except AssertionError:
+            raise click.BadParameter("groupby '" + groupby + "' invalid. All groups must be found in config and separated with a space. E.g., '-G group1 group2'")
 
     if debug:
         snake_args["notemp"] = True

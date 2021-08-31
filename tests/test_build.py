@@ -29,7 +29,7 @@ def test_build_fail_mkdir():
   runner = CliRunner()
   result = runner.invoke(build, ['/asd/as/d/sad/asd/rseqOutdir/', PUBSAMPS, "-m", "bisDRIP"])
   assert result.exit_code == 2
-
+  
 def test_build_bam():
   if os.path.exists(RSEQ_OUT_BAM):
     shutil.rmtree(RSEQ_OUT_BAM)

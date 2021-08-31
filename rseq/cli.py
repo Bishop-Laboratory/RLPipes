@@ -40,10 +40,12 @@ AVAILABLE_MODES = [
     "DRIVE",
     "RNH-CnR",
     "MapR",
+    "RNA-Seq"
 ]
 SRA_URL = "https://www.ncbi.nlm.nih.gov/sra/"
 SRA_COLS = [
     "experiment",
+    "study_accession",
     "experiment_title",
     "experiment_accession",
     "organism_taxid ",
@@ -80,6 +82,38 @@ modeHelp = """
   The type of sequencing (e.g., "DRIP"). The available options are currently:
   DRIP, DRIPc, qDRIP, sDRIP, ssDRIP, R-ChIP, RR-ChIP, RDIP, S1-DRIP, DRIVE, RNH-CnR, and MapR
 """
+groupHelp = """
+  Column(s) which identify biologically-meaningful grouping(s) of samples (i.e., conditions). 
+  Can be any column name from the `samples` CSV file. If using public data accessions, 
+  it may also include "study". NOTE: If --groupby is set and there R-loop-mapping and expression
+  samples within groups, expression-matched analysis will be run. This can be disabled with the --noexp flag.\n
+  
+  Example #1: "RSeqCLI build outdir/ samples.csv --groupcols tissue"\n
+    
+   samples.csv:\n
+    
+     experiment, mode, tissue\n
+      \tGSM1720615, DRIP, NT2\n
+      \tGSM1720616, DRIP, NT2\n
+      \tGSM1720619, DRIP, K562\n
+   \n
+   
+  Example #2: "RSeqCLI build outdir/ samples.csv --groupby tissue"\n
+    
+   samples.csv:\n
+    
+     experiment, mode, tissue\n
+    \tGSM1720615, DRIP, NT2\n
+    \tGSM1720616, DRIP, NT2\n
+    \tGSM1720613, DRIPc, NT2\n
+    \tGSM1720614, DRIPc, NT2\n
+    \tGSM1720622, RNA-seq, NT2\n
+    \tGSM1720623, RNA-seq, NT2\n
+     \n
+"""
+expHelp = """
+  If set, no expression-matched analysis will be performed.
+"""
 
 # Get the shared options
 # From https://stackoverflow.com/questions/40182157/shared-options-and-flags-between-commands
@@ -107,11 +141,22 @@ verify_run_options = [
         default=False,
     ),
     click.option(
+      "--groupby",
+      "-G",
+      help=groupHelp
+    ),
+    click.option(
+        "--noexp",
+        help=expHelp,
+        is_flag=True,
+        default=False
+    ),
+    click.option(
         "--debug",
         is_flag=True,
         help="Run pipeline on subsampled number of reads (for testing).",
         default=False,
-    ),
+    )
 ]
 
 # Function for addint these options to the click command
@@ -198,7 +243,6 @@ def bam_info(bamfile, n_bam_reads_check=1000):
 
 def validate_samples(ctx, param, value):
     """Validate and wrangle sampels input"""
-    params = ctx.params
     samps = pd.read_csv(value)
 
     # First, check for matching pattern
@@ -240,6 +284,7 @@ def validate_samples(ctx, param, value):
           except SystemExit:
             data=pd.DataFrame({
               'experiment': x,
+              'study_accession': pd.NA,
               'experiment_title': pd.NA,
               'experiment_accession': pd.NA,
               'organism_taxid ': pd.NA, 
@@ -283,6 +328,7 @@ def validate_samples(ctx, param, value):
             newSamps[
                 [
                     "experiment",
+                    "study_accession",
                     "experiment_title",
                     "experiment_accession",
                     "run_accession",
@@ -294,6 +340,7 @@ def validate_samples(ctx, param, value):
             .rename(
                 columns={
                     "experiment": "experiment_original",
+                    "study_accession": "study",
                     "experiment_title": "name",
                     "library_layout": "paired_end",
                     "experiment_accession": "experiment",
@@ -447,18 +494,23 @@ def build(ctx, samples, mode, genome, run_dir, name):
     override the -g, -m, and -n  options.\n
     "genome" (-g/--genome) is not required if providing public data accessions.\n
      \n
-    Example #1: "RSeqCLI build -m DRIP samples.csv"; where "samples.csv" is:\n
+    Example #1: "RSeqCLI build -m DRIP outdir/ samples.csv"\n 
+    
+    samples.csv:\n
 
-    experiment\n
-    SRX113812\n
-    SRX113813\n
+    \texperiment\n
+    \tSRX113812\n
+    \tSRX113813\n
      \n
 
-    Example #2: "RSeqCLI build samples.csv"; where "samples.csv" is:\n
+    Example #2: "RSeqCLI build outdir/ samples.csv"\n
+    
+    samples.csv:\n
 
-    experiment,control,genome,mode\n
-    qDRIP_siGL3_1.fq~qDRIP_siGL3_2.fq,,hg38,qDRIP\n
-    DRIPc_3T3.fq,Input_3T3.fq,mm10,DRIPc
+    \texperiment, control, genome, mode\n
+    \tqDRIP_siGL3_1.fq~qDRIP_siGL3_2.fq, , hg38, qDRIP\n
+    \tDRIPc_3T3.fq, Input_3T3.fq, mm10, DRIPc\n
+     
     """
     # Add in potentially, missing columns
     if not "mode" in samples.columns:
@@ -488,6 +540,7 @@ def build(ctx, samples, mode, genome, run_dir, name):
     # Compile to json for snakemake
     outjson = os.path.join(run_dir, "config.json")
     outdict = samples.fillna("").reset_index().drop("index", axis=1).to_dict("list")
+    
     with open(outjson, "w") as f:
         json.dump(outdict, f, ensure_ascii=False)
 
@@ -498,7 +551,7 @@ def build(ctx, samples, mode, genome, run_dir, name):
 @cli.command("check")
 @click.argument("run_dir", type=click.Path(), callback=validate_run_dir_prepped)
 @add_options(verify_run_options)
-def check(run_dir, threads, debug, bwamem2, macs2, **kwargs):
+def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, **kwargs):
     """
     Validate an RSeq workflow.
 
@@ -512,6 +565,8 @@ def check(run_dir, threads, debug, bwamem2, macs2, **kwargs):
         threads=threads,
         bwamem2=bwamem2,
         macs2=macs2,
+        groupby=groupby,
+        noexp=noexp,
         debug=debug,
         verify=True,
     )
@@ -525,7 +580,7 @@ def check(run_dir, threads, debug, bwamem2, macs2, **kwargs):
 @cli.command("run")
 @click.argument("run_dir", type=click.Path(), callback=validate_run_dir_prepped)
 @add_options(verify_run_options)
-def run(run_dir, threads, debug, bwamem2, macs2, **kwargs):
+def run(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, **kwargs):
     """
     Execute an RSeq workflow.
 
@@ -539,6 +594,8 @@ def run(run_dir, threads, debug, bwamem2, macs2, **kwargs):
         threads=threads,
         bwamem2=bwamem2,
         macs2=macs2,
+        groupby=groupby,
+        noexp=noexp,
         debug=debug,
         verify=False,
     )
