@@ -54,13 +54,13 @@ pip install -e .
 4. Set your GitHub dev token as a variable in R. Generate a token [here](https://github.com/settings/tokens).
 
 ```R
-GITHUB_PAT="GH_TOKEN_HERE"
+GITHUB_PAT <- "GH_TOKEN_HERE"
 ```
 
 5. Install the `RSeqR` package using R:
 
 ```R
-remotes::install_github('Bishop-Laboratory/RSeqR', auth_token='$GITHUB_PAT', dependencies=FALSE, lib='$RLIBPATH')
+remotes::install_github('Bishop-Laboratory/RSeqR', auth_token=GITHUB_PAT, dependencies=FALSE)
 ```
 
 ### Basic Usage
