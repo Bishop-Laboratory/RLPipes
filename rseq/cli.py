@@ -43,6 +43,7 @@ AVAILABLE_MODES = [
 ]
 SRA_URL = "https://www.ncbi.nlm.nih.gov/sra/"
 SRA_COLS = [
+    "experiment",
     "experiment_title",
     "experiment_accession",
     "organism_taxid ",
@@ -56,7 +57,7 @@ redict = {
     "bam": "^.+\\.bam$",
     "public": "^GSM[0-9]+$|^SRX[0-9]+$",
 }
-# __file__=os.path.abspath("../../rseq/cli.py")
+# __file__=os.path.abspath("../RSeqCLI/rseq/cli.py")
 this_dir = os.path.dirname(__file__)
 DATA_PATH = os.path.abspath(
     os.path.join(this_dir, "src", "data", "available_genomes.tsv.xz")
@@ -216,14 +217,12 @@ def validate_samples(ctx, param, value):
         samps = pd.concat(
             [
                 samps,
-                samps.assign(experiment=samps.control)
-                .assign(control=pd.NA)
-                .dropna(subset=["experiment"]),
+                samps.assign(experiment=samps.control).assign(condition="Input").assign(control=pd.NA).dropna(subset=["experiment"]),
             ]
         )
         samps = samps.assign(
             control=samps.control.apply(lambda x: pd.NA if pd.isna(x) else x)
-        )
+        ).drop_duplicates()
     else:
         controls = False
         samps["control"] = ""
@@ -232,12 +231,33 @@ def validate_samples(ctx, param, value):
 
         # Init SRAdb
         db = SRAweb(os.environ.get("NCBI_API_KEY", None))
-
+        
+        def getsra(x):
+          """Except for unreachable accessions in SRA"""
+          try:
+            data=db.sra_metadata(x)
+            data['experiment'] = x
+          except SystemExit:
+            data=pd.DataFrame({
+              'experiment': x,
+              'experiment_title': pd.NA,
+              'experiment_accession': pd.NA,
+              'organism_taxid ': pd.NA, 
+              'run_accession': pd.NA,
+              'library_layout': pd.NA, 
+              'run_total_bases': pd.NA, 
+              'run_total_spots': pd.NA
+            }, index=[0])
+          return data
+          
         # Query the SRAdb and wrangle with original data
         newSamps = pd.concat(
-            samps.experiment.apply(lambda x: db.sra_metadata(x)).values.tolist()
+            samps.experiment.progress_apply(lambda x: getsra(x)).values.tolist()
         )[SRA_COLS]
-
+        
+        # Drop NaNs
+        newSamps.dropna(subset=["experiment_accession"], inplace=True)
+        
         # Get the read length
         newSamps = newSamps.astype(
             {"run_total_bases": "int64", "run_total_spots": "int64"}
@@ -262,6 +282,7 @@ def validate_samples(ctx, param, value):
         newSamps = (
             newSamps[
                 [
+                    "experiment",
                     "experiment_title",
                     "experiment_accession",
                     "run_accession",
@@ -272,6 +293,7 @@ def validate_samples(ctx, param, value):
             ]
             .rename(
                 columns={
+                    "experiment": "experiment_original",
                     "experiment_title": "name",
                     "library_layout": "paired_end",
                     "experiment_accession": "experiment",
@@ -279,17 +301,48 @@ def validate_samples(ctx, param, value):
                     "UCSC_orgID": "genome",
                 }
             )
-            .set_index("experiment")
         )
 
         # Set paired end
         newSamps["paired_end"] = newSamps["paired_end"] == "PAIRED"
+        
+        # Get srx to orig mapping
+        srx_to_orig=newSamps[['experiment', 'experiment_original']]
+        
+        # Set index as exp orig
+        newSamps=newSamps.set_index("experiment_original")
+
 
         if "genome" in samps.columns:
             newSamps = newSamps.drop("genome", axis=1)
 
-        # Finally, join the dataframes
-        samps = samps.set_index("experiment").join(newSamps).reset_index(level=0)
+        # Finally, join the dataframes by experiment...
+        samps['experiment_original'] = samps['experiment']
+        samps['control_original'] = samps['control']
+        samps=samps.drop('experiment', axis=1).drop('control', axis=1)
+        samps=pd.merge(
+          samps,
+          newSamps,
+          on = "experiment_original"
+        ).drop_duplicates()
+        
+        # And control
+        srx_to_origctr=srx_to_orig.rename(
+                columns={
+                    "experiment": "control",
+                    "experiment_original": "control_original",
+                }
+            )
+        samps=pd.merge(
+          samps,
+          srx_to_origctr,
+          how="left",
+          on = "control_original"
+        ).drop_duplicates()
+        samps = samps.assign(
+            control=samps.control.apply(lambda x: pd.NA if pd.isna(x) else x)
+        ).drop_duplicates()
+        
     else:
         if samptype == "bam":
           # Check which are paired-end
