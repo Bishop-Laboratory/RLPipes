@@ -274,7 +274,7 @@ rule salmon_quant:
     outdir="{outdir}/quant/{sample}_{genome}"
   log: "{outdir}/logs/quant/{sample}_{genome}__quant.log"
   conda: src + "/envs/salmon.yaml"
-  threads: 6
+  threads: 40
   priority: 11
   shell:
     """
@@ -296,8 +296,8 @@ rule cleanup_fq:
   shell: """
   (
     if [ {params.ispe} == "True" ]; then
-      reformat.sh ow=t in={input} out1={params.outdir}/{wildcards.sample}.{wildcards.genome}.R1.fastq \
-      out2={params.outdir}/{wildcards.sample}.{wildcards.genome}.R2.fastq
+      reformat.sh ow=t in={input} out1={params.outdir}/{wildcards.sample}_{wildcards.genome}.R1.fastq \
+      out2={params.outdir}/{wildcards.sample}_{wildcards.genome}.R2.fastq
     else
       mv {input} {output}
     fi
@@ -433,7 +433,7 @@ rule wrangle_bam:
         bwa_extra=r"-R '@RG\tID:{sample}\tSM:{sample}'",
         bwa_interleaved=pe_test_bwa,
         samtools_sort_extra="-O BAM"
-    threads: 10
+    threads: 30
     shell: """
         (   
             samtools view -h -@ {threads} -q 10 {input} | \
@@ -471,7 +471,7 @@ rule bwa_mem:
         bwa_interleaved=pe_test_bwa,
         samtools_sort_extra="-O BAM",
         bwa_cmd=bwa_cmd
-    threads: 10
+    threads: 40
     shell: """
         ({params.bwa_cmd} mem -t {threads} {params.bwa_extra} {params.bwa_interleaved}{params.index} {input.reads} | \
         samtools view -q 10 -b -@ {threads} - | \
@@ -546,12 +546,11 @@ rule gunzip_fq:
 
 rule fq_interleave:
     input: 
-        r1=temp("{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R1.fastq"),
-        r2=temp("{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R2.fastq")
+        r1="{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R1.fastq",
+        r2="{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R2.fastq"
     output: temp("{outdir}/tmp/fastqs_interleave/{sample}_{genome}__interleave.fastq")
     log: "{outdir}/logs/fastqs_interleave/{sample}_{genome}__interleave_fastq.log"
     conda: src + "/envs/sratools.yaml"
-    threads: 1
     shell:"""
     (
         echo "Paired end -- interleaving"
@@ -567,7 +566,6 @@ rule fq_repair:
         r2=temp("{outdir}/tmp/fastqs_repaired/{sample}_{genome}__repair.R2.fastq")
     log: "{outdir}/logs/fastqs_repair/{sample}_{genome}__repair_fastq.log"
     conda: src + "/envs/sratools.yaml"
-    threads: 1
     shell: """
     (
         echo "Repairing mates"
@@ -591,7 +589,6 @@ rule sra_to_fastq:
     input: "{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra"
     output: temp("{outdir}/tmp/fastqs_raw/{sample}/{srr_acc}.fastq")
     conda: src + "/envs/sratools.yaml"
-    threads: 1
     log: "{outdir}/logs/sra_to_fastq/{sample}_{srr_acc}__sra_to_fastq_pe.log"
     params:
         output_directory="{outdir}/tmp/sras/{sample}/",
@@ -621,7 +618,6 @@ rule download_sra:
     log: "{outdir}/logs/download_sra/{sample}__{srr_acc}__download_sra.log"
     params:
         output_directory = "{outdir}/tmp/sras/{sample}/"
-    threads: math.ceil(workflow.cores * .2)
     shell: """
             (
             cd {params.output_directory}
