@@ -8,7 +8,7 @@ from os.path import expanduser
 
 # Global Configs
 src=config['src']
-genome_home_dir = expanduser("~") + "/.rseq_genomes"
+genome_home_dir = expanduser("~") + "/.rlpipes_genomes"
 outdir=config['run_dir']
 outdir=outdir.removesuffix("/")
 bwa_mem2=config['bwamem2']
@@ -37,9 +37,9 @@ run=config['run']
 control=[ctr if ctr != "" else None for ctr in config['control']]
 
 # Generate the output file names
-report_html = expand("{outdir}/RSeq_report/{sample}_{genome}.html",zip,
+report_html = expand("{outdir}/report/{sample}_{genome}.html",zip,
             sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
-report_data = expand("{outdir}/RSeq_report/{sample}_{genome}.rda",zip,
+report_data = expand("{outdir}/report/{sample}_{genome}.rda",zip,
             sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
 peaks_out = expand("{outdir}/peaks/{sample}_{genome}.broadPeak",zip,
             sample=sample, outdir=[outdir for i in range(len(sample))],genome=genome)
@@ -53,8 +53,8 @@ peaks=[outdir + '/peaks/' + elem + "_" + genome[idx] + ".broadPeak" for idx, ele
 coverage=[outdir + '/coverage/' + elem + "_" + genome[idx] + ".bw" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
 bamstats=[outdir + '/bam_stats/' + elem + "_" + genome[idx] + "__bam_stats.txt" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
 quant=[outdir + '/quant/' + elem + "_" + genome[idx] + "/quant.sf" for idx, elem in enumerate(sample) if mode[idx] in ["RNA-Seq", "RNA-seq"]]
-html=[outdir + '/RSeq_report/' + elem + "_" + genome[idx] + ".html" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
-rda=[outdir + '/RSeq_report/' + elem + "_" + genome[idx] + ".rda" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
+html=[outdir + '/report/' + elem + "_" + genome[idx] + ".html" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
+rda=[outdir + '/report/' + elem + "_" + genome[idx] + ".rda" for idx, elem in enumerate(sample) if mode[idx] not in ["RNA-Seq", "RNA-seq"]]
 collate_inputs = html + rda + quant
 
 # For testing the workflow using SRA
@@ -86,7 +86,7 @@ else:
     
     
 # Set output
-final_outputs = outdir + "/rseq.html"
+final_outputs = outdir + "/report.html"
 if noreport:
     final_outputs = quant + peaks + coverage + bamstats
 
@@ -205,8 +205,8 @@ def get_report_inputs(wildcards):
     }
     if debug:
         del return_dict['coverage']
-    if st_now in ['fastq', 'public']:
-        return_dict['fastq_stats'] = wildcards.outdir + '/fastq_stats/' + wildcards.sample + "_" + wildcards.genome + "__fastq_stats.json"
+    # if st_now in ['fastq', 'public']:
+    #     return_dict['fastq_stats'] = wildcards.outdir + '/fastq_stats/' + wildcards.sample + "_" + wildcards.genome + "__fastq_stats.json"
     return return_dict
 
 def input_test_callpeak(wildcards):
@@ -254,10 +254,10 @@ rule output:
     input: final_outputs
     
     
-rule rseqr_collate:
+rule rlseq_collate:
     input: collate_inputs
     output:
-        src="{outdir}/rseq.html"
+        src="{outdir}/report.html"
     shell:
         """
         touch {output.src}
@@ -353,17 +353,15 @@ rule download_gtf:
         gunzip {output}.gz &> {log}
     """
 
-rule rseqr_quality:
+rule rlseq_quality:
     input: unpack(get_report_inputs)
     output:
-        html="{outdir}/RSeq_report/{sample}_{genome}.html",
-        data="{outdir}/RSeq_report/{sample}_{genome}.rda"
-    # conda: src + "/envs/rseqr.yaml"  TODO: Fix for production once RSeqR is public
+        html="{outdir}/report/{sample}_{genome}.html",
+        data="{outdir}/report/{sample}_{genome}.rda"
     params:
         src=src,
         configs = "{outdir}/config.json",
     log: "{outdir}/logs/prepare_report/{sample}_{genome}__prepare_report.log"
-    # script: src + "scripts/runRSeqR.R"
     shell:"""
         touch {output.html}
         touch {output.data}

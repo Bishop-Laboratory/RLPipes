@@ -13,7 +13,7 @@ import json
 import warnings
 import sys
 import os
-from rseq.run_workflow import make_snakes
+from .run_workflow import make_snakes
 
 # Allows passing strings to CLI and eval as python objects
 # From https://stackoverflow.com/questions/47631914/how-to-pass-several-list-of-arguments-to-click-option
@@ -71,7 +71,7 @@ SRC_DIR = os.path.abspath(os.path.join(this_dir, "src"))
 N_BAM_READS_CHECK = 1000
 
 # Set verion
-__version__ = pkg_resources.require("rseq")[0].version
+__version__ = pkg_resources.require("rlpipes")[0].version
 
 # Help text
 snakeHelp = """
@@ -161,6 +161,12 @@ verify_run_options = [
         "--debug",
         is_flag=True,
         help="Run pipeline on subsampled number of reads (for testing).",
+        default=False,
+    ),
+    click.option(
+        "--tsv",
+        is_flag=True,
+        help="Obtain config from config.tsv file instead of config.json.",
         default=False,
     )
 ]
@@ -465,7 +471,7 @@ def validate_samples(ctx, param, value):
 @click.pass_context
 def cli(ctx, **kwargs):
     """
-    RSeq: An R-loop mapping pipeline with built-in QC.
+    RLPipes: A standardized R-loop-mapping pipeline.
     """
     pass
 
@@ -488,9 +494,9 @@ def cli(ctx, **kwargs):
 @click.pass_context
 def build(ctx, samples, mode, genome, run_dir, name):
     """
-    Configure an RSeq workflow.
+    Configure an RLPipes workflow.
 
-    RUN_DIR: Directory for RSeq Execution. Will be created if it does not exist.
+    RUN_DIR: Directory for RLPipes Execution. Will be created if it does not exist.
 
     SAMPLES: A CSV file with at least one column "experiment" that provides the
     path to either local fastq files, bam files, or public sample accessions (SRX or GSM).
@@ -500,7 +506,7 @@ def build(ctx, samples, mode, genome, run_dir, name):
     override the -g, -m, and -n  options.\n
     "genome" (-g/--genome) is not required if providing public data accessions.\n
      \n
-    Example #1: "RSeqCLI build -m DRIP outdir/ samples.csv"\n 
+    Example #1: "RLPipes build -m DRIP outdir/ samples.csv"\n 
     
     samples.csv:\n
 
@@ -509,7 +515,7 @@ def build(ctx, samples, mode, genome, run_dir, name):
     \tSRX113813\n
      \n
 
-    Example #2: "RSeqCLI build outdir/ samples.csv"\n
+    Example #2: "RLPipes build outdir/ samples.csv"\n
     
     samples.csv:\n
 
@@ -544,24 +550,27 @@ def build(ctx, samples, mode, genome, run_dir, name):
     )
 
     # Compile to json for snakemake
+    outtsv = os.path.join(run_dir, "config.tsv")
+    outdf = samples.fillna("").reset_index().drop("index", axis=1)
+    outdf.to_csv(outtsv, sep="\t", index=False)
     outjson = os.path.join(run_dir, "config.json")
     outdict = samples.fillna("").reset_index().drop("index", axis=1).to_dict("list")
     
     with open(outjson, "w") as f:
         json.dump(outdict, f, ensure_ascii=False)
 
-    print("\nSuccess! RSeq has been initialized at the specified directory: " + run_dir)
-    print("\nRun 'RSeqCLI check " + run_dir + "' to verify the configuration.\n")
+    print("\nSuccess! RLPipes has been initialized at the specified directory: " + run_dir)
+    print("\nRun 'RLPipes check " + run_dir + "' to verify the configuration.\n")
 
 
 @cli.command("check")
 @click.argument("run_dir", type=click.Path(), callback=validate_run_dir_prepped)
 @add_options(verify_run_options)
-def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, **kwargs):
+def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, tsv, **kwargs):
     """
-    Validate an RSeq workflow.
+    Validate an RLPipes workflow.
 
-    RUN_DIR: Directory configured with `RSeqCLI build` and ready for checking and execution.
+    RUN_DIR: Directory configured with `RLPipes build` and ready for checking and execution.
     """
     smargs = kwargs["smargs"]
     dagfile = make_snakes(
@@ -575,23 +584,24 @@ def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, **
         noexp=noexp,
         noreport=noreport,
         debug=debug,
+        tsv=tsv,
         verify=True,
     )
     print(
         "\nSuccess! The DAG has been generated successfully. You can view it here: "
         + dagfile
     )
-    print("\nRun 'RSeqCLI run " + run_dir + "' to execute the workflow.\n")
+    print("\nRun 'RLPipes run " + run_dir + "' to execute the workflow.\n")
 
 
 @cli.command("run")
 @click.argument("run_dir", type=click.Path(), callback=validate_run_dir_prepped)
 @add_options(verify_run_options)
-def run(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, **kwargs):
+def run(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, tsv, **kwargs):
     """
-    Execute an RSeq workflow.
+    Execute an RLPipes workflow.
 
-    RUN_DIR: Directory configured with `RSeqCLI build` and ready for checking and execution.
+    RUN_DIR: Directory configured with `RLPipes build` and ready for checking and execution.
     """
     smargs = kwargs["smargs"]
     exitcode = make_snakes(
@@ -605,7 +615,8 @@ def run(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, **kw
         noexp=noexp,
         noreport=noreport,
         debug=debug,
+        tsv=tsv,
         verify=False,
     )
     print(exitcode)
-    print("Success! RSeqCLI will now close.")
+    print("Success! RLPipes will now close.")

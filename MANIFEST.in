@@ -1,1 +1,1 @@
-recursive-include rseq/src *
+recursive-include rlpipes/src *

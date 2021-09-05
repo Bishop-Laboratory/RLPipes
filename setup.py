@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='rseq',
+    name='rlpipes',
     version='0.1.0',
     packages=find_packages(),
     include_package_data=True,
@@ -14,7 +14,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'RSeqCLI = rseq.cli:cli',
+            'RLPipes = rlpipes.cli:cli',
         ],
     }
 )

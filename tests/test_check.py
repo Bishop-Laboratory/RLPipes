@@ -1,6 +1,6 @@
 # pytest script for checking RSeqCLI build against user inputs
 from click.testing import CliRunner
-from rseq.cli import build, check
+from rlpipes.cli import build, check
 import os
 import shutil
 
@@ -21,6 +21,15 @@ def test_check():
   checkres = runner.invoke(check, [RSEQ_OUT_PUBLIC])
   assert checkres.exit_code == 0
   
+
+def test_check_tsv():
+  if os.path.exists(RSEQ_OUT_PUBLIC):
+    shutil.rmtree(RSEQ_OUT_PUBLIC)
+  runner = CliRunner()
+  buildres = runner.invoke(build, [RSEQ_OUT_PUBLIC, PUBSAMPS])
+  checkres = runner.invoke(check, [RSEQ_OUT_PUBLIC, "--tsv"])
+  assert checkres.exit_code == 0
+
 
 def test_check_failgroupby():
   if os.path.exists(RSEQ_OUT_PUBLIC):

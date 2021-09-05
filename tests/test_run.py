@@ -1,6 +1,6 @@
 # pytest script for checking RSeqCLI build against user inputs
 from click.testing import CliRunner
-from rseq.cli import build, check, run
+from rlpipes.cli import build, check, run
 import os
 import shutil
 

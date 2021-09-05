@@ -1,4 +1,4 @@
-name: rseq
+name: rlpipes
 channels:
   - conda-forge
   - bioconda

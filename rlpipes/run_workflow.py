@@ -13,9 +13,15 @@ import warnings
 
 def make_snakes(
     run_dir, snake_args, src_dir, bwamem2, macs2, threads=1, groupby=None,
-    noexp=False, debug=False, noreport=False, verify=True
+    noexp=False, debug=False, noreport=False, tsv=False, verify=True
 ):
-    config = json.load(open(os.path.join(run_dir, "config.json")))
+    if tsv:
+        config = pd.read_csv(os.path.join(run_dir, "config.tsv"), sep = "\t").fillna("").to_dict("list")
+    else:
+        config = json.load(open(os.path.join(run_dir, "config.json")))
+        
+    print(config)
+    
     config["debug"] = debug
     config["run_dir"] = run_dir
     config["src"] = src_dir
@@ -24,7 +30,7 @@ def make_snakes(
     config["groupby"] = groupby
     config['noexp'] = noexp
     config['noreport'] = noreport
-    snake_path = os.path.join(config["src"], "rseq_workflow.smk")
+    snake_path = os.path.join(config["src"], "rlpipes.smk")
     
     # Check groupby
     if groupby is not None:
