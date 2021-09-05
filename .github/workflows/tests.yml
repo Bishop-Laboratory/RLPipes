@@ -30,15 +30,15 @@ jobs:
           mamba-version: "*"
           channels: conda-forge, bioconda, r
           channel-priority: true
-          environment-file: mamba-environment.yml
-          activate-environment: rseq
+          environment-file: rlpipes.yml
+          activate-environment: rlpipes
         env:
           GHKEY: ${{ secrets.GHKEY }}
-      - name: Setup RSeq
+      - name: Setup RLPipes
         run: |
-          conda activate rseq
+          conda activate rlpipes
           pip install .
-          RSeqCLI
+          RLPipes
       - name: Lint with flake8
         run: |
           # stop the build if there are Python syntax errors or undefined names
