@@ -20,8 +20,6 @@ def make_snakes(
     else:
         config = json.load(open(os.path.join(run_dir, "config.json")))
         
-    print(config)
-    
     config["debug"] = debug
     config["run_dir"] = run_dir
     config["src"] = src_dir
