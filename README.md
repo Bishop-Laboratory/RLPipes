@@ -1,71 +1,41 @@
-# RSeq CLI
-![Build Status](https://github.com/Bishop-Laboratory/RSeqCLI/workflows/tests/badge.svg)
+# RLPipes
+![Build Status](https://github.com/Bishop-Laboratory/RLPipes/workflows/tests/badge.svg)
 
-**RSeqCLI** is a quality-centric pipeline for R-loop-mapping data analysis.
+**RLPipes** is an upstream workflow for R-loop-mapping data. 
 
 The primary outputs of the pipeline are:
 1. Coverage (.bw) tracks 
 2. Peaks (.broadpeak) files
 3. Alignment (.bam) files
-4. An HTML report that includes:
-    - Quality metrics
-    - Genomic feature analysis
-    - Gene enrichment analysis
-    - Comparative analysis with [RMapDB](https://github.com/Bishop-Laboratory/RMapDB)
 
-## Quickstart
+Following RLPipes, the [RLSeq](https://github.com/Bishop-Laboratory/RLSeq) R 
+package should be used for downstream analysis.
 
-The pipeline uses [snakemake](https://snakemake.readthedocs.io/en/stable/) for
-executing workflow jobs, and it uses both [RSeqR](https://github.com/Bishop-Laboratory/RSeqR) 
-and [RMapDB](https://github.com/Bishop-Laboratory/RMapDB) for downstream analysis. 
+## Install
 
-### Install
-
-In the future the RSeq CLI will be installed using conda:
+The preferred installation method is `mamba` or `conda` (slower):
 
 ```shell
-conda install -c bioconda rseq-cli
+mamba install -c bioconda rlpipes
 ```
 
-**Until the first official release on conda, you need to build the package via the following:**
+### Using `pip`
 
-1. Clone the repo
-
-```shell
-git clone https://github.com/Bishop-Laboratory/RSeqCLI.git
-```
-
-2. Checkout the cleanupCLI branch
+RLPipes can also be installed with `pip`. However, system dependencies will 
+still need to be installed. To accomplish this, do the following:
 
 ```shell
-cd RSeqCLI/
-git checkout cleanupCLI
-```
-
-3. Build the environment and install.
-
-```shell
+git clone https://github.com/Bishop-Laboratory/RLPipes.git
+cd RLPipes/
 conda install -c conda-forge mamba -y
-mamba env create -f mamba-environment.yml --force
-conda activate rseq
+mamba env create -f rlpipes.yml --force
+conda activate rlpipes
 pip install -e .
 ```
 
-4. Set your GitHub dev token as a variable in R. Generate a token [here](https://github.com/settings/tokens).
+## Basic Usage
 
-```R
-GITHUB_PAT <- "GH_TOKEN_HERE"
-```
-
-5. Install the `RSeqR` package using R:
-
-```R
-remotes::install_github('Bishop-Laboratory/RSeqR', auth_token=GITHUB_PAT, dependencies=FALSE)
-```
-
-### Basic Usage
-
-To run RSeqCLI, you will need a `samples.csv` file that details the samples in your dataset. 
+To run RLPipes, you will need a `samples.csv` file that describes your samples. 
 Here is an example file provided for testing purposes:
 
 |experiment|control   |
@@ -74,59 +44,53 @@ Here is an example file provided for testing purposes:
 |SRX1025890|SRX1025893|
 |SRX1025899|          |
 
-The basic usage of RSeq follows a three-step process: **build** the workflow,
-**check** the workflow, and **run** the workflow.
+The basic usage of RSeq follows a three-step process: **build**, **check** , and **run**.
 
-#### **Build**
+### **Build**
 
-Building the workflow generates the **config.json** file which is used to 
-configure the RSeq workflow. 
+`RLPipes build` generates a **config.json** file that controls the underlying `snakemake` workflow.
 
 ```shell
-RSeqCLI build -m DRIP rseq_out/ tests/test_data/samples.csv
+RLPipes build -m DRIP rlpipes_out/ tests/test_data/samples.csv
 ```
 
 Output:
 
 ```shell
-Success! RSeq has been initialized at the specified directory: rseq_out/
+Success! RSeq has been initialized at the specified directory: rlpipes_out/
 
-Run 'RSeqCLI check rseq_out/' to verify the configuration.
+Run 'RLPipes check rlpipes_out/' to verify the configuration.
 ```
 
-#### **Check**
+### **Check**
 
-This tests that the run will succeed with the given `config.json` file. 
+Verifies that the run will succeed and generates a plot of the workflow jobs. 
 
 ```shell
-RSeqCLI check rseq_out/
+RLPipes check rlpipes_out/
 ```
 
 Output:
 
 ```shell
-Success! The DAG has been generated successfully. You can view it here: rseq_out/dag.png
+Success! The DAG has been generated successfully. You can view it here: rlpipes_out/dag.png
 
-Run 'RSeqCLI run rseq_out/' to execute the workflow.
+Run 'RLPipes run rlpipes_out/' to execute the workflow.
 ```
 
-It also produces a visualization of the workflow DAG.
-
-
-#### **Run**
+### **Run**
 
 Executes the workflow rules.
 
 ```shell
-RSeqCLI run rseq_out/
+RLPipes run rlpipes_out/
 ```
 
 If multiple cores are available, they can be specified using the `--threads/-t` option.
 
 ```shell
-RSeqCLI run -t 30 rseq_out/
+RLPipes run -t 30 rlpipes_out/
 ```
-
 
 ## Usage Reference
 
@@ -134,7 +98,7 @@ Top-level usage:
 
 ```shell
 
-Usage: RSeqCLI [OPTIONS] COMMAND [ARGS]...
+Usage: RLPipes [OPTIONS] COMMAND [ARGS]...
 
   RSeq: An R-loop mapping pipeline with built-in QC.
 
@@ -153,7 +117,7 @@ Commands:
 
 ```shell
 
-Usage: RSeqCLI build [OPTIONS] RUN_DIR SAMPLES
+Usage: RLPipes build [OPTIONS] RUN_DIR SAMPLES
 
   Configure an RSeq workflow.
 
@@ -172,7 +136,7 @@ Usage: RSeqCLI build [OPTIONS] RUN_DIR SAMPLES
 
 
 
-  Example #1: "RSeqCLI build -m DRIP samples.csv"; where "samples.csv" is:
+  Example #1: "RLPipes build -m DRIP samples.csv"; where "samples.csv" is:
 
   experiment
 
@@ -182,7 +146,7 @@ Usage: RSeqCLI build [OPTIONS] RUN_DIR SAMPLES
 
 
 
-  Example #2: "RSeqCLI build samples.csv"; where "samples.csv" is:
+  Example #2: "RLPipes build samples.csv"; where "samples.csv" is:
 
   experiment,control,genome,mode
 
@@ -205,11 +169,11 @@ Options:
 ### Check
 
 ```shell
-Usage: RSeqCLI check [OPTIONS] RUN_DIR
+Usage: RLPipes check [OPTIONS] RUN_DIR
 
   Validate an RSeq workflow.
 
-  RUN_DIR: Directory configured with `RSeqCLI build` and ready for checking
+  RUN_DIR: Directory configured with `RLPipes build` and ready for checking
   and execution.
 
 Options:
@@ -231,11 +195,11 @@ Options:
 
 
 ```shell
-Usage: RSeqCLI run [OPTIONS] RUN_DIR
+Usage: RLPipes run [OPTIONS] RUN_DIR
 
   Execute an RSeq workflow.
 
-  RUN_DIR: Directory configured with `RSeqCLI build` and ready for checking
+  RUN_DIR: Directory configured with `RLPipes build` and ready for checking
   and execution.
 
 Options:

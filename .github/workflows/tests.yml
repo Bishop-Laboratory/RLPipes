@@ -50,8 +50,6 @@ jobs:
           bash tests/download_test_data.sh
           python -m coverage run -m pytest
           python -m coverage report -m
-      - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./.coverage
+          python -m coverage xml
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2

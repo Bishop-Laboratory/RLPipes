@@ -87,7 +87,8 @@ else:
     
 # Set output
 final_outputs = outdir + "/report.html"
-if noreport:
+# TODO: This is the part that needs to change when RLSeq is available
+if noreport or True:
     final_outputs = quant + peaks + coverage + bamstats
 
 ########################################################################################################################
