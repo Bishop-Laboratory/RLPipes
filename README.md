@@ -16,7 +16,7 @@ package should be used for downstream analysis.
 The preferred installation method is `mamba` or `conda` (slower):
 
 ```shell
-mamba install -c bioconda rlpipes
+mamba create -n rlpipes -c bioconda rlpipes
 ```
 
 ### Using `pip`
