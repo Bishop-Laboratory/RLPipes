@@ -1,5 +1,5 @@
 # RLPipes
-![Build Status](https://github.com/Bishop-Laboratory/RLPipes/workflows/tests/badge.svg)
+![Build Status](https://github.com/Bishop-Laboratory/RLPipes/workflows/tests/badge.svg) [![codecov](https://codecov.io/gh/Bishop-Laboratory/RLPipes/branch/main/graph/badge.svg)](https://codecov.io/gh/Bishop-Laboratory/RLPipes)
 
 **RLPipes** is an upstream workflow for R-loop-mapping data. 
 
@@ -116,43 +116,49 @@ Commands:
 ### Build
 
 ```shell
-
 Usage: RLPipes build [OPTIONS] RUN_DIR SAMPLES
 
-  Configure an RSeq workflow.
+  Configure an RLPipes workflow.
 
-  RUN_DIR: Directory for RSeq Execution. Will be created if it does not exist.
+  RUN_DIR: Directory for RLPipes Execution. Will be created if it does not
+  exist.
 
   SAMPLES: A CSV file with at least one column "experiment" that provides the
   path to either local fastq files, bam files, or public sample accessions
-  (SRX or GSM).  Input controls should be in the "control" column.
+  (SRX or GSM). Input controls should be in the "control" column.
 
   If providing paired-end fastq files, enter: "exp_1.fastq~exp_2.fastq".
 
-  Columns may also include "genome" and "mode" columns. These will  override
+  Columns may also include "genome" and "mode" columns. These will override
   the -g, -m, and -n  options.
 
   "genome" (-g/--genome) is not required if providing public data accessions.
 
 
 
-  Example #1: "RLPipes build -m DRIP samples.csv"; where "samples.csv" is:
+  Example #1: "RLPipes build -m DRIP outdir/ samples.csv"
 
-  experiment
+  samples.csv:
 
-  SRX113812
+      experiment
 
-  SRX113813
+      SRX113812
+
+      SRX113813
 
 
 
-  Example #2: "RLPipes build samples.csv"; where "samples.csv" is:
+  Example #2: "RLPipes build outdir/ samples.csv"
 
-  experiment,control,genome,mode
+  samples.csv:
 
-  qDRIP_siGL3_1.fq~qDRIP_siGL3_2.fq,,hg38,qDRIP
+      experiment, control, genome, mode
 
-  DRIPc_3T3.fq,Input_3T3.fq,mm10,DRIPc
+      qDRIP_siGL3_1.fq~qDRIP_siGL3_2.fq, , hg38, qDRIP
+
+      DRIPc_3T3.fq, Input_3T3.fq, mm10, DRIPc
+
+
 
 Options:
   -m, --mode TEXT    The type of sequencing (e.g., "DRIP"). The available
@@ -163,7 +169,6 @@ Options:
   -n, --name TEXT    Sample names for use in output report. By default,
                      inferred from inputs.
   --help             Show this message and exit.
-
 ```
 
 ### Check
@@ -171,7 +176,7 @@ Options:
 ```shell
 Usage: RLPipes check [OPTIONS] RUN_DIR
 
-  Validate an RSeq workflow.
+  Validate an RLPipes workflow.
 
   RUN_DIR: Directory configured with `RLPipes build` and ready for checking
   and execution.
@@ -184,20 +189,66 @@ Options:
   --bwamem2              Align with BWA-MEM2 instead of BWA. BWA MEM2 Needs >
                          70GB RAM avaialble to build index, but shows > 3x
                          speed increase. Default: False.
-  --macs3                Call peaks using macs3 instead of macs2. Default:
-                         True.
+  --macs2                Call peaks using macs2 instead of macs2
+  -G, --groupby TEXT     Column(s) which identify biologically-meaningful
+                         grouping(s) of samples (i.e., conditions).  Can be
+                         any column name from the `samples` CSV file. If using
+                         public data accessions,  it may also include "study".
+                         NOTE: If --groupby is set and there R-loop-mapping
+                         and expression samples within groups, expression-
+                         matched analysis will be run. This can be disabled
+                         with the --noexp flag.
+                         
+                         Example #1: "RSeqCLI build outdir/ samples.csv
+                         --groupcols tissue"
+                         
+                             samples.csv:
+                         
+                               experiment, mode, tissue
+                         
+                               GSM1720615, DRIP, NT2
+                         
+                               GSM1720616, DRIP, NT2
+                         
+                               GSM1720619, DRIP, K562
+                         
+                         
+                         
+                           Example #2: "RSeqCLI build outdir/ samples.csv
+                          --groupby tissue"
+                         
+                             samples.csv:
+                         
+                               experiment, mode, tissue
+                         
+                               GSM1720615, DRIP, NT2
+                         
+                               GSM1720616, DRIP, NT2
+                         
+                               GSM1720613, DRIPc, NT2
+                         
+                               GSM1720614, DRIPc, NT2
+                         
+                               GSM1720622, RNA-seq, NT2
+                         
+                               GSM1720623, RNA-seq, NT2
+                         
+  --noexp                If set, no expression-matched analysis will be
+                         performed.
+  --noreport             If set, RSeq reports will not be generated.
   --debug                Run pipeline on subsampled number of reads (for
                          testing).
+  --tsv                  Obtain config from config.tsv file instead of
+                         config.json.
   --help                 Show this message and exit.
 ```
 
 ### Run
 
-
 ```shell
 Usage: RLPipes run [OPTIONS] RUN_DIR
 
-  Execute an RSeq workflow.
+  Execute an RLPipes workflow.
 
   RUN_DIR: Directory configured with `RLPipes build` and ready for checking
   and execution.
@@ -210,41 +261,56 @@ Options:
   --bwamem2              Align with BWA-MEM2 instead of BWA. BWA MEM2 Needs >
                          70GB RAM avaialble to build index, but shows > 3x
                          speed increase. Default: False.
-  --macs3                Call peaks using macs3 instead of macs2. Default:
-                         True.
+  --macs2                Call peaks using macs2 instead of macs2
+  -G, --groupby TEXT     Column(s) which identify biologically-meaningful
+                         grouping(s) of samples (i.e., conditions).  Can be
+                         any column name from the `samples` CSV file. If using
+                         public data accessions,  it may also include "study".
+                         NOTE: If --groupby is set and there R-loop-mapping
+                         and expression samples within groups, expression-
+                         matched analysis will be run. This can be disabled
+                         with the --noexp flag.
+                         
+                         Example #1: "RSeqCLI build outdir/ samples.csv
+                         --groupcols tissue"
+                         
+                             samples.csv:
+                         
+                               experiment, mode, tissue
+                         
+                               GSM1720615, DRIP, NT2
+                         
+                               GSM1720616, DRIP, NT2
+                         
+                               GSM1720619, DRIP, K562
+                         
+                         
+                         
+                           Example #2: "RSeqCLI build outdir/ samples.csv
+                          --groupby tissue"
+                         
+                             samples.csv:
+                         
+                               experiment, mode, tissue
+                         
+                               GSM1720615, DRIP, NT2
+                         
+                               GSM1720616, DRIP, NT2
+                         
+                               GSM1720613, DRIPc, NT2
+                         
+                               GSM1720614, DRIPc, NT2
+                         
+                               GSM1720622, RNA-seq, NT2
+                         
+                               GSM1720623, RNA-seq, NT2
+                         
+  --noexp                If set, no expression-matched analysis will be
+                         performed.
+  --noreport             If set, RSeq reports will not be generated.
   --debug                Run pipeline on subsampled number of reads (for
                          testing).
+  --tsv                  Obtain config from config.tsv file instead of
+                         config.json.
   --help                 Show this message and exit.
-
-```
-
-
-## Development notes
-
-### Testing
-
-To run the RSeq pipeline you will need R-loop mapping data in either `fastq`,
-`bam`, `bigWig`, or `bedGraph` format. You may also use public data accessions
-with RSeq, from SRA, GEO, or BioProject (e.g., `SRX1025899`, `SRX8908682`, `GSM4714836`, etc).
-
-You can get some example data like so:
-
-```shell
-cd tests/
-bash setup_tests.sh
-```
-
-This will download a DRIP-Seq sample and the corresponding input control (downsampled due to size).
-
-To test the full RSeq pipeline:
-
-```shell
-bash tests.sh
-```
-
-You can also test it directly using the CLI interface:
-
-```shell
-# Run a dryrun test on the example data
-RSeq -e SRX1025890_TC32_NT_DRIP.hg38.bam -g hg38 -m DRIP -S dryrun=True -o testBasicDryDRIP
 ```
