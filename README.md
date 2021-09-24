@@ -17,6 +17,7 @@ The preferred installation method is `mamba` or `conda` (slower):
 
 ```shell
 mamba create -n rlpipes -c bioconda -c conda-forge rlpipes
+conda activate rlpipes
 ```
 
 ### Using `pip`
