@@ -15,7 +15,8 @@ def test_run_1():
   runner = CliRunner()
   buildres = runner.invoke(build, [RSEQ_OUT_BAM1, BAMSAMPS])
   checkres = runner.invoke(check, [RSEQ_OUT_BAM1])
-  runres = runner.invoke(run, [RSEQ_OUT_BAM1, "--debug"])
+  # TODO: Take out macs2 once the bug with macs3 is fixed...
+  runres = runner.invoke(run, [RSEQ_OUT_BAM1, "--debug", "--macs2"])
   assert runres.exit_code == 0
 
 
