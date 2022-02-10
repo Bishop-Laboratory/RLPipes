@@ -71,6 +71,13 @@ Success! RSeq has been initialized at the specified directory: rlpipes_out/
 Run 'RLPipes check rlpipes_out/' to verify the configuration.
 ```
 
+#### Additional examples
+<details>
+  <summary>Additional examples</summary>
+  
+</details>
+
+
 ### **Check**
 
 Verifies that the run will succeed and generates a plot of the workflow jobs. 
