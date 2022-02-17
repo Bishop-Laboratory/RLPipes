@@ -12,7 +12,7 @@ import warnings
 
 
 def make_snakes(
-    run_dir, snake_args, src_dir, bwamem2, macs3, threads=1, groupby=None,
+    run_dir, snake_args, src_dir, bwamem2=False, macs3=False, threads=1, groupby=None,
     noexp=False, debug=False, noreport=False, tsv=False, useaws=False, verify=True
 ):
     if tsv:

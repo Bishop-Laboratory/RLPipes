@@ -9,7 +9,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name='rlpipes',
-    version='0.9.0',
+    version='0.9.1',
     description="A standardized R-loop-mapping pipeline",
     long_description=README,
     long_description_content_type="text/markdown",

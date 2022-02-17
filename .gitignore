@@ -14,6 +14,7 @@ RSeq_out*
 *.bam
 *.bw
 *.bedGraph
+*.gz
 venv/
 analysis/
 *data/rlfs*

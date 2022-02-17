@@ -1,0 +1,35 @@
+{% set name = "rlpipes" %}
+{% set version = "0.9.1" %}
+
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  path: ../
+
+requirements:
+  build:
+    - python >=3.9
+    - setuptools
+    - click
+    - pysradb
+    - pysam >= 0.17.0
+    - pyfastx
+    - awscli
+    - pygraphviz
+    # Have to set this verion or causes install error due to incompatibility with pysradb
+    - pandas==1.2.0
+  run:
+    - python >=3.9
+    - graphviz
+    - snakemake-minimal >=5.20.1,<=6.4.0
+    - click
+    - pysradb
+    - pysam >= 0.17.0
+    - pygraphviz
+    - pyfastx
+    - awscli
+    # Have to set this verion or causes install error due to incompatibility with pysradb
+    - pandas==1.2.0

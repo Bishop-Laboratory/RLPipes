@@ -55,7 +55,7 @@ SRA_COLS = [
     "run_total_spots",
 ]
 redict = {
-    "fastq": "^.+\\.f[ast]q$|^.+\\.f[ast]q\\~.+\\.f[ast]q$",
+    "fastq": "^.+\\.[fastq]+[\\.gz]*$|^.+\\.[fastq]+[\\.gz]*\\~.+\\.[fastq]+[\\.gz]*$",
     "bam": "^.+\\.bam$",
     "public": "^GSM[0-9]+$|^SRX[0-9]+$",
 }
@@ -261,17 +261,18 @@ def bam_info(bamfile, n_bam_reads_check=1000):
 
 def validate_samples(ctx, param, value):
     """Validate and wrangle sampels input"""
-    # value = "../RLBase-data/rlbase-data/rlbase_manifest.csv"
+    # value = "../RLPipes/tests/test_data/fq_test_samples_1.csv"
     samps = pd.read_csv(value)
 
     # First, check for matching pattern
     exp = samps.experiment[0]
-    redict = {
-        "fastq": "^.+\\.[fastq]+$|^.+\\.f[ast]q\\~.+\\.[fastq]+$",
-        "bam": "^.+\\.bam$",
-        "public": "^GSM[0-9]+$|^SRX[0-9]+$",
-    }
-    samptype = [key for key, val in redict.items() if re.match(val, exp)][0]
+    
+    try:
+        samptype = [key for key, val in redict.items() if re.match(val, exp)][0]
+    except IndexError:
+      raise click.BadParameter(
+                message="Unable to detect data format for file " + exp
+            )
     samps["file_type"] = samptype
 
     # Wrangle controls if provided
@@ -437,27 +438,43 @@ def validate_samples(ctx, param, value):
         elif samptype == "fastq":
           # Check which are paired-end
           samps["paired_end"] = [bool(re.match(".+\\~.+", exp)) for exp in samps["experiment"]]
+          
+          def get_readlen(fq, lines=500):
+            """
+            Get Read Length from a fastq file
+            
+            params:
+              fq: Path to a FASTQ file
+              line: Number of lines to scan. Default: 500
+            
+            """
+            seqlst=[]
+            for name,seq,qual in pyfastx.Fastq(fq, build_index=False):
+              seqlst.append(seq)
+              if len(seqlst) > lines:
+                break
+            toavg = [len(x) for x in seqlst]
+            return round(sum(toavg) / len(toavg))
+          
           samps["read_length"] = [
-              round(pyfastx.Fastq(re.sub('\\~.+', "", exp ), build_index=True).avglen) for exp in samps["experiment"]
+              get_readlen(re.sub('\\~.+', "", exp )) for exp in samps["experiment"]
           ]
+          
+          def get_samplename(fq):
+            splt = os.path.splitext(os.path.basename(fq))
+            if splt[1] == ".gz":
+              nm=os.path.splitext(splt[0])[0]
+            else:
+              nm=splt[0]
+            return re.sub('[\\._]{1}[R1-2]+$', "", nm)
+          
           samps["name"] = [
-              re.sub(
-                '[\\._]{1}[R1-2]+$', "", os.path.splitext(
-                  os.path.basename(
-                    re.sub('\\~.+', "", exp )
-                  )
-                )[0]
-              ) for exp in samps["experiment"]
+            get_samplename(re.sub('\\~.+', "", exp)) for exp in samps["experiment"]
           ]
+          
           if controls:
             samps["control"] = [
-                  re.sub(
-                '[\\._]{1}[R1-2]+$', "", os.path.splitext(
-                  os.path.basename(
-                    re.sub('\\~.+', "", exp )
-                  )
-                )[0]
-              ) if not pd.isna(exp) else exp
+                  get_samplename(re.sub('\\~.+', "", exp)) if not pd.isna(exp) else exp
                   for exp in samps["control"]
               ]
           else:

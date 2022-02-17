@@ -1,0 +1,2 @@
+experiment,control,genome,mode
+tests/test_data/SRX6427717_cp_hg38.R1.fastq.gz~tests/test_data/SRX6427717_cp_hg38.R2.fastq.gz,,hg38,qDRIP

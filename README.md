@@ -5,7 +5,7 @@
 
 ***
 
-**IMPORTANT (2/7/2022)**: There is an ongoing bug with `macs3` [here](https://github.com/macs3-project/MACS/issues/498) which prevents the default RLPipes parameters from working correctly. For the time being, please use the `--macs2` flag when doing `RLPipes run`. 
+**IMPORTANT (2/7/2022)**: There is an ongoing bug with `macs3` [here](https://github.com/macs3-project/MACS/issues/498) which prevents the default RLPipes parameters from working correctly. For the time being, the `--macs3` flag will not work. 
 
 ***
 

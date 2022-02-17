@@ -114,9 +114,13 @@ def find_fq_pe(wildcards):
     ]
 
 def check_type_fq(wildcards):
+    # class Wildcards:
+    #   def __init__(self):
+    #     self.sample=sample[0]
+    # wildcards=Wildcards()
     file_type = [sample_type[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
     if file_type == "fastq":
-        fq = [run[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0][0]
+        fq = [run[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
         pe = [paired_end[idx] for idx, element in enumerate(sample) if element == wildcards.sample][0]
         if pe:
             # CASE: paired-end fq

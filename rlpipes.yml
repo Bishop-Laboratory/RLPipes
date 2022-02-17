@@ -14,9 +14,11 @@ dependencies:
   # Boa is required for conda mambabuild
   - boa
   - graphviz
+  - pygraphviz
+  - python >= 3.9
   - pandas <=1.2.0
   - awscli
   - pyfastx
-  - pysam
+  - pysam >= 0.17.0
   - click
   - pysradb
