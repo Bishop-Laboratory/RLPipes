@@ -15,10 +15,10 @@ dependencies:
   - boa
   - graphviz
   - pygraphviz
-  - python >= 3.9
+  - python >=3.9
   - pandas <=1.2.0
   - awscli
   - pyfastx
-  - pysam >= 0.17.0
+  - pysam >=0.17.0
   - click
-  - pysradb
+  - pysradb >=1.0.1
