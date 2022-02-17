@@ -31,6 +31,15 @@ def test_check_tsv():
   assert checkres.exit_code == 0
 
 
+def test_check_noaws():
+  if os.path.exists(RSEQ_OUT_PUBLIC):
+    shutil.rmtree(RSEQ_OUT_PUBLIC)
+  runner = CliRunner()
+  buildres = runner.invoke(build, [RSEQ_OUT_PUBLIC, PUBSAMPS])
+  checkres = runner.invoke(check, [RSEQ_OUT_PUBLIC, "--noaws"])
+  assert checkres.exit_code == 0
+
+
 def test_check_failgroupby():
   if os.path.exists(RSEQ_OUT_PUBLIC):
     shutil.rmtree(RSEQ_OUT_PUBLIC)
