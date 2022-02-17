@@ -59,7 +59,7 @@ redict = {
     "bam": "^.+\\.bam$",
     "public": "^GSM[0-9]+$|^SRX[0-9]+$",
 }
-# __file__=os.path.abspath("../RSeqCLI/rseq/cli.py")
+# __file__=os.path.abspath("../RLPipes/rlpipes/cli.py")
 this_dir = os.path.dirname(__file__)
 DATA_PATH = os.path.abspath(
     os.path.join(this_dir, "src", "data", "available_genomes.tsv.xz")
@@ -135,8 +135,8 @@ verify_run_options = [
         default=False,
     ),
     click.option(
-        "--macs2",
-        help="Call peaks using macs2 instead of macs2",
+        "--macs3",
+        help="Call peaks using macs3 instead of macs2",
         is_flag=True,
         default=False,
     ),
@@ -167,6 +167,12 @@ verify_run_options = [
         "--tsv",
         is_flag=True,
         help="Obtain config from config.tsv file instead of config.json.",
+        default=False,
+    ),
+    click.option(
+        "--useaws",
+        is_flag=True,
+        help="If set, prefetch from SRA tools will be used to download any public SRA data instead of AWS S3.",
         default=False,
     )
 ]
@@ -255,6 +261,7 @@ def bam_info(bamfile, n_bam_reads_check=1000):
 
 def validate_samples(ctx, param, value):
     """Validate and wrangle sampels input"""
+    # value = "../RLBase-data/rlbase-data/rlbase_manifest.csv"
     samps = pd.read_csv(value)
 
     # First, check for matching pattern
@@ -314,6 +321,10 @@ def validate_samples(ctx, param, value):
         
         # Drop NaNs
         newSamps.dropna(subset=["experiment_accession"], inplace=True)
+        newSamps.dropna(subset=["run_total_bases"], inplace=True)
+        
+        # Remove samples which have been retracted
+        newSamps = newSamps[newSamps['run_total_bases'] != '']
         
         # Get the read length
         newSamps = newSamps.astype(
@@ -462,7 +473,6 @@ def validate_samples(ctx, param, value):
               
           samps["run"] = [get_fq_path(fq, pe) for idx, fq, pe in samps[["experiment", "paired_end"]].itertuples()]
         samps["experiment"] = samps["name"]
-
     return samps
 
 
@@ -566,7 +576,7 @@ def build(ctx, samples, mode, genome, run_dir, name):
 @cli.command("check")
 @click.argument("run_dir", type=click.Path(), callback=validate_run_dir_prepped)
 @add_options(verify_run_options)
-def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, tsv, **kwargs):
+def check(run_dir, threads, debug, bwamem2, macs3,  groupby, noexp, noreport, tsv, useaws, **kwargs):
     """
     Validate an RLPipes workflow.
 
@@ -579,12 +589,13 @@ def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, ts
         src_dir=SRC_DIR,
         threads=threads,
         bwamem2=bwamem2,
-        macs2=macs2,
+        macs3=macs3,
         groupby=groupby,
         noexp=noexp,
         noreport=noreport,
         debug=debug,
         tsv=tsv,
+        useaws=useaws,
         verify=True,
     )
     print(
@@ -597,7 +608,7 @@ def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, ts
 @cli.command("run")
 @click.argument("run_dir", type=click.Path(), callback=validate_run_dir_prepped)
 @add_options(verify_run_options)
-def run(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, tsv, **kwargs):
+def run(run_dir, threads, debug, bwamem2, macs3,  groupby, noexp, noreport, tsv, useaws, **kwargs):
     """
     Execute an RLPipes workflow.
 
@@ -610,12 +621,13 @@ def run(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, tsv,
         src_dir=SRC_DIR,
         threads=threads,
         bwamem2=bwamem2,
-        macs2=macs2,
+        macs3=macs3,
         groupby=groupby,
         noexp=noexp,
         noreport=noreport,
         debug=debug,
         tsv=tsv,
+        useaws=useaws,
         verify=False,
     )
     print(exitcode)

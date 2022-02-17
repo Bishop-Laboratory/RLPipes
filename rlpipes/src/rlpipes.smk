@@ -5,15 +5,15 @@
 import math
 from os.path import expanduser
 
-
 # Global Configs
 src=config['src']
 genome_home_dir = expanduser("~") + "/.rlpipes_genomes"
 outdir=config['run_dir']
 outdir=outdir.removesuffix("/")
 bwa_mem2=config['bwamem2']
-macs2=config['macs2']
+macs3=config['macs3']
 noreport=config['noreport']
+useaws=config['useaws']
 
 # Sample info
 mode=config['mode']
@@ -77,7 +77,7 @@ else:
 
 # Select MACS type
 # MACS3 is still in development, but it is much faster
-if not macs2:
+if macs3:
     macs_cmd="macs3"
     macs_yaml = src + "/envs/macs3.yaml"
 else:
@@ -611,15 +611,27 @@ rule sra_to_fastq:
 # TODO: Figure out how to use the pipes
 # TODO: Probably need to specify this version of prefetch and/or find alternative to it...
 # TODO: Retry if fails due to network error
-rule download_sra:
-    output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra")
-    conda: src + "/envs/sratools.yaml"
-    log: "{outdir}/logs/download_sra/{sample}__{srr_acc}__download_sra.log"
-    params:
-        output_directory = "{outdir}/tmp/sras/{sample}/"
-    shell: """
-            (
-            cd {params.output_directory}
-            prefetch {wildcards.srr_acc} -f yes
-            ) &> {log}
-            """
+if not config['useaws']:
+  rule download_sra_prefetch:
+      output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra")
+      conda: src + "/envs/sratools.yaml"
+      log: "{outdir}/logs/download_sra_prefetch/{sample}__{srr_acc}__download_sra_prefetch.log"
+      params:
+          output_directory = "{outdir}/tmp/sras/{sample}/"
+      shell: """
+              (
+              cd {params.output_directory}
+              prefetch {wildcards.srr_acc} -f yes
+              ) &> {log}
+              """
+else:
+  rule download_sra_aws:
+      output: temp("{outdir}/tmp/sras/{sample}/{srr_acc}/{srr_acc}.sra")
+      log: "{outdir}/logs/download_sra_aws/{sample}__{srr_acc}__download_sra_aws.log"
+      conda: src + "/envs/awscli.yaml"
+      shell: """
+              (
+              echo "Downloading from AWS..."
+              aws s3 cp s3://sra-pub-run-odp/sra/{wildcards.srr_acc}/{wildcards.srr_acc} {output} --no-sign-request --no-progress
+              ) &> {log}
+              """

@@ -235,11 +235,13 @@ Options:
                          
   --noexp                If set, no expression-matched analysis will be
                          performed.
-  --noreport             If set, RSeq reports will not be generated.
+  --noreport             If set, RLSeq reports will not be generated.
   --debug                Run pipeline on subsampled number of reads (for
                          testing).
   --tsv                  Obtain config from config.tsv file instead of
                          config.json.
+  --noaws                If set, prefetch from SRA tools will be used to 
+                         download any public SRA data instead of AWS S3.
   --help                 Show this message and exit.
 ```
 
