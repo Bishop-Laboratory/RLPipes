@@ -1,5 +1,13 @@
 # RLPipes
-![Build Status](https://github.com/Bishop-Laboratory/RLPipes/workflows/tests/badge.svg) [![codecov](https://codecov.io/gh/Bishop-Laboratory/RLPipes/branch/main/graph/badge.svg)](https://codecov.io/gh/Bishop-Laboratory/RLPipes)
+<img src="https://rlbase-data.s3.amazonaws.com/misc/assets/whitebgRLPipes+Logo.png" align="right" alt="logo" width="240" style = "border: none; float: right;">
+
+![Build Status](https://github.com/Bishop-Laboratory/RLPipes/workflows/tests/badge.svg) [![codecov](https://codecov.io/gh/Bishop-Laboratory/RLPipes/branch/main/graph/badge.svg)](https://codecov.io/gh/Bishop-Laboratory/RLPipes) ![Version](https://anaconda.org/bioconda/rlpipes/badges/version.svg) ![license](https://anaconda.org/bioconda/rlpipes/badges/license.svg) ![downloads](https://anaconda.org/bioconda/rlpipes/badges/downloads.svg) 
+
+***
+
+**IMPORTANT (2/7/2022)**: There is an ongoing bug with `macs3` [here](https://github.com/macs3-project/MACS/issues/498) which prevents the default RLPipes parameters from working correctly. For the time being, please use the `--macs2` flag when doing `RLPipes run`. 
+
+***
 
 **RLPipes** is an upstream workflow for R-loop-mapping data. 
 
@@ -16,7 +24,8 @@ package should be used for downstream analysis.
 The preferred installation method is `mamba` or `conda` (slower):
 
 ```shell
-mamba create -n rlpipes -c bioconda rlpipes
+mamba create -n rlpipes -c bioconda -c conda-forge rlpipes python=3.9
+conda activate rlpipes
 ```
 
 ### Using `pip`
@@ -61,6 +70,13 @@ Success! RSeq has been initialized at the specified directory: rlpipes_out/
 
 Run 'RLPipes check rlpipes_out/' to verify the configuration.
 ```
+
+#### Additional examples
+<details>
+  <summary>Additional examples</summary>
+  
+</details>
+
 
 ### **Check**
 
