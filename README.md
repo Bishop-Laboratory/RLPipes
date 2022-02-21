@@ -3,11 +3,6 @@
 
 ![Build Status](https://github.com/Bishop-Laboratory/RLPipes/workflows/tests/badge.svg) [![codecov](https://codecov.io/gh/Bishop-Laboratory/RLPipes/branch/main/graph/badge.svg)](https://codecov.io/gh/Bishop-Laboratory/RLPipes) ![Version](https://anaconda.org/bioconda/rlpipes/badges/version.svg) ![license](https://anaconda.org/bioconda/rlpipes/badges/license.svg) ![downloads](https://anaconda.org/bioconda/rlpipes/badges/downloads.svg) 
 
-***
-
-**IMPORTANT (2/7/2022)**: There is an ongoing bug with `macs3` [here](https://github.com/macs3-project/MACS/issues/498) which prevents the default RLPipes parameters from working correctly. For the time being, the `--macs3` flag will not work. 
-
-***
 
 **RLPipes** is an upstream workflow for R-loop-mapping data. 
 
@@ -70,13 +65,6 @@ Success! RSeq has been initialized at the specified directory: rlpipes_out/
 
 Run 'RLPipes check rlpipes_out/' to verify the configuration.
 ```
-
-#### Additional examples
-<details>
-  <summary>Additional examples</summary>
-  
-</details>
-
 
 ### **Check**
 
