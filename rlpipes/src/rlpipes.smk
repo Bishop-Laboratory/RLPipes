@@ -5,11 +5,21 @@
 import math
 from os.path import expanduser
 
+
+def rchop(s, suffix):
+    """
+    Python<3.9-friendly version of removesuffix()
+    https://stackoverflow.com/questions/3663450/remove-substring-only-at-the-end-of-string
+    """
+    if suffix and s.endswith(suffix):
+        return s[:-len(suffix)]
+    return s
+
 # Global Configs
 src=config['src']
 genome_home_dir = expanduser("~") + "/.rlpipes_genomes"
 outdir=config['run_dir']
-outdir=outdir.removesuffix("/")
+outdir= rchop(outdir, "/")
 bwa_mem2=config['bwamem2']
 macs3=config['macs3']
 noreport=config['noreport']

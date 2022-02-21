@@ -1,35 +1,49 @@
 {% set name = "rlpipes" %}
 {% set version = "0.9.1" %}
 
-
 package:
-  name: {{ name|lower }}
-  version: {{ version }}
+  name: "{{ name|lower }}"
+  version: "{{ version }}"
 
 source:
-  path: ../
+  url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
+  sha256: 99023fc956edff8e4779a051f99b427c542aef45e28240918c980d6c389a1d5d
+
+build:
+  number: 0
+  entry_points:
+    - RLPipes = rlpipes.cli:cli
+  script: "{{ PYTHON }} -m pip install . -vv"
+  noarch: python
 
 requirements:
-  build:
-    - python >=3.9
-    - setuptools
-    - click
-    - pysradb
-    - pysam >= 0.17.0
-    - pyfastx
-    - awscli
-    - pygraphviz
-    # Have to set this verion or causes install error due to incompatibility with pysradb
-    - pandas==1.2.0
+  host:
+    - pip
+    - python
   run:
-    - python >=3.9
-    - graphviz
-    - snakemake-minimal >=5.20.1,<=6.4.0
     - click
-    - pysradb
-    - pysam >= 0.17.0
-    - pygraphviz
+    - pandas ==1.2.0
     - pyfastx
-    - awscli
-    # Have to set this verion or causes install error due to incompatibility with pysradb
-    - pandas==1.2.0
+    - pysam >=0.17.0
+    - snakemake-minimal >=5.20.1,<=6.4.0
+    - pysradb
+    - pygraphviz
+    - graphviz
+    - python
+
+test:
+  imports:
+    - rlpipes
+  commands:
+    - RLPipes --help
+
+about:
+  home: "https://github.com/Bishop-Laboratory/RLPipes"
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE
+  summary: "A standardized R-loop-mapping pipeline"
+
+extra:
+  recipe-maintainers:
+    - millerh1

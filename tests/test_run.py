@@ -18,7 +18,6 @@ FQSAMPSGZ2='tests/test_data/fq_test_samples_4.csv'
 #   runner = CliRunner()
 #   buildres = runner.invoke(build, [RSEQ_OUT_BAM1, BAMSAMPS])
 #   checkres = runner.invoke(check, [RSEQ_OUT_BAM1])
-#   # TODO: Take out macs2 once the bug with macs3 is fixed...
 #   runres = runner.invoke(run, [RSEQ_OUT_BAM1, "--debug"])
 #   assert runres.exit_code == 0
 
