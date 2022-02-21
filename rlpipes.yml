@@ -10,13 +10,15 @@ dependencies:
   - coverage
   # The last version with cores working correctly in api
   # TODO: submit an issue about this...
-  - snakemake-minimal=6.4.0
+  - snakemake-minimal >=5.20.1,<=6.4.0
   # Boa is required for conda mambabuild
   - boa
   - graphviz
-  - pandas==1.2.0
+  - pygraphviz
+  - python >=3.7.1
+  - pandas <=1.2.0
   - awscli
   - pyfastx
-  - pysam
+  - pysam >=0.17.0
   - click
-  - pysradb
+  - pysradb >=1.0.1

@@ -12,8 +12,8 @@ import warnings
 
 
 def make_snakes(
-    run_dir, snake_args, src_dir, bwamem2, macs2, threads=1, groupby=None,
-    noexp=False, debug=False, noreport=False, tsv=False, verify=True
+    run_dir, snake_args, src_dir, bwamem2=False, macs3=False, threads=1, groupby=None,
+    noexp=False, debug=False, noreport=False, tsv=False, useaws=False, verify=True
 ):
     if tsv:
         config = pd.read_csv(os.path.join(run_dir, "config.tsv"), sep = "\t").fillna("").to_dict("list")
@@ -24,10 +24,11 @@ def make_snakes(
     config["run_dir"] = run_dir
     config["src"] = src_dir
     config["bwamem2"] = bwamem2
-    config["macs2"] = macs2
+    config["macs3"] = macs3
     config["groupby"] = groupby
     config['noexp'] = noexp
     config['noreport'] = noreport
+    config['useaws'] = useaws
     snake_path = os.path.join(config["src"], "rlpipes.smk")
     
     # Check groupby

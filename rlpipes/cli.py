@@ -55,11 +55,11 @@ SRA_COLS = [
     "run_total_spots",
 ]
 redict = {
-    "fastq": "^.+\\.f[ast]q$|^.+\\.f[ast]q\\~.+\\.f[ast]q$",
+    "fastq": "^.+\\.[fastq]+[\\.gz]*$|^.+\\.[fastq]+[\\.gz]*\\~.+\\.[fastq]+[\\.gz]*$",
     "bam": "^.+\\.bam$",
     "public": "^GSM[0-9]+$|^SRX[0-9]+$",
 }
-# __file__=os.path.abspath("../RSeqCLI/rseq/cli.py")
+# __file__=os.path.abspath("../RLPipes/rlpipes/cli.py")
 this_dir = os.path.dirname(__file__)
 DATA_PATH = os.path.abspath(
     os.path.join(this_dir, "src", "data", "available_genomes.tsv.xz")
@@ -135,8 +135,8 @@ verify_run_options = [
         default=False,
     ),
     click.option(
-        "--macs2",
-        help="Call peaks using macs2 instead of macs2",
+        "--macs3",
+        help="Call peaks using macs3 instead of macs2",
         is_flag=True,
         default=False,
     ),
@@ -167,6 +167,12 @@ verify_run_options = [
         "--tsv",
         is_flag=True,
         help="Obtain config from config.tsv file instead of config.json.",
+        default=False,
+    ),
+    click.option(
+        "--useaws",
+        is_flag=True,
+        help="If set, prefetch from SRA tools will be used to download any public SRA data instead of AWS S3.",
         default=False,
     )
 ]
@@ -255,16 +261,18 @@ def bam_info(bamfile, n_bam_reads_check=1000):
 
 def validate_samples(ctx, param, value):
     """Validate and wrangle sampels input"""
+    # value = "../RLPipes/tests/test_data/fq_test_samples_1.csv"
     samps = pd.read_csv(value)
 
     # First, check for matching pattern
     exp = samps.experiment[0]
-    redict = {
-        "fastq": "^.+\\.[fastq]+$|^.+\\.f[ast]q\\~.+\\.[fastq]+$",
-        "bam": "^.+\\.bam$",
-        "public": "^GSM[0-9]+$|^SRX[0-9]+$",
-    }
-    samptype = [key for key, val in redict.items() if re.match(val, exp)][0]
+    
+    try:
+        samptype = [key for key, val in redict.items() if re.match(val, exp)][0]
+    except IndexError:
+      raise click.BadParameter(
+                message="Unable to detect data format for file " + exp
+            )
     samps["file_type"] = samptype
 
     # Wrangle controls if provided
@@ -314,6 +322,10 @@ def validate_samples(ctx, param, value):
         
         # Drop NaNs
         newSamps.dropna(subset=["experiment_accession"], inplace=True)
+        newSamps.dropna(subset=["run_total_bases"], inplace=True)
+        
+        # Remove samples which have been retracted
+        newSamps = newSamps[newSamps['run_total_bases'] != '']
         
         # Get the read length
         newSamps = newSamps.astype(
@@ -426,27 +438,43 @@ def validate_samples(ctx, param, value):
         elif samptype == "fastq":
           # Check which are paired-end
           samps["paired_end"] = [bool(re.match(".+\\~.+", exp)) for exp in samps["experiment"]]
+          
+          def get_readlen(fq, lines=500):
+            """
+            Get Read Length from a fastq file
+            
+            params:
+              fq: Path to a FASTQ file
+              line: Number of lines to scan. Default: 500
+            
+            """
+            seqlst=[]
+            for name,seq,qual in pyfastx.Fastq(fq, build_index=False):
+              seqlst.append(seq)
+              if len(seqlst) > lines:
+                break
+            toavg = [len(x) for x in seqlst]
+            return round(sum(toavg) / len(toavg))
+          
           samps["read_length"] = [
-              round(pyfastx.Fastq(re.sub('\\~.+', "", exp ), build_index=True).avglen) for exp in samps["experiment"]
+              get_readlen(re.sub('\\~.+', "", exp )) for exp in samps["experiment"]
           ]
+          
+          def get_samplename(fq):
+            splt = os.path.splitext(os.path.basename(fq))
+            if splt[1] == ".gz":
+              nm=os.path.splitext(splt[0])[0]
+            else:
+              nm=splt[0]
+            return re.sub('[\\._]{1}[R1-2]+$', "", nm)
+          
           samps["name"] = [
-              re.sub(
-                '[\\._]{1}[R1-2]+$', "", os.path.splitext(
-                  os.path.basename(
-                    re.sub('\\~.+', "", exp )
-                  )
-                )[0]
-              ) for exp in samps["experiment"]
+            get_samplename(re.sub('\\~.+', "", exp)) for exp in samps["experiment"]
           ]
+          
           if controls:
             samps["control"] = [
-                  re.sub(
-                '[\\._]{1}[R1-2]+$', "", os.path.splitext(
-                  os.path.basename(
-                    re.sub('\\~.+', "", exp )
-                  )
-                )[0]
-              ) if not pd.isna(exp) else exp
+                  get_samplename(re.sub('\\~.+', "", exp)) if not pd.isna(exp) else exp
                   for exp in samps["control"]
               ]
           else:
@@ -462,7 +490,6 @@ def validate_samples(ctx, param, value):
               
           samps["run"] = [get_fq_path(fq, pe) for idx, fq, pe in samps[["experiment", "paired_end"]].itertuples()]
         samps["experiment"] = samps["name"]
-
     return samps
 
 
@@ -566,7 +593,7 @@ def build(ctx, samples, mode, genome, run_dir, name):
 @cli.command("check")
 @click.argument("run_dir", type=click.Path(), callback=validate_run_dir_prepped)
 @add_options(verify_run_options)
-def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, tsv, **kwargs):
+def check(run_dir, threads, debug, bwamem2, macs3,  groupby, noexp, noreport, tsv, useaws, **kwargs):
     """
     Validate an RLPipes workflow.
 
@@ -579,12 +606,13 @@ def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, ts
         src_dir=SRC_DIR,
         threads=threads,
         bwamem2=bwamem2,
-        macs2=macs2,
+        macs3=macs3,
         groupby=groupby,
         noexp=noexp,
         noreport=noreport,
         debug=debug,
         tsv=tsv,
+        useaws=useaws,
         verify=True,
     )
     print(
@@ -597,7 +625,7 @@ def check(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, ts
 @cli.command("run")
 @click.argument("run_dir", type=click.Path(), callback=validate_run_dir_prepped)
 @add_options(verify_run_options)
-def run(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, tsv, **kwargs):
+def run(run_dir, threads, debug, bwamem2, macs3,  groupby, noexp, noreport, tsv, useaws, **kwargs):
     """
     Execute an RLPipes workflow.
 
@@ -610,12 +638,13 @@ def run(run_dir, threads, debug, bwamem2, macs2,  groupby, noexp, noreport, tsv,
         src_dir=SRC_DIR,
         threads=threads,
         bwamem2=bwamem2,
-        macs2=macs2,
+        macs3=macs3,
         groupby=groupby,
         noexp=noexp,
         noreport=noreport,
         debug=debug,
         tsv=tsv,
+        useaws=useaws,
         verify=False,
     )
     print(exitcode)

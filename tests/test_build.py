@@ -9,7 +9,10 @@ PUBSAMPS='tests/test_data/samples.csv'
 RSEQ_OUT_BAM='tests/rseq_out_bams/'
 BAMSAMPS='tests/test_data/bam_test_samples_1.csv'
 RSEQ_OUT_FQ='tests/rseq_out_fqs/'
-FQSAMPS='tests/test_data/fq_test_samples_1.csv'
+FQSAMPS='tests/test_data/fq_test_samples_3.csv'
+FQSAMPSGZ='tests/test_data/fq_test_samples_1.csv'
+FQSAMPSGZ2='tests/test_data/fq_test_samples_4.csv'
+
 
 def test_build():
   if os.path.exists(RSEQ_OUT_PUBLIC):
@@ -39,8 +42,24 @@ def test_build_bam():
 
 
 def test_build_fq():
-  if os.path.exists(RSEQ_OUT_BAM):
-    shutil.rmtree(RSEQ_OUT_BAM)
+  if os.path.exists(RSEQ_OUT_FQ):
+    shutil.rmtree(RSEQ_OUT_FQ)
   runner = CliRunner()
   buildres = runner.invoke(build, [RSEQ_OUT_FQ, FQSAMPS, "-g", "hg38"])
+  assert buildres.exit_code == 0
+
+
+def test_build_fq_gz():
+  if os.path.exists(RSEQ_OUT_FQ):
+    shutil.rmtree(RSEQ_OUT_FQ)
+  runner = CliRunner()
+  buildres = runner.invoke(build, [RSEQ_OUT_FQ, FQSAMPSGZ, "-g", "mm10"])
+  assert buildres.exit_code == 0
+
+
+def test_build_fq_gz2():
+  if os.path.exists(RSEQ_OUT_FQ):
+    shutil.rmtree(RSEQ_OUT_FQ)
+  runner = CliRunner()
+  buildres = runner.invoke(build, [RSEQ_OUT_FQ, FQSAMPSGZ2, "-g", "hg38"])
   assert buildres.exit_code == 0
