@@ -19,7 +19,7 @@ package should be used for downstream analysis.
 The preferred installation method is `mamba` or `conda` (slower):
 
 ```shell
-mamba create -n rlpipes -c bioconda -c conda-forge rlpipes python=3.9
+mamba create -n rlpipes -c bioconda -c conda-forge rlpipes
 conda activate rlpipes
 ```
 
