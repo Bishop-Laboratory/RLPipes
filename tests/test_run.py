@@ -18,27 +18,27 @@ FQSAMPSGZ2='tests/test_data/fq_test_samples_4.csv'
 #   runner = CliRunner()
 #   buildres = runner.invoke(build, [RSEQ_OUT_BAM1, BAMSAMPS])
 #   checkres = runner.invoke(check, [RSEQ_OUT_BAM1])
-#   runres = runner.invoke(run, [RSEQ_OUT_BAM1, "--debug", "-t", "20"])
+#   runres = runner.invoke(run, [RSEQ_OUT_BAM1, "--debug", "-t", "44"])
 #   assert runres.exit_code == 0
-
-
+# 
+# 
 # def test_run_2():
 #   if os.path.exists(RSEQ_OUT_FQ2):
 #     shutil.rmtree(RSEQ_OUT_FQ2)
 #   runner = CliRunner()
 #   buildres = runner.invoke(build, [RSEQ_OUT_FQ2, FQSAMPS2])
 #   checkres = runner.invoke(check, [RSEQ_OUT_FQ2])
-#   runres = runner.invoke(run, [RSEQ_OUT_FQ2, "--debug", "--bwamem2"])
+#   runres = runner.invoke(run, [RSEQ_OUT_FQ2, "--debug", "--bwamem2", "-t", "44"])
 #   assert runres.exit_code == 0
-
-
+# 
+# 
 # def test_run_fqgz():
 #   if os.path.exists(RSEQ_OUT_FQ):
 #     shutil.rmtree(RSEQ_OUT_FQ)
 #   runner = CliRunner()
 #   buildres = runner.invoke(build, [RSEQ_OUT_FQ, FQSAMPSGZ, "-g", "mm10"])
 #   checkres = runner.invoke(check, [RSEQ_OUT_FQ])
-#   runres = runner.invoke(run, [RSEQ_OUT_FQ, "--debug"])
+#   runres = runner.invoke(run, [RSEQ_OUT_FQ, "--debug", "-t", "44"])
 #   assert checkres.exit_code == 0
 # 
 # 
@@ -48,7 +48,6 @@ FQSAMPSGZ2='tests/test_data/fq_test_samples_4.csv'
 #   runner = CliRunner()
 #   buildres = runner.invoke(build, [RSEQ_OUT_FQ, FQSAMPSGZ2, "-g", "hg38"])
 #   checkres = runner.invoke(check, [RSEQ_OUT_FQ])
-#   runres = runner.invoke(run, [RSEQ_OUT_FQ, "--debug", "--bwamem2"])
+#   runres = runner.invoke(run, [RSEQ_OUT_FQ, "--debug", "--bwamem2", "-t", "44"])
 #   assert checkres.exit_code == 0
-# 
 

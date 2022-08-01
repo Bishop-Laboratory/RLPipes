@@ -1,5 +1,21 @@
+# # Original
+# channels:
+#   - bioconda
+#   - conda-forge
+# dependencies:
+#   - fastp
+
+# Pinned
 channels:
   - bioconda
   - conda-forge
+  - defaults
 dependencies:
-  - fastp
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=2_gnu
+  - fastp=0.23.2=hb7a2d85_2
+  - isa-l=2.30.0=ha770c72_4
+  - libdeflate=1.10=h7f98852_0
+  - libgcc-ng=12.1.0=h8d9b700_16
+  - libgomp=12.1.0=h8d9b700_16
+  - libstdcxx-ng=12.1.0=ha89aaad_16
