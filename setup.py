@@ -9,13 +9,13 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name='rlpipes',
-    version='0.9.1',
+    version='0.9.2',
     description="A standardized R-loop-mapping pipeline",
     long_description=README,
     long_description_content_type="text/markdown",
     url="https://github.com/Bishop-Laboratory/RLPipes",
     author="Henry Miller",
-    author_email="millerh1@uthscsa.edu",
+    author_email="millerh1@livemail.uthscsa.edu",
     license="MIT",
     classifiers=[
         "License :: OSI Approved :: MIT License",

@@ -18,7 +18,7 @@ FQSAMPSGZ2='tests/test_data/fq_test_samples_4.csv'
 #   runner = CliRunner()
 #   buildres = runner.invoke(build, [RSEQ_OUT_BAM1, BAMSAMPS])
 #   checkres = runner.invoke(check, [RSEQ_OUT_BAM1])
-#   runres = runner.invoke(run, [RSEQ_OUT_BAM1, "--debug"])
+#   runres = runner.invoke(run, [RSEQ_OUT_BAM1, "--debug", "-t", "20"])
 #   assert runres.exit_code == 0
 
 

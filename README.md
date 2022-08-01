@@ -10,9 +10,10 @@ The primary outputs of the pipeline are:
 1. Coverage (.bw) tracks 
 2. Peaks (.broadpeak) files
 3. Alignment (.bam) files
+4. [RLSeq](https://github.com/Bishop-Laboratory/RLSeq) report (.html and .rda) files
 
 Following RLPipes, the [RLSeq](https://github.com/Bishop-Laboratory/RLSeq) R 
-package should be used for downstream analysis.
+package can be used for more fine-grained downstream analysis.
 
 ## Install
 
@@ -34,7 +35,7 @@ cd RLPipes/
 conda install -c conda-forge mamba -y
 mamba env create -f rlpipes.yml --force
 conda activate rlpipes
-pip install -e .
+python -m pip install -e .
 ```
 
 ## Basic Usage
@@ -313,7 +314,7 @@ Options:
                          
   --noexp                If set, no expression-matched analysis will be
                          performed.
-  --noreport             If set, RSeq reports will not be generated.
+  --noreport             If set, RLSeq reports will not be generated.
   --debug                Run pipeline on subsampled number of reads (for
                          testing).
   --tsv                  Obtain config from config.tsv file instead of

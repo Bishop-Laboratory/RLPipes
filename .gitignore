@@ -13,6 +13,7 @@ RSeq_out*
 *.fastq
 *.bam
 *.bw
+rlpipes_out/
 *.bedGraph
 *.gz
 venv/

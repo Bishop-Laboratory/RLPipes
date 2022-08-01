@@ -1,0 +1,23 @@
+channels:
+  - bioconda
+  - conda-forge
+  - r
+dependencies:
+  - bioconductor-rlseq
+  - bioconductor-org.hs.eg.db
+  - bioconductor-txdb.hsapiens.ucsc.hg19.knowngene
+  - bioconductor-annotationdbi
+  - r-tidyverse
+  - r-kableextra
+  - r-kernlab
+  - r-rmarkdown
+  - r-randomforest
+  - r-rpart
+  - r-jsonlite
+  - r-httr
+  - r-knitr
+  - r-dt
+  - r-magick
+  - r-mass
+  - r-r.utils
+  - r-futile.logger
