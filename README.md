@@ -20,7 +20,7 @@ package can be used for more fine-grained downstream analysis.
 The preferred installation method is `mamba` or `conda` (slower):
 
 ```shell
-mamba create -n rlpipes -c bioconda -c conda-forge rlpipes
+mamba create -n rlpipes -c conda-forge -c bioconda rlpipes
 conda activate rlpipes
 ```
 
