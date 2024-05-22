@@ -11,18 +11,18 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - _libgcc_mutex=0.1=conda_forge
-  - _openmp_mutex=4.5=2_gnu
-  - boost-cpp=1.74.0=h6cacc03_7
-  - bzip2=1.0.8=h7f98852_4
-  - icu=69.1=h9c3ff4c_0
-  - libgcc-ng=12.1.0=h8d9b700_16
-  - libgomp=12.1.0=h8d9b700_16
-  - libjemalloc=5.2.1=h9c3ff4c_6
-  - libstdcxx-ng=12.1.0=ha89aaad_16
-  - libzlib=1.2.12=h166bdaf_2
-  - lz4-c=1.9.3=h9c3ff4c_1
-  - salmon=1.9.0=h7e5ed60_1
-  - tbb=2021.5.0=h924138e_1
-  - xz=5.2.5=h516909a_1
-  - zstd=1.5.2=h8a70e8d_2
+  - _libgcc_mutex=0.1
+  - _openmp_mutex=4.5
+  - boost-cpp=1.74.0
+  - bzip2=1.0.8
+  - icu=69.1
+  - libgcc-ng=12.1.0
+  - libgomp=12.1.0
+  - libjemalloc=5.2.1
+  - libstdcxx-ng=12.1.0
+  - libzlib=1.2.12
+  - lz4-c=1.9.3
+  - salmon=1.9.0
+  - tbb=2021.5.0
+  - xz=5.2.5
+  - zstd=1.5.2

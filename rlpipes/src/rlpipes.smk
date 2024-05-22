@@ -361,7 +361,7 @@ rule download_gtf:
         genome_home_dir + "/{genome}/{genome}.ensGene.gtf"
     log: genome_home_dir + "/logs/download_gtf/{genome}__download_gtf.log"
     shell: """
-        wget -O {output}.gz ftp://hgdownload.soe.ucsc.edu/goldenPath/{wildcards.genome}/bigZips/genes/{wildcards.genome}.ensGene.gtf.gz
+        wget -O {output}.gz https://hgdownload.cse.ucsc.edu/goldenpath/{wildcards.genome}/bigZips/genes/{wildcards.genome}.ensGene.gtf.gz
         gunzip {output}.gz &> {log}
     """
 
@@ -511,7 +511,7 @@ rule download_fasta:
     log: outdir + "/logs/download_fasta/{genome}__download_fasta.log"
     shell: """
         (mkdir -p {params.prefix}
-        wget -O {output}.gz ftp://hgdownload.soe.ucsc.edu/goldenPath/{wildcards.genome}/bigZips/{wildcards.genome}.fa.gz
+        wget -O {output}.gz https://hgdownload.cse.ucsc.edu/goldenpath/{wildcards.genome}/bigZips/{wildcards.genome}.fa.gz
         gunzip {output}.gz && echo "Indexing BAM at {params.prefix} ... This may take some time ...") &> {log}
     """
 

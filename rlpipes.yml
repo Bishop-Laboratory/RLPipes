@@ -1,4 +1,4 @@
-name: rlpipes
+name: rlpipes2
 channels:
   - conda-forge
   - bioconda
@@ -10,7 +10,7 @@ dependencies:
   - coverage
   # The last version with cores working correctly in api
   # TODO: submit an issue about this...
-  - snakemake-minimal >=5.20.1,<=6.4.0
+  - snakemake-minimal
   # Boa is required for conda mambabuild
   - boa
   - graphviz
